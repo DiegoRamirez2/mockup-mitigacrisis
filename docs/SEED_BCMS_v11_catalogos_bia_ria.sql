@@ -67,17 +67,17 @@ SET
 WITH s AS (
   SELECT id_lookup_set FROM lookup_sets WHERE code = 'risk_impact_scale'
 )
-INSERT INTO lookup_values (id_lookup_set, code, label, sort_order, is_active, color_hex, icon_name, parent_id) VALUES
-((SELECT id_lookup_set FROM s), '1_BAJO',       '1. Bajo',       1, TRUE, '#22C55E', 'bi-emoji-smile', NULL),
-((SELECT id_lookup_set FROM s), '2_MEDIO_BAJO', '2. Medio Bajo', 2, TRUE, '#84CC16', 'bi-emoji-neutral', NULL),
-((SELECT id_lookup_set FROM s), '3_MEDIO',      '3. Medio',      3, TRUE, '#F59E0B', 'bi-emoji-neutral', NULL),
-((SELECT id_lookup_set FROM s), '4_MEDIO_ALTO', '4. Medio Alto', 4, TRUE, '#F97316', 'bi-emoji-frown', NULL),
-((SELECT id_lookup_set FROM s), '5_ALTO',       '5. Alto',       5, TRUE, '#EF4444', 'bi-exclamation-triangle', NULL)
+INSERT INTO lookup_values (id_lookup_set, code, label, sort_order, is_deleted, color_hex, icon_name, parent_id) VALUES
+((SELECT id_lookup_set FROM s), '1_BAJO',       '1. Bajo',       1, FALSE, '#22C55E', 'bi-emoji-smile', NULL),
+((SELECT id_lookup_set FROM s), '2_MEDIO_BAJO', '2. Medio Bajo', 2, FALSE, '#84CC16', 'bi-emoji-neutral', NULL),
+((SELECT id_lookup_set FROM s), '3_MEDIO',      '3. Medio',      3, FALSE, '#F59E0B', 'bi-emoji-neutral', NULL),
+((SELECT id_lookup_set FROM s), '4_MEDIO_ALTO', '4. Medio Alto', 4, FALSE, '#F97316', 'bi-emoji-frown', NULL),
+((SELECT id_lookup_set FROM s), '5_ALTO',       '5. Alto',       5, FALSE, '#EF4444', 'bi-exclamation-triangle', NULL)
 ON CONFLICT (id_lookup_set, code) DO UPDATE
 SET
   label      = EXCLUDED.label,
   sort_order = EXCLUDED.sort_order,
-  is_active  = EXCLUDED.is_active,
+  is_deleted = EXCLUDED.is_deleted,
   color_hex  = EXCLUDED.color_hex,
   icon_name  = EXCLUDED.icon_name,
   parent_id  = EXCLUDED.parent_id;
@@ -86,17 +86,17 @@ SET
 WITH s AS (
   SELECT id_lookup_set FROM lookup_sets WHERE code = 'risk_probability_scale'
 )
-INSERT INTO lookup_values (id_lookup_set, code, label, sort_order, is_active, color_hex, icon_name, parent_id) VALUES
-((SELECT id_lookup_set FROM s), '1_MUY_POCO_PROBABLE', '1. Muy poco probable', 1, TRUE, '#22C55E', 'bi-calendar-x', NULL),
-((SELECT id_lookup_set FROM s), '2_POCO_PROBABLE',     '2. Poco probable',     2, TRUE, '#84CC16', 'bi-calendar2-week', NULL),
-((SELECT id_lookup_set FROM s), '3_OCASIONAL',         '3. Ocasional',         3, TRUE, '#F59E0B', 'bi-calendar2', NULL),
-((SELECT id_lookup_set FROM s), '4_FRECUENTE',         '4. Frecuente',         4, TRUE, '#F97316', 'bi-calendar2-check', NULL),
-((SELECT id_lookup_set FROM s), '5_MUY_FRECUENTE',     '5. Muy frecuente',     5, TRUE, '#EF4444', 'bi-alarm', NULL)
+INSERT INTO lookup_values (id_lookup_set, code, label, sort_order, is_deleted, color_hex, icon_name, parent_id) VALUES
+((SELECT id_lookup_set FROM s), '1_MUY_POCO_PROBABLE', '1. Muy poco probable', 1, FALSE, '#22C55E', 'bi-calendar-x', NULL),
+((SELECT id_lookup_set FROM s), '2_POCO_PROBABLE',     '2. Poco probable',     2, FALSE, '#84CC16', 'bi-calendar2-week', NULL),
+((SELECT id_lookup_set FROM s), '3_OCASIONAL',         '3. Ocasional',         3, FALSE, '#F59E0B', 'bi-calendar2', NULL),
+((SELECT id_lookup_set FROM s), '4_FRECUENTE',         '4. Frecuente',         4, FALSE, '#F97316', 'bi-calendar2-check', NULL),
+((SELECT id_lookup_set FROM s), '5_MUY_FRECUENTE',     '5. Muy frecuente',     5, FALSE, '#EF4444', 'bi-alarm', NULL)
 ON CONFLICT (id_lookup_set, code) DO UPDATE
 SET
   label      = EXCLUDED.label,
   sort_order = EXCLUDED.sort_order,
-  is_active  = EXCLUDED.is_active,
+  is_deleted = EXCLUDED.is_deleted,
   color_hex  = EXCLUDED.color_hex,
   icon_name  = EXCLUDED.icon_name,
   parent_id  = EXCLUDED.parent_id;
@@ -105,17 +105,17 @@ SET
 WITH s AS (
   SELECT id_lookup_set FROM lookup_sets WHERE code = 'control_effectiveness_scale'
 )
-INSERT INTO lookup_values (id_lookup_set, code, label, sort_order, is_active, color_hex, icon_name, parent_id) VALUES
-((SELECT id_lookup_set FROM s), '1_DEFICIENTE', '1. Deficiente', 1, TRUE, '#EF4444', 'bi-shield-x', NULL),
-((SELECT id_lookup_set FROM s), '2_REGULAR',    '2. Regular',    2, TRUE, '#F97316', 'bi-shield-exclamation', NULL),
-((SELECT id_lookup_set FROM s), '3_SUFICIENTE', '3. Suficiente', 3, TRUE, '#F59E0B', 'bi-shield-check', NULL),
-((SELECT id_lookup_set FROM s), '4_BUENO',      '4. Bueno',      4, TRUE, '#84CC16', 'bi-shield-check', NULL),
-((SELECT id_lookup_set FROM s), '5_OPTIMO',     '5. Optimo',     5, TRUE, '#22C55E', 'bi-shield-fill-check', NULL)
+INSERT INTO lookup_values (id_lookup_set, code, label, sort_order, is_deleted, color_hex, icon_name, parent_id) VALUES
+((SELECT id_lookup_set FROM s), '1_DEFICIENTE', '1. Deficiente', 1, FALSE, '#EF4444', 'bi-shield-x', NULL),
+((SELECT id_lookup_set FROM s), '2_REGULAR',    '2. Regular',    2, FALSE, '#F97316', 'bi-shield-exclamation', NULL),
+((SELECT id_lookup_set FROM s), '3_SUFICIENTE', '3. Suficiente', 3, FALSE, '#F59E0B', 'bi-shield-check', NULL),
+((SELECT id_lookup_set FROM s), '4_BUENO',      '4. Bueno',      4, FALSE, '#84CC16', 'bi-shield-check', NULL),
+((SELECT id_lookup_set FROM s), '5_OPTIMO',     '5. Optimo',     5, FALSE, '#22C55E', 'bi-shield-fill-check', NULL)
 ON CONFLICT (id_lookup_set, code) DO UPDATE
 SET
   label      = EXCLUDED.label,
   sort_order = EXCLUDED.sort_order,
-  is_active  = EXCLUDED.is_active,
+  is_deleted = EXCLUDED.is_deleted,
   color_hex  = EXCLUDED.color_hex,
   icon_name  = EXCLUDED.icon_name,
   parent_id  = EXCLUDED.parent_id;
@@ -124,17 +124,17 @@ SET
 WITH s AS (
   SELECT id_lookup_set FROM lookup_sets WHERE code = 'qualitative_risk_level'
 )
-INSERT INTO lookup_values (id_lookup_set, code, label, sort_order, is_active, color_hex, icon_name, parent_id) VALUES
-((SELECT id_lookup_set FROM s), 'BAJO',       'Bajo',       1, TRUE, '#22C55E', 'bi-emoji-smile', NULL),
-((SELECT id_lookup_set FROM s), 'MEDIO_BAJO', 'Medio Bajo', 2, TRUE, '#84CC16', 'bi-emoji-neutral', NULL),
-((SELECT id_lookup_set FROM s), 'MEDIO',      'Medio',      3, TRUE, '#F59E0B', 'bi-emoji-neutral', NULL),
-((SELECT id_lookup_set FROM s), 'MEDIO_ALTO', 'Medio Alto', 4, TRUE, '#F97316', 'bi-emoji-frown', NULL),
-((SELECT id_lookup_set FROM s), 'ALTO',       'Alto',       5, TRUE, '#EF4444', 'bi-exclamation-triangle', NULL)
+INSERT INTO lookup_values (id_lookup_set, code, label, sort_order, is_deleted, color_hex, icon_name, parent_id) VALUES
+((SELECT id_lookup_set FROM s), 'BAJO',       'Bajo',       1, FALSE, '#22C55E', 'bi-emoji-smile', NULL),
+((SELECT id_lookup_set FROM s), 'MEDIO_BAJO', 'Medio Bajo', 2, FALSE, '#84CC16', 'bi-emoji-neutral', NULL),
+((SELECT id_lookup_set FROM s), 'MEDIO',      'Medio',      3, FALSE, '#F59E0B', 'bi-emoji-neutral', NULL),
+((SELECT id_lookup_set FROM s), 'MEDIO_ALTO', 'Medio Alto', 4, FALSE, '#F97316', 'bi-emoji-frown', NULL),
+((SELECT id_lookup_set FROM s), 'ALTO',       'Alto',       5, FALSE, '#EF4444', 'bi-exclamation-triangle', NULL)
 ON CONFLICT (id_lookup_set, code) DO UPDATE
 SET
   label      = EXCLUDED.label,
   sort_order = EXCLUDED.sort_order,
-  is_active  = EXCLUDED.is_active,
+  is_deleted = EXCLUDED.is_deleted,
   color_hex  = EXCLUDED.color_hex,
   icon_name  = EXCLUDED.icon_name,
   parent_id  = EXCLUDED.parent_id;
@@ -143,14 +143,14 @@ SET
 WITH s AS (
   SELECT id_lookup_set FROM lookup_sets WHERE code = 'yes_no_flag'
 )
-INSERT INTO lookup_values (id_lookup_set, code, label, sort_order, is_active, color_hex, icon_name, parent_id) VALUES
-((SELECT id_lookup_set FROM s), 'SI', 'Si', 1, TRUE, '#22C55E', 'bi-check-circle', NULL),
-((SELECT id_lookup_set FROM s), 'NO', 'No', 2, TRUE, '#EF4444', 'bi-x-circle', NULL)
+INSERT INTO lookup_values (id_lookup_set, code, label, sort_order, is_deleted, color_hex, icon_name, parent_id) VALUES
+((SELECT id_lookup_set FROM s), 'SI', 'Si', 1, FALSE, '#22C55E', 'bi-check-circle', NULL),
+((SELECT id_lookup_set FROM s), 'NO', 'No', 2, FALSE, '#EF4444', 'bi-x-circle', NULL)
 ON CONFLICT (id_lookup_set, code) DO UPDATE
 SET
   label      = EXCLUDED.label,
   sort_order = EXCLUDED.sort_order,
-  is_active  = EXCLUDED.is_active,
+  is_deleted = EXCLUDED.is_deleted,
   color_hex  = EXCLUDED.color_hex,
   icon_name  = EXCLUDED.icon_name,
   parent_id  = EXCLUDED.parent_id;
@@ -159,14 +159,14 @@ SET
 WITH s AS (
   SELECT id_lookup_set FROM lookup_sets WHERE code = 'continuity_risk_response'
 )
-INSERT INTO lookup_values (id_lookup_set, code, label, sort_order, is_active, color_hex, icon_name, parent_id) VALUES
-((SELECT id_lookup_set FROM s), 'UPDATE_OR_CREATE_BCP', 'Crear/actualizar BCP o ejecutar prueba pendiente', 1, TRUE, '#F97316', 'bi-tools', NULL),
-((SELECT id_lookup_set FROM s), 'KEEP_CURRENT_BCP',     'No requiere construir/actualizar plan; mantener pruebas', 2, TRUE, '#22C55E', 'bi-shield-check', NULL)
+INSERT INTO lookup_values (id_lookup_set, code, label, sort_order, is_deleted, color_hex, icon_name, parent_id) VALUES
+((SELECT id_lookup_set FROM s), 'UPDATE_OR_CREATE_BCP', 'Crear/actualizar BCP o ejecutar prueba pendiente', 1, FALSE, '#F97316', 'bi-tools', NULL),
+((SELECT id_lookup_set FROM s), 'KEEP_CURRENT_BCP',     'No requiere construir/actualizar plan; mantener pruebas', 2, FALSE, '#22C55E', 'bi-shield-check', NULL)
 ON CONFLICT (id_lookup_set, code) DO UPDATE
 SET
   label      = EXCLUDED.label,
   sort_order = EXCLUDED.sort_order,
-  is_active  = EXCLUDED.is_active,
+  is_deleted = EXCLUDED.is_deleted,
   color_hex  = EXCLUDED.color_hex,
   icon_name  = EXCLUDED.icon_name,
   parent_id  = EXCLUDED.parent_id;
@@ -175,20 +175,20 @@ SET
 WITH s AS (
   SELECT id_lookup_set FROM lookup_sets WHERE code = 'disruption_scenario_type'
 )
-INSERT INTO lookup_values (id_lookup_set, code, label, sort_order, is_active, color_hex, icon_name, parent_id) VALUES
-((SELECT id_lookup_set FROM s), 'PERSONNEL',      'Personal',                 1, TRUE, '#0EA5E9', 'bi-people', NULL),
-((SELECT id_lookup_set FROM s), 'INFRASTRUCTURE', 'Infraestructura',          2, TRUE, '#A855F7', 'bi-building', NULL),
-((SELECT id_lookup_set FROM s), 'SUPPLIER',       'Proveedor',                3, TRUE, '#14B8A6', 'bi-truck', NULL),
-((SELECT id_lookup_set FROM s), 'SYSTEMS',        'Sistemas / Aplicaciones',  4, TRUE, '#3B82F6', 'bi-hdd-network', NULL),
-((SELECT id_lookup_set FROM s), 'CYBER',          'Ciberseguridad',           5, TRUE, '#DC2626', 'bi-shield-lock', NULL),
-((SELECT id_lookup_set FROM s), 'CASH',           'Suministro de efectivo',   6, TRUE, '#84CC16', 'bi-cash-coin', NULL),
-((SELECT id_lookup_set FROM s), 'BASIC_SERVICES', 'Servicios basicos',        7, TRUE, '#F59E0B', 'bi-lightning-charge', NULL),
-((SELECT id_lookup_set FROM s), 'BRANCH_NETWORK', 'Red de sucursales',        8, TRUE, '#6366F1', 'bi-diagram-3', NULL)
+INSERT INTO lookup_values (id_lookup_set, code, label, sort_order, is_deleted, color_hex, icon_name, parent_id) VALUES
+((SELECT id_lookup_set FROM s), 'PERSONNEL',      'Personal',                 1, FALSE, '#0EA5E9', 'bi-people', NULL),
+((SELECT id_lookup_set FROM s), 'INFRASTRUCTURE', 'Infraestructura',          2, FALSE, '#A855F7', 'bi-building', NULL),
+((SELECT id_lookup_set FROM s), 'SUPPLIER',       'Proveedor',                3, FALSE, '#14B8A6', 'bi-truck', NULL),
+((SELECT id_lookup_set FROM s), 'SYSTEMS',        'Sistemas / Aplicaciones',  4, FALSE, '#3B82F6', 'bi-hdd-network', NULL),
+((SELECT id_lookup_set FROM s), 'CYBER',          'Ciberseguridad',           5, FALSE, '#DC2626', 'bi-shield-lock', NULL),
+((SELECT id_lookup_set FROM s), 'CASH',           'Suministro de efectivo',   6, FALSE, '#84CC16', 'bi-cash-coin', NULL),
+((SELECT id_lookup_set FROM s), 'BASIC_SERVICES', 'Servicios basicos',        7, FALSE, '#F59E0B', 'bi-lightning-charge', NULL),
+((SELECT id_lookup_set FROM s), 'BRANCH_NETWORK', 'Red de sucursales',        8, FALSE, '#6366F1', 'bi-diagram-3', NULL)
 ON CONFLICT (id_lookup_set, code) DO UPDATE
 SET
   label      = EXCLUDED.label,
   sort_order = EXCLUDED.sort_order,
-  is_active  = EXCLUDED.is_active,
+  is_deleted = EXCLUDED.is_deleted,
   color_hex  = EXCLUDED.color_hex,
   icon_name  = EXCLUDED.icon_name,
   parent_id  = EXCLUDED.parent_id;
@@ -317,4 +317,3 @@ SET
   deleted_by         = EXCLUDED.deleted_by;
 
 COMMIT;
-

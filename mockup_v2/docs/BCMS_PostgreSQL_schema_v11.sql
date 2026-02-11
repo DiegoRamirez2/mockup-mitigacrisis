@@ -115,13 +115,13 @@
 -- [V7→V8] ELIMINADA: exercise_participants → Absorbida en plan_tests.participants
 -- [V7→V8] ELIMINADA: exercises            → Renombrada a plan_tests
 -- [V7→V8] ELIMINADA: incident_affected_assets → Usar evidences con entity_type=INCIDENT
--- [V7→V8] ELIMINADA: incident_affected_processes → Usar incident.affected_process_id
+-- [V7→V8] ELIMINADA: incident_affected_processes → Usar incident.target_process_type + target_process_id
 -- [V7→V8] ELIMINADA: incident_plan_activations → Usar crisis_declarations.activated_plan_id
 -- [V7→V8] ELIMINADA: plan_covered_processes → Usar target_process_id en continuity_plans
 -- [V7→V8] ELIMINADA: plan_procedures      → Absorbida por recovery_procedures
 -- [V7→V8] ELIMINADA: plan_resources       → Campo en recovery_strategies
 -- [V7→V8] ELIMINADA: process_assets       → Usar assets.id_organization + proceso
--- [V7→V8] ELIMINADA: process_suppliers    → Usar bia_dependencies con tipo SUPPLIER
+-- [V7→V8] ELIMINADA: process_suppliers    → Usar process_dependencies con dependency_entity_type='SUPPLIER'
 -- [V7→V8] ELIMINADA: supplier_contacts    → Usar contacts.id_supplier
 -- [V7→V8] ELIMINADA: training_campaigns   → Fuera de alcance BCMS core
 -- [V7→V8] ELIMINADA: training_records     → Fuera de alcance BCMS core
@@ -255,7 +255,7 @@ CREATE TABLE lookup_values (
   code                   VARCHAR(80) NOT NULL,
   label                  VARCHAR(255) NOT NULL,
   sort_order             INT DEFAULT 0,
-  is_active              BOOLEAN DEFAULT TRUE,
+  is_deleted             BOOLEAN DEFAULT FALSE,
   color_hex              CHAR(7),
   icon_name              VARCHAR(100),
   parent_id              BIGINT NULL REFERENCES lookup_values(id_lookup_value),
@@ -279,7 +279,7 @@ CREATE TABLE macroprocesses (
   category               VARCHAR(100),
   expiration_date        DATE,
   created_at             TIMESTAMP DEFAULT now(),
-  updated_at             DATE DEFAULT CURRENT_DATE,
+  updated_at             TIMESTAMP DEFAULT now(),
   created_by             VARCHAR(255),
   updated_by             VARCHAR(255),
   deleted_at             TIMESTAMP,
@@ -449,6 +449,7 @@ CREATE TABLE user_role_assignments (
 
 CREATE TABLE process_continuity_profiles (
   id_profile                       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- PK tecnica del perfil BCMS.
+  id_organization                  INT NOT NULL REFERENCES organizations(id_organization), -- Organizacion duena del perfil BCMS.
   target_process_type              VARCHAR(30) NOT NULL, -- Valores comunes: MACROPROCESS/PROCESS/SUBPROCESS/PROCEDURE.
   target_process_id                INT NOT NULL, -- ID de la entidad objetivo segun target_process_type.
   strategic_importance             VARCHAR(20), -- Valores comunes: CRITICAL/HIGH/MEDIUM/LOW; prioridad estrategica.
@@ -579,6 +580,7 @@ CREATE INDEX idx_threats_active ON threats(is_deleted) WHERE is_deleted = FALSE;
 CREATE TABLE risks (
   id_risk                BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   risk_code              VARCHAR(80) NOT NULL UNIQUE,
+  id_organization        INT NOT NULL REFERENCES organizations(id_organization),
   title                  VARCHAR(255) NOT NULL,
   description            TEXT,
   risk_domain            VARCHAR(20) NOT NULL,
@@ -723,7 +725,6 @@ CREATE TABLE bia_assessments (
   target_process_id      INT NOT NULL,
   assessment_date        DATE NOT NULL,
   reviewed_by            BIGINT NULL REFERENCES users(id_user),
-  version_label          VARCHAR(50),
   version                INT DEFAULT 1,
   status_lu              BIGINT NULL REFERENCES lookup_values(id_lookup_value),
   created_at             TIMESTAMPTZ DEFAULT now(),
@@ -762,19 +763,6 @@ CREATE TABLE bia_objectives (
   CONSTRAINT ck_obj_type CHECK (objective_type IN ('RTO', 'RPO', 'MTPD', 'MBCO'))
 );
 CREATE INDEX idx_bia_obj_bia ON bia_objectives(id_bia);
-
--- bia_dependencies
-CREATE TABLE bia_dependencies (
-  id_bia_dependency      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  id_bia                 BIGINT NOT NULL REFERENCES bia_assessments(id_bia) ON DELETE CASCADE,
-  dependency_type        VARCHAR(30) NOT NULL,
-  reference_entity       VARCHAR(255),
-  reference_entity_id    BIGINT,
-  criticality_lu         BIGINT NULL REFERENCES lookup_values(id_lookup_value),
-  notes                  TEXT,
-  CONSTRAINT ck_dep_type CHECK (dependency_type IN ('UPSTREAM_PROCESS', 'DOWNSTREAM_PROCESS', 'SUPPLIER', 'ASSET', 'APPLICATION', 'PERSONNEL'))
-);
-CREATE INDEX idx_bia_dep_bia ON bia_dependencies(id_bia);
 
 -- ############################################################################
 -- FASE 9B: ESCENARIOS DE DISRUPCIÓN Y RIA
@@ -962,6 +950,23 @@ CREATE TABLE process_dependencies (
 CREATE INDEX idx_procdep_org ON process_dependencies(id_organization);
 CREATE INDEX idx_procdep_target ON process_dependencies(target_process_type, target_process_id);
 CREATE INDEX idx_procdep_entity ON process_dependencies(dependency_entity_type, dependency_entity_id);
+
+-- bia_dependency_assessments
+CREATE TABLE bia_dependency_assessments (
+  id_bia_dependency_assessment BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- PK tecnica de evaluacion BIA sobre una dependencia.
+  id_bia                 BIGINT NOT NULL REFERENCES bia_assessments(id_bia) ON DELETE CASCADE, -- Assessment BIA al que pertenece la evaluacion.
+  id_process_dependency  BIGINT NOT NULL REFERENCES process_dependencies(id_process_dependency), -- Dependencia baseline del proceso evaluada.
+  criticality_lu_at_assessment BIGINT NULL REFERENCES lookup_values(id_lookup_value), -- Criticidad en este assessment (ej: BAJA/MEDIA/ALTA/CRITICA).
+  is_applicable          BOOLEAN DEFAULT TRUE, -- true: aplica en este BIA; false: no aplica en esta version.
+  notes                  TEXT, -- Justificacion/evidencia de la evaluacion puntual.
+  created_at             TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de creacion.
+  updated_at             TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de actualizacion.
+  created_by             VARCHAR(255), -- Auditoria: usuario creador.
+  updated_by             VARCHAR(255), -- Auditoria: usuario actualizador.
+  deleted_at             TIMESTAMPTZ, -- Auditoria: fecha de borrado logico.
+  deleted_by             VARCHAR(255), -- Auditoria: usuario que elimina logicamente.
+  is_deleted             BOOLEAN DEFAULT FALSE -- Soft delete.
+);
 
 -- ############################################################################
 -- FASE 10: DATOS MAESTROS (locations, assets, suppliers, contacts)
@@ -1350,7 +1355,8 @@ CREATE TABLE incidents (
   resolved_at            TIMESTAMPTZ,
   closed_at              TIMESTAMPTZ,
   id_organization        INT NOT NULL REFERENCES organizations(id_organization),
-  affected_process_id    INT NULL REFERENCES processes(id_process),
+  target_process_type    VARCHAR(30), -- Valores comunes: MACROPROCESS/PROCESS/SUBPROCESS/PROCEDURE.
+  target_process_id      INT, -- ID del proceso objetivo segun target_process_type.
   affected_location_id   BIGINT NULL REFERENCES locations(id_location),
   impact_description     TEXT,
   root_cause             TEXT,
@@ -1373,6 +1379,7 @@ CREATE INDEX idx_incident_org ON incidents(id_organization);
 CREATE INDEX idx_incident_status ON incidents(status_lu);
 CREATE INDEX idx_incident_sev ON incidents(severity_lu);
 CREATE INDEX idx_incident_date ON incidents(reported_at);
+CREATE INDEX idx_incident_target_process ON incidents(target_process_type, target_process_id) WHERE target_process_id IS NOT NULL;
 CREATE INDEX idx_incident_reg_status ON incidents(regulatory_status_lu) WHERE regulatory_status_lu IS NOT NULL;
 
 -- incident_regulatory_reports
@@ -1454,6 +1461,45 @@ CREATE TABLE incident_impacts (
   created_at             TIMESTAMPTZ DEFAULT now()
 );
 CREATE INDEX idx_incimpact_inc ON incident_impacts(id_incident);
+
+-- ============================================================================
+-- [V11][EXT_BE] NUEVA TABLA: loss_events
+-- Base de perdida (BBPP) para riesgo operacional y apetito de riesgo (BancoEstado).
+-- ============================================================================
+CREATE TABLE loss_events (
+  id_loss_event          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- PK tecnica del evento de perdida.
+  loss_code              VARCHAR(80) NOT NULL UNIQUE, -- Codigo unico del evento (ej: LOSS-2026-0001).
+  id_organization        INT NOT NULL REFERENCES organizations(id_organization), -- Organizacion propietaria del registro.
+  event_date             DATE NOT NULL, -- Fecha de ocurrencia del evento de perdida.
+  discovery_date         DATE, -- Fecha de deteccion del evento.
+  accounting_date        DATE, -- Fecha de reconocimiento contable.
+  risk_domain            VARCHAR(20) NOT NULL, -- Dominio de riesgo (ej: OPERATIONAL/CYBER/CONTINUITY/INTEGRATED).
+  loss_type_lu           BIGINT NULL REFERENCES lookup_values(id_lookup_value), -- Tipo de perdida operacional.
+  basel_loss_type_lu     BIGINT NULL REFERENCES lookup_values(id_lookup_value), -- Tipo de perdida segun Basilea.
+  business_line_lu       BIGINT NULL REFERENCES lookup_values(id_lookup_value), -- Linea de negocio asociada.
+  loss_source_lu         BIGINT NULL REFERENCES lookup_values(id_lookup_value), -- Fuente de alimentacion (contabilidad/manual/incidente).
+  accounting_account_code VARCHAR(50), -- Cuenta contable de perdida operacional.
+  source_reference       VARCHAR(255), -- Folio o referencia externa de origen.
+  target_process_type    VARCHAR(30), -- Proceso asociado (MACROPROCESS/PROCESS/SUBPROCESS/PROCEDURE).
+  target_process_id      INT, -- ID del proceso segun target_process_type.
+  related_risk_id        BIGINT NULL REFERENCES risks(id_risk), -- Riesgo relacionado cuando aplique.
+  related_incident_id    BIGINT NULL REFERENCES incidents(id_incident), -- Incidente relacionado cuando aplique.
+  gross_amount           NUMERIC(15,2) NOT NULL, -- Monto bruto de perdida.
+  recovered_amount       NUMERIC(15,2) NOT NULL DEFAULT 0, -- Monto recuperado/compensado.
+  net_amount             NUMERIC(15,2) NOT NULL, -- Monto neto final.
+  currency_code          CHAR(3) NOT NULL, -- Moneda ISO 4217 (ej: CLP/USD/UFV segun catalogo).
+  status_lu              BIGINT NULL REFERENCES lookup_values(id_lookup_value), -- Estado del evento (OPEN/UNDER_REVIEW/CLOSED).
+  root_cause             TEXT, -- Causa raiz del evento.
+  description            TEXT, -- Descripcion ejecutiva del evento.
+  notes                  TEXT, -- Observaciones adicionales para analisis y reporte.
+  created_at             TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de creacion.
+  updated_at             TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de actualizacion.
+  created_by             VARCHAR(255), -- Auditoria: usuario creador.
+  updated_by             VARCHAR(255), -- Auditoria: usuario actualizador.
+  deleted_at             TIMESTAMPTZ, -- Auditoria: fecha de borrado logico.
+  deleted_by             VARCHAR(255), -- Auditoria: usuario que elimina logicamente.
+  is_deleted             BOOLEAN DEFAULT FALSE -- Soft delete.
+);
 
 -- crisis_declarations
 CREATE TABLE crisis_declarations (
@@ -1758,10 +1804,12 @@ CREATE TABLE evidences (
   deleted_by             VARCHAR(255),
   is_deleted             BOOLEAN DEFAULT FALSE,
   CONSTRAINT ck_evidence_entity CHECK (entity_type IN (
-    'RISK', 'CONTROL', 'INCIDENT', 'AUDIT', 'FINDING', 'PLAN', 
-    'BIA', 'CRISIS', 'TEST', 'COMPLIANCE', 'ASSET', 'SUPPLIER',
-    'PROCESS', 'PROCEDURE', 'REQUIREMENT', 'ORGANIZATION', 'THREAT', 'VULNERABILITY',
-    'INCIDENT_REG_REPORT'
+    'ORGANIZATION', 'MACROPROCESS', 'PROCESS', 'SUBPROCESS', 'PROCEDURE',
+    'PLAN', 'BIA', 'RIA', 'RISK', 'CONTROL', 'REFERENCE_CONTROL',
+    'THREAT', 'VULNERABILITY', 'ASSET', 'SUPPLIER', 'LOCATION',
+    'CONTACT', 'USER', 'INCIDENT', 'INCIDENT_REG_REPORT', 'CRISIS',
+    'AUDIT', 'FINDING', 'FRAMEWORK', 'REQUIREMENT', 'COMPLIANCE',
+    'TEST', 'EVIDENCE'
   )),
   -- [V7→V8] NUEVA VALIDACIÓN: valid_until >= valid_from
   CONSTRAINT ck_evidence_dates CHECK (valid_until IS NULL OR valid_from IS NULL OR valid_until >= valid_from)
@@ -1850,13 +1898,14 @@ CREATE TABLE entity_tags (
   assigned_at            TIMESTAMPTZ DEFAULT now(),
   -- Evitar duplicados: mismo tag no puede asignarse dos veces a la misma entidad
   CONSTRAINT uq_entity_tag UNIQUE (id_tag, entity_type, entity_id),
-  -- Entidades soportadas (mismas que evidences + adicionales)
+  -- Entidades soportadas (diccionario polimorfico comun v11)
   CONSTRAINT ck_entity_tag_type CHECK (entity_type IN (
-    'ORGANIZATION', 'PROCESS', 'SUBPROCESS', 'PROCEDURE', 'MACROPROCESS',
-    'RISK', 'THREAT', 'VULNERABILITY', 'CONTROL', 'REFERENCE_CONTROL',
-    'ASSET', 'SUPPLIER', 'LOCATION', 'CONTACT',
-    'INCIDENT', 'CRISIS', 'AUDIT', 'FINDING',
-    'PLAN', 'BIA', 'FRAMEWORK', 'REQUIREMENT', 'EVIDENCE', 'USER', 'INCIDENT_REG_REPORT'
+    'ORGANIZATION', 'MACROPROCESS', 'PROCESS', 'SUBPROCESS', 'PROCEDURE',
+    'PLAN', 'BIA', 'RIA', 'RISK', 'CONTROL', 'REFERENCE_CONTROL',
+    'THREAT', 'VULNERABILITY', 'ASSET', 'SUPPLIER', 'LOCATION',
+    'CONTACT', 'USER', 'INCIDENT', 'INCIDENT_REG_REPORT', 'CRISIS',
+    'AUDIT', 'FINDING', 'FRAMEWORK', 'REQUIREMENT', 'COMPLIANCE',
+    'TEST', 'EVIDENCE'
   ))
 );
 CREATE INDEX idx_entity_tag_tag ON entity_tags(id_tag);
@@ -1914,13 +1963,13 @@ CREATE INDEX idx_auditlog_action ON audit_logs(action_type);
 
 -- lessons_learned
 CREATE TABLE lessons_learned (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   code VARCHAR(50) UNIQUE NOT NULL,
   title VARCHAR(200) NOT NULL,
   
   -- Origen de la lección
   source_type VARCHAR(50),  -- 'INCIDENT', 'CRISIS', 'EXERCISE', 'AUDIT', 'EXTERNAL_EVENT', 'BEST_PRACTICE'
-  source_id UUID,  -- FK polimórfica al id del origen
+  source_id BIGINT,  -- FK polimorfica al id del origen
   lesson_date DATE NOT NULL,
   
   -- Contenido
@@ -1949,13 +1998,12 @@ CREATE TABLE lessons_learned (
   
   -- Organización
   id_organization INT REFERENCES organizations(id_organization),
-  folder_id UUID,
+  folder_id BIGINT,
   
   -- Auditoría
   created_by BIGINT REFERENCES users(id_user),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  ,
   updated_by             BIGINT REFERENCES users(id_user),
   deleted_at             TIMESTAMPTZ,
   deleted_by             BIGINT REFERENCES users(id_user),
@@ -1974,7 +2022,7 @@ COMMENT ON TABLE lessons_learned IS '[V7→V8] NUEVA: Lecciones aprendidas de in
 
 -- bcms_changes
 CREATE TABLE bcms_changes (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   change_code VARCHAR(50) UNIQUE NOT NULL,
   title VARCHAR(200) NOT NULL,
   description TEXT,
@@ -1984,7 +2032,7 @@ CREATE TABLE bcms_changes (
   change_category VARCHAR(30),  -- minor, major, critical
   
   -- Entidades afectadas (polimórfico)
-  affected_entities JSONB,  -- [{entity_type: 'process', entity_id: UUID, description: 'Cambio en RTO'}, ...]
+  affected_entities JSONB,  -- [{entity_type: 'process', entity_id: BIGINT, description: 'Cambio en RTO'}, ...]
   impact_assessment TEXT,
   risk_level VARCHAR(20),  -- low, medium, high, critical
   
@@ -2018,7 +2066,6 @@ CREATE TABLE bcms_changes (
   created_by BIGINT REFERENCES users(id_user),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  ,
   updated_by             BIGINT REFERENCES users(id_user),
   deleted_at             TIMESTAMPTZ,
   deleted_by             BIGINT REFERENCES users(id_user),
@@ -2380,8 +2427,12 @@ CREATE TABLE contact_links (
   is_primary             BOOLEAN DEFAULT FALSE,
   created_at             TIMESTAMPTZ DEFAULT now(),
   CONSTRAINT ck_contact_entity_type CHECK (entity_type IN (
-    'ORGANIZATION', 'SUPPLIER', 'PROCESS', 'SUBPROCESS', 'PROCEDURE',
-    'PLAN', 'INCIDENT', 'CRISIS', 'LOCATION', 'ASSET', 'INCIDENT_REG_REPORT'
+    'ORGANIZATION', 'MACROPROCESS', 'PROCESS', 'SUBPROCESS', 'PROCEDURE',
+    'PLAN', 'BIA', 'RIA', 'RISK', 'CONTROL', 'REFERENCE_CONTROL',
+    'THREAT', 'VULNERABILITY', 'ASSET', 'SUPPLIER', 'LOCATION',
+    'CONTACT', 'USER', 'INCIDENT', 'INCIDENT_REG_REPORT', 'CRISIS',
+    'AUDIT', 'FINDING', 'FRAMEWORK', 'REQUIREMENT', 'COMPLIANCE',
+    'TEST', 'EVIDENCE'
   ))
 );
 CREATE INDEX idx_contact_links_entity ON contact_links(entity_type, entity_id);
@@ -2423,8 +2474,12 @@ CREATE TABLE bcms_role_assignments (
   deleted_by             VARCHAR(255),
   is_deleted             BOOLEAN DEFAULT FALSE,
   CONSTRAINT ck_bcms_scope_type CHECK (scope_type IN (
-    'GLOBAL', 'ORGANIZATION', 'PROCESS', 'SUBPROCESS', 'PROCEDURE',
-    'PLAN', 'INCIDENT', 'CRISIS', 'LOCATION', 'ASSET', 'INCIDENT_REG_REPORT'
+    'GLOBAL', 'ORGANIZATION', 'MACROPROCESS', 'PROCESS', 'SUBPROCESS', 'PROCEDURE',
+    'PLAN', 'BIA', 'RIA', 'RISK', 'CONTROL', 'REFERENCE_CONTROL',
+    'THREAT', 'VULNERABILITY', 'ASSET', 'SUPPLIER', 'LOCATION',
+    'CONTACT', 'USER', 'INCIDENT', 'INCIDENT_REG_REPORT', 'CRISIS',
+    'AUDIT', 'FINDING', 'FRAMEWORK', 'REQUIREMENT', 'COMPLIANCE',
+    'TEST', 'EVIDENCE'
   ))
 );
 CREATE INDEX idx_bcms_role_assign_user ON bcms_role_assignments(id_user);
@@ -2467,8 +2522,12 @@ CREATE TABLE communication_plans (
   deleted_by             VARCHAR(255),
   is_deleted             BOOLEAN DEFAULT FALSE,
   CONSTRAINT ck_comm_scope_type CHECK (scope_type IN (
-    'GLOBAL', 'ORGANIZATION', 'PROCESS', 'SUBPROCESS', 'PROCEDURE',
-    'PLAN', 'INCIDENT', 'CRISIS'
+    'GLOBAL', 'ORGANIZATION', 'MACROPROCESS', 'PROCESS', 'SUBPROCESS', 'PROCEDURE',
+    'PLAN', 'BIA', 'RIA', 'RISK', 'CONTROL', 'REFERENCE_CONTROL',
+    'THREAT', 'VULNERABILITY', 'ASSET', 'SUPPLIER', 'LOCATION',
+    'CONTACT', 'USER', 'INCIDENT', 'INCIDENT_REG_REPORT', 'CRISIS',
+    'AUDIT', 'FINDING', 'FRAMEWORK', 'REQUIREMENT', 'COMPLIANCE',
+    'TEST', 'EVIDENCE'
   ))
 );
 CREATE INDEX idx_comm_plan_org ON communication_plans(id_organization);
