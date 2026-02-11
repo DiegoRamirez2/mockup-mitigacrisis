@@ -1,5 +1,6 @@
 # Plan de Trabajo BD BCMS v11
-
+cd D:\Documents\D\GRUPO_MITIGA\MOCKUP\final_mockup
+conda activate .\.conda\envs\bcms-tools
 Fecha de inicio: 2026-02-11  
 Alcance de este plan: **solo base de datos a nivel visual** (tablas y columnas).  
 Regla activa: **ignorar vistas por ahora**.
@@ -61,7 +62,7 @@ Consolidar un modelo de datos BCMS que:
    - Falta modelo dedicado para reporte regulatorio de incidentes (si aplica por cliente).
 
 6. **`*_bcms` con campos discutibles para MVP**
-   - Algunas columnas parecen demasiado amplias o poco estables para uso inmediato.
+   - Resuelto parcialmente: se consolidaron en una tabla común `process_continuity_profiles`.
 
 7. **`organizational_units`**
    - Resuelto: se eliminó y se migraron relaciones de unidad responsable a `organizations`.
@@ -92,29 +93,32 @@ Estado: **En progreso**
 Objetivo: simplificar y ordenar estructura de tablas/columnas existente.
 
 1. Homologar columnas polimórficas a nivel visual (`target_process_type` / `target_process_id`) donde aplique.
-2. Revisar y simplificar campos `*_bcms` para MVP (deprecación o ajuste).
+2. Revisar y simplificar campos `*_bcms` para MVP (deprecación o ajuste). **(Completado: consolidación en tabla común)**
 3. `organizational_units` -> `organizations` y ejecutar migración de FKs. **(Completado)**
 
-Estado: **En progreso**
+Estado: **Completada**
 
 ## Fase 2 - Cobertura funcional mínima faltante
 
 Objetivo: cubrir brechas reales detectadas por hojas ocultas y operación.
 
-1. Evaluar soporte de Ficha de discriminación RIA:
-   - Opción A: ajuste tabla existente.
-   - Opción B: nueva tabla dedicada.
-2. Modelar personal crítico por etapa (titular/reemplazo).
+1. Soporte de Ficha de discriminacion RIA:
+   - Ejecutado con tablas `ria_discriminations` + `ria_discrimination_items`.
+2. Modelar personal critico por etapa (titular/reemplazo):
+   - Ejecutado con tabla `process_critical_personnel` reutilizando `contacts`.
 3. Modelar V°B°/firmas multirol por entidad/version.
+   - Ejecutado con `entity_approvals` + `entity_approval_signatures`.
 
-Estado: **Pendiente**
+Estado: **Completada**
 
 ## Fase 3 - Cumplimiento 21.663 (si cliente lo requiere)
 
 1. Definir trazabilidad de notificación regulatoria de incidentes.
+   - Ejecutado: tabla dedicada `incident_regulatory_reports` + campos resumen en `incidents`.
 2. Decidir ajuste en `incidents` vs tabla nueva específica de reportes.
+   - Ejecutado: enfoque híbrido (flags en `incidents` + tabla dedicada para hitos regulatorios).
 
-Estado: **Pendiente**
+Estado: **Completada**
 
 ## 5) Backlog de Cambios (candidatos)
 
@@ -122,17 +126,11 @@ Estado: **Pendiente**
 
 1. `risks`, `applied_controls`, `bia_assessments`, `continuity_plans`, `ria_assessments`, `process_dependencies`:
    - Homologación visual de columnas de objetivo (`target_process_type` / `target_process_id`).
-2. `process_bcms_data` y otras `*_bcms`:
-   - Revisar columnas poco estables para el MVP.
-3. `incidents`:
-   - evaluar si basta agregar campos para trazabilidad regulatoria.
+2. `process_continuity_profiles`:
+   - Revisar ajuste fino de columnas para el MVP y confirmar cobertura por nivel de proceso.
 
 ### 5.2 Tablas nuevas (solo si ajuste no basta)
-
-1. `ria_discrimination` (o equivalente).
-2. `process_critical_personnel` (titular/reemplazo por etapa).
-3. `entity_approvals` + `entity_approval_signatures` (o equivalente).
-4. `incident_regulatory_reports` (si se requiere bitácora regulatoria detallada).
+Sin pendientes en este bloque por ahora.
 
 ## 5.3 Modificaciones a futuro (no visual / técnica)
 
@@ -155,6 +153,14 @@ Estado: **Pendiente**
    - `process_bcms_data.responsible_unit_id` -> `responsible_organization_id INT REFERENCES organizations(id_organization)`.
    - `applied_controls.responsible_unit_id` -> `responsible_organization_id INT REFERENCES organizations(id_organization)`.
 8. Se acuerda trabajar en modo **visual** (tablas/columnas) y mover cambios técnicos (índices/triggers/constraints avanzadas) a “Modificaciones a futuro”.
+9. Se eliminaron `macroprocess_bcms_data`, `process_bcms_data`, `subprocess_bcms_data`, `procedure_bcms_data`.
+10. Se creó tabla común `process_continuity_profiles` para consolidar perfil BCMS por nivel de proceso.
+11. Se implementaron `ria_discriminations` y `ria_discrimination_items` para modelar la ficha de discriminacion previa al RIA.
+12. Se implementó `process_critical_personnel` para modelar personal titular/reemplazo por etapa, reutilizando `contacts`.
+13. Se implementaron `entity_approvals` y `entity_approval_signatures` para modelar V°B° y firmas multirol por entidad/version.
+14. Se implementó trazabilidad 21.663 en incidentes con enfoque híbrido:
+   - Ajustes en `incidents` para estado/plazo regulatorio resumido.
+   - Nueva tabla `incident_regulatory_reports` para hitos y reportes regulatorios.
 
 ## 7) Criterios para aceptar cada fase
 
@@ -165,8 +171,7 @@ Estado: **Pendiente**
 
 ## 8) Próximo paso sugerido
 
-Resolver y ejecutar **Fase 1** en este orden:
+Resolver y ejecutar **Fase 2/Fase 3** en este orden:
 
-1. Ajuste mínimo de `*_bcms` para MVP (definir columnas a mantener/deprecar).
-2. Evaluar y decidir estructura visual para `ria_discrimination` (si ajuste existente no basta).
-3. Evaluar y decidir estructura visual para personal crítico por etapa (titular/reemplazo).
+1. Definir si se requiere plan de migración de datos históricos hacia `process_continuity_profiles` y nuevas tablas RIA/personal critico/aprobaciones/regulatorio.
+2. Ejecutar homologación visual pendiente de columnas polimórficas en tablas núcleo.

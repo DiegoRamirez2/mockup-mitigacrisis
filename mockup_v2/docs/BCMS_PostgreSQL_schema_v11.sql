@@ -443,96 +443,41 @@ CREATE TABLE user_role_assignments (
 );
 
 -- ############################################################################
--- FASE 6: EXTENSIONES BCMS POR NIVEL DE PROCESO
+-- FASE 6: PERFIL BCMS COMÚN POR NIVEL DE PROCESO
 -- ############################################################################
--- Sin cambios respecto a v7
+-- Consolidación de tablas *_bcms en un único perfil de continuidad.
 
-CREATE TABLE macroprocess_bcms_data (
-  id_macroprocess        INT PRIMARY KEY REFERENCES macroprocesses(id_macroprocess) ON DELETE CASCADE,
-  strategic_importance   VARCHAR(20),
-  governance_owner_id    BIGINT NULL REFERENCES users(id_user),
-  review_frequency       VARCHAR(50),
-  last_review_date       DATE,
-  next_review_date       DATE,
-  notes                  TEXT,
-  created_at             TIMESTAMPTZ DEFAULT now(),
-  updated_at             TIMESTAMPTZ DEFAULT now(),
-  created_by             VARCHAR(255),
-  updated_by             VARCHAR(255),
-  deleted_at             TIMESTAMPTZ,
-  deleted_by             VARCHAR(255),
-  is_deleted             BOOLEAN DEFAULT FALSE,
-  CONSTRAINT ck_macro_importance CHECK (strategic_importance IN ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW'))
-);
-
-CREATE TABLE process_bcms_data (
-  id_process             INT PRIMARY KEY REFERENCES processes(id_process) ON DELETE CASCADE,
-  business_criticality   VARCHAR(20),
-  process_category       VARCHAR(50),
-  target_rto_minutes     INT,
-  target_rpo_minutes     INT,
-  maximum_tolerable_downtime_minutes INT,
-  minimum_business_continuity_objective TEXT,
-  minimum_staff_required INT,
-  process_inputs         JSONB,
-  process_outputs        JSONB,
-  regulatory_drivers     TEXT,
-  applicable_frameworks  JSONB,
-  operating_frequency    VARCHAR(50),
-  peak_operation_periods TEXT,
-  automation_level       VARCHAR(20),
-  owner_user_id          BIGINT REFERENCES users(id_user),
-  responsible_organization_id INT REFERENCES organizations(id_organization),
-  created_at             TIMESTAMPTZ DEFAULT now(),
-  updated_at             TIMESTAMPTZ DEFAULT now(),
-  created_by             VARCHAR(255),
-  updated_by             VARCHAR(255),
-  deleted_at             TIMESTAMPTZ,
-  deleted_by             VARCHAR(255),
-  is_deleted             BOOLEAN DEFAULT FALSE,
-  CONSTRAINT ck_proc_criticality CHECK (business_criticality IN ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW')),
-  CONSTRAINT ck_proc_automation CHECK (automation_level IN ('MANUAL', 'SEMI_AUTOMATED', 'AUTOMATED')),
-  CONSTRAINT ck_proc_frequency CHECK (operating_frequency IN ('CONTINUOUS', 'DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL', 'ON_DEMAND'))
-);
-CREATE INDEX idx_proc_bcms_criticality ON process_bcms_data(business_criticality);
-CREATE INDEX idx_proc_bcms_rto ON process_bcms_data(target_rto_minutes);
-
-CREATE TABLE subprocess_bcms_data (
-  id_subprocess          INT PRIMARY KEY REFERENCES subprocesses(id_subprocess) ON DELETE CASCADE,
-  estimated_duration_minutes INT,
-  criticality_inherited  BOOLEAN DEFAULT TRUE,
-  override_criticality   VARCHAR(20),
-  automation_level       VARCHAR(20),
-  owner_user_id          BIGINT REFERENCES users(id_user),
-  verification_required  BOOLEAN DEFAULT FALSE,
-  notes                  TEXT,
-  created_at             TIMESTAMPTZ DEFAULT now(),
-  updated_at             TIMESTAMPTZ DEFAULT now(),
-  created_by             VARCHAR(255),
-  updated_by             VARCHAR(255),
-  deleted_at             TIMESTAMPTZ,
-  deleted_by             VARCHAR(255),
-  is_deleted             BOOLEAN DEFAULT FALSE,
-  CONSTRAINT ck_sub_criticality CHECK (override_criticality IN ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW'))
-);
-
-CREATE TABLE procedure_bcms_data (
-  id_procedure           INT PRIMARY KEY REFERENCES procedures(id_procedure) ON DELETE CASCADE,
-  execution_steps        JSONB,
-  required_skills        JSONB,
-  required_tools         JSONB,
-  automation_tool        VARCHAR(255),
-  estimated_duration_min INT,
-  verification_method    TEXT,
-  fallback_procedure     TEXT,
-  owner_user_id          BIGINT REFERENCES users(id_user),
-  created_at             TIMESTAMPTZ DEFAULT now(),
-  updated_at             TIMESTAMPTZ DEFAULT now(),
-  created_by             VARCHAR(255),
-  updated_by             VARCHAR(255),
-  deleted_at             TIMESTAMPTZ,
-  deleted_by             VARCHAR(255),
-  is_deleted             BOOLEAN DEFAULT FALSE
+CREATE TABLE process_continuity_profiles (
+  id_profile                       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- PK tecnica del perfil BCMS.
+  target_process_type              VARCHAR(30) NOT NULL, -- Valores comunes: MACROPROCESS/PROCESS/SUBPROCESS/PROCEDURE.
+  target_process_id                INT NOT NULL, -- ID de la entidad objetivo segun target_process_type.
+  strategic_importance             VARCHAR(20), -- Valores comunes: CRITICAL/HIGH/MEDIUM/LOW; prioridad estrategica.
+  business_criticality             VARCHAR(20), -- Valores comunes: CRITICAL/HIGH/MEDIUM/LOW; prioridad operativa BCMS.
+  process_category                 VARCHAR(50), -- Categoria de negocio para segmentacion/reportes.
+  target_rto_minutes               INT, -- RTO objetivo en minutos.
+  target_rpo_minutes               INT, -- RPO objetivo en minutos.
+  maximum_tolerable_downtime_minutes INT, -- MTPD en minutos.
+  minimum_business_continuity_objective TEXT, -- MBCO: capacidad minima aceptable.
+  minimum_staff_required           INT, -- Dotacion minima para operar en contingencia.
+  operating_frequency              VARCHAR(50), -- Valores comunes: CONTINUOUS/DAILY/WEEKLY/MONTHLY.
+  estimated_duration_minutes       INT, -- Duracion estimada de ejecucion del elemento.
+  criticality_inherited            BOOLEAN, -- true: hereda criticidad del nivel padre.
+  override_criticality             VARCHAR(20), -- Criticidad manual cuando no hereda.
+  verification_required            BOOLEAN, -- true: requiere verificacion/aprobacion formal.
+  governance_owner_id              BIGINT NULL REFERENCES users(id_user), -- Responsable de gobierno BCMS.
+  owner_user_id                    BIGINT NULL REFERENCES users(id_user), -- Dueno operativo del proceso.
+  responsible_organization_id      INT NULL REFERENCES organizations(id_organization), -- Area/organizacion responsable.
+  review_frequency                 VARCHAR(50), -- Frecuencia de revision (ej: monthly/quarterly/annual).
+  last_review_date                 DATE, -- Fecha de ultima revision.
+  next_review_date                 DATE, -- Fecha objetivo de proxima revision.
+  notes                            TEXT, -- Observaciones de contexto BCMS.
+  created_at                       TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de creacion.
+  updated_at                       TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de actualizacion.
+  created_by                       VARCHAR(255), -- Auditoria: usuario creador.
+  updated_by                       VARCHAR(255), -- Auditoria: usuario actualizador.
+  deleted_at                       TIMESTAMPTZ, -- Auditoria: fecha de borrado logico.
+  deleted_by                       VARCHAR(255), -- Auditoria: usuario que borra logicamente.
+  is_deleted                       BOOLEAN DEFAULT FALSE -- Soft delete.
 );
 
 -- ############################################################################
@@ -946,6 +891,54 @@ CREATE INDEX idx_ria_org ON ria_assessments(id_organization);
 CREATE INDEX idx_ria_target_process ON ria_assessments(target_process_type, target_process_id);
 CREATE INDEX idx_ria_bia ON ria_assessments(id_bia) WHERE id_bia IS NOT NULL;
 
+-- ============================================================================
+-- [V11] NUEVA TABLA: ria_discriminations
+-- Ficha de discriminacion previa a matriz RIA (decision de aplicar/no aplicar matriz).
+-- ============================================================================
+CREATE TABLE ria_discriminations (
+  id_ria_discrimination  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- PK tecnica de la ficha de discriminacion.
+  discrimination_code    VARCHAR(80) NOT NULL UNIQUE, -- Codigo unico de ficha (ej: RDISC-2026-0001).
+  id_organization        INT NOT NULL REFERENCES organizations(id_organization), -- Organizacion evaluada.
+  target_process_type    VARCHAR(30) NOT NULL, -- Valores comunes: MACROPROCESS/PROCESS/SUBPROCESS/PROCEDURE.
+  target_process_id      INT NOT NULL, -- ID del proceso objetivo segun target_process_type.
+  id_ria                 BIGINT NULL REFERENCES ria_assessments(id_ria) ON DELETE SET NULL, -- Matriz RIA relacionada cuando exista.
+  assessment_date        DATE NOT NULL, -- Fecha de evaluacion de discriminacion.
+  has_existing_risk_matrix BOOLEAN, -- true: ya existe matriz de riesgo operacional para el proceso.
+  requires_ria_matrix    BOOLEAN, -- true: se requiere ejecutar/levantar matriz RIA.
+  responsible_user_id    BIGINT NULL REFERENCES users(id_user), -- Responsable de la definicion.
+  summary                TEXT, -- Resumen ejecutivo de resultados.
+  conclusion_text        TEXT, -- Texto formal de conclusion de la ficha.
+  source_document        VARCHAR(255), -- Referencia de documento fuente (ej: plantilla/archivo).
+  created_at             TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de creacion.
+  updated_at             TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de actualizacion.
+  created_by             VARCHAR(255), -- Auditoria: usuario creador.
+  updated_by             VARCHAR(255), -- Auditoria: usuario actualizador.
+  deleted_at             TIMESTAMPTZ, -- Auditoria: fecha de borrado logico.
+  deleted_by             VARCHAR(255), -- Auditoria: usuario que elimina logicamente.
+  is_deleted             BOOLEAN DEFAULT FALSE -- Soft delete.
+);
+
+-- ============================================================================
+-- [V11] NUEVA TABLA: ria_discrimination_items
+-- Detalle de condiciones SI/NO y antecedentes de la ficha de discriminacion.
+-- ============================================================================
+CREATE TABLE ria_discrimination_items (
+  id_ria_discrimination_item BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- PK tecnica del detalle.
+  id_ria_discrimination  BIGINT NOT NULL REFERENCES ria_discriminations(id_ria_discrimination) ON DELETE CASCADE, -- FK a cabecera de ficha.
+  condition_code         VARCHAR(80), -- Codigo corto de condicion (ej: EXP_MONETARY, REPUTATIONAL).
+  condition_text         VARCHAR(255) NOT NULL, -- Nombre visible de la condicion evaluada.
+  analysis_result        BOOLEAN, -- Resultado tipico: true=SI / false=NO.
+  antecedentes           TEXT, -- Evidencia o justificacion del resultado.
+  sort_order             INT DEFAULT 0, -- Orden visual de la condicion en formulario/reporte.
+  created_at             TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de creacion.
+  updated_at             TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de actualizacion.
+  created_by             VARCHAR(255), -- Auditoria: usuario creador.
+  updated_by             VARCHAR(255), -- Auditoria: usuario actualizador.
+  deleted_at             TIMESTAMPTZ, -- Auditoria: fecha de borrado logico.
+  deleted_by             VARCHAR(255), -- Auditoria: usuario que elimina logicamente.
+  is_deleted             BOOLEAN DEFAULT FALSE -- Soft delete.
+);
+
 CREATE TABLE process_dependencies (
   id_process_dependency  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   id_organization        INT NOT NULL REFERENCES organizations(id_organization),
@@ -1116,6 +1109,33 @@ CREATE INDEX idx_contact_org ON contacts(id_organization);
 CREATE INDEX idx_contact_user ON contacts(id_user);
 CREATE INDEX idx_contact_supplier ON contacts(id_supplier);
 CREATE INDEX idx_contact_emergency ON contacts(is_emergency_contact) WHERE is_emergency_contact = TRUE;
+
+-- ============================================================================
+-- [V11] NUEVA TABLA: process_critical_personnel
+-- Personal critico por etapa del proceso (titular y reemplazo), reutilizando contacts.
+-- ============================================================================
+CREATE TABLE process_critical_personnel (
+  id_process_critical_personnel BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- PK tecnica del registro.
+  id_organization        INT NOT NULL REFERENCES organizations(id_organization), -- Organizacion propietaria del proceso.
+  target_process_type    VARCHAR(30) NOT NULL, -- Valores comunes: MACROPROCESS/PROCESS/SUBPROCESS/PROCEDURE.
+  target_process_id      INT NOT NULL, -- ID del proceso objetivo segun target_process_type.
+  stage_code             VARCHAR(80), -- Codigo o ID de etapa del proceso.
+  stage_name             VARCHAR(255), -- Nombre de etapa o actividad critica.
+  primary_contact_id     BIGINT NOT NULL REFERENCES contacts(id_contact), -- Contacto titular de la etapa.
+  backup_contact_id      BIGINT NULL REFERENCES contacts(id_contact), -- Contacto reemplazo (backup) de la etapa.
+  role_in_stage          VARCHAR(150), -- Rol funcional en la etapa (ej: aprobador, ejecutor).
+  location_notes         VARCHAR(255), -- Ubicacion de operacion del personal critico.
+  notes                  TEXT, -- Observaciones operativas o de continuidad.
+  valid_from             DATE, -- Vigencia desde.
+  valid_until            DATE, -- Vigencia hasta.
+  created_at             TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de creacion.
+  updated_at             TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de actualizacion.
+  created_by             VARCHAR(255), -- Auditoria: usuario creador.
+  updated_by             VARCHAR(255), -- Auditoria: usuario actualizador.
+  deleted_at             TIMESTAMPTZ, -- Auditoria: fecha de borrado logico.
+  deleted_by             VARCHAR(255), -- Auditoria: usuario que elimina logicamente.
+  is_deleted             BOOLEAN DEFAULT FALSE -- Soft delete.
+);
 
 -- ############################################################################
 -- FASE 11: PLANES DE CONTINUIDAD
@@ -1337,6 +1357,10 @@ CREATE TABLE incidents (
   resolution_summary     TEXT,
   lessons_learned        TEXT,
   assigned_to            BIGINT NULL REFERENCES users(id_user),
+  is_regulatory_reportable BOOLEAN DEFAULT FALSE, -- true: incidente sujeto a notificacion regulatoria (Ley 21.663).
+  regulatory_status_lu   BIGINT NULL REFERENCES lookup_values(id_lookup_value), -- Estado regulatorio consolidado (PENDING/REPORTED/CLOSED).
+  regulatory_due_at      TIMESTAMPTZ, -- Proximo vencimiento regulatorio relevante del incidente.
+  first_regulatory_reported_at TIMESTAMPTZ, -- Fecha de primer reporte regulatorio enviado.
   created_at             TIMESTAMPTZ DEFAULT now(),
   updated_at             TIMESTAMPTZ DEFAULT now(),
   created_by             VARCHAR(255),
@@ -1349,6 +1373,59 @@ CREATE INDEX idx_incident_org ON incidents(id_organization);
 CREATE INDEX idx_incident_status ON incidents(status_lu);
 CREATE INDEX idx_incident_sev ON incidents(severity_lu);
 CREATE INDEX idx_incident_date ON incidents(reported_at);
+CREATE INDEX idx_incident_reg_status ON incidents(regulatory_status_lu) WHERE regulatory_status_lu IS NOT NULL;
+
+-- incident_regulatory_reports
+-- Trazabilidad regulatoria de incidentes (Ley 21.663 y reglamento DS 295/2025).
+-- Registra hitos minimos:
+--   - Alerta temprana: hasta 3 horas desde conocimiento.
+--   - Segundo reporte: hasta 72 horas (o 24 horas para OIV con servicio esencial afectado).
+--   - Plan de accion OIV: hasta 7 dias.
+--   - Reporte final: hasta 15 dias desde alerta temprana.
+CREATE TABLE incident_regulatory_reports (
+  id_incident_reg_report BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- PK tecnica del caso regulatorio.
+  reg_report_code        VARCHAR(80) NOT NULL UNIQUE, -- Codigo unico del caso (ej: REG-INC-2026-0001).
+  id_incident            BIGINT NOT NULL REFERENCES incidents(id_incident) ON DELETE CASCADE, -- Incidente origen.
+  id_organization        INT NOT NULL REFERENCES organizations(id_organization), -- Organizacion reportante.
+  regulatory_framework   VARCHAR(80) DEFAULT 'LEY_21663', -- Marco regulatorio principal.
+  reporting_authority    VARCHAR(100) NOT NULL, -- Autoridad destino (ej: ANCI/CSIRT_NACIONAL/CSIRT_SECTORIAL/CMF/OTRA).
+  authority_reference    VARCHAR(255), -- Folio, ticket o referencia entregada por autoridad.
+  status_lu              BIGINT NULL REFERENCES lookup_values(id_lookup_value), -- Estado del caso regulatorio.
+  current_stage          VARCHAR(30), -- Etapa actual: DRAFT/EARLY_ALERT/SECOND_REPORT/ACTION_PLAN/FINAL_REPORT/CLOSED.
+  is_oiv                 BOOLEAN DEFAULT FALSE, -- true: institucion clasificada como OIV.
+  is_essential_service_affected BOOLEAN DEFAULT FALSE, -- true: servicio esencial afectado (impacta plazos).
+  has_significant_effect BOOLEAN, -- true: califica como incidente con efecto significativo.
+  significant_effect_criteria JSONB, -- Criterios aplicados (a-e) segun reglamento (estructura flexible).
+  incident_known_at      TIMESTAMPTZ, -- Fecha/hora de conocimiento del incidente.
+  early_alert_due_at     TIMESTAMPTZ, -- Vencimiento alerta temprana (3h).
+  early_alert_sent_at    TIMESTAMPTZ, -- Envio de alerta temprana.
+  second_report_due_at   TIMESTAMPTZ, -- Vencimiento segundo reporte (24h/72h).
+  second_report_sent_at  TIMESTAMPTZ, -- Envio de segundo reporte.
+  action_plan_due_at     TIMESTAMPTZ, -- Vencimiento plan de accion OIV (7 dias).
+  action_plan_sent_at    TIMESTAMPTZ, -- Envio de plan de accion.
+  final_report_due_at    TIMESTAMPTZ, -- Vencimiento reporte final (15 dias).
+  final_report_sent_at   TIMESTAMPTZ, -- Envio de reporte final.
+  partial_reports_count  INT DEFAULT 0, -- Cantidad de reportes parciales enviados.
+  last_partial_report_at TIMESTAMPTZ, -- Fecha/hora ultimo reporte parcial.
+  next_partial_due_at    TIMESTAMPTZ, -- Proximo parcial comprometido (si aplica).
+  taxonomy_payload       JSONB, -- Campos taxonomicos de reporte exigidos por reglamento.
+  personal_data_omitted  BOOLEAN DEFAULT TRUE, -- true: reporte enviado sin datos personales innecesarios.
+  owner_user_id          BIGINT NULL REFERENCES users(id_user), -- Responsable interno del cumplimiento regulatorio.
+  mitigation_summary     TEXT, -- Resumen ejecutivo de medidas de mitigacion implementadas.
+  regulatory_observations TEXT, -- Observaciones internas/externas del proceso regulatorio.
+  created_at             TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de creacion.
+  updated_at             TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de actualizacion.
+  created_by             VARCHAR(255), -- Auditoria: usuario creador.
+  updated_by             VARCHAR(255), -- Auditoria: usuario actualizador.
+  deleted_at             TIMESTAMPTZ, -- Auditoria: fecha de borrado logico.
+  deleted_by             VARCHAR(255), -- Auditoria: usuario que elimina logicamente.
+  is_deleted             BOOLEAN DEFAULT FALSE, -- Soft delete.
+  CONSTRAINT ck_reg_current_stage CHECK (current_stage IN ('DRAFT', 'EARLY_ALERT', 'SECOND_REPORT', 'ACTION_PLAN', 'FINAL_REPORT', 'PARTIAL_UPDATE', 'CLOSED'))
+);
+CREATE INDEX idx_increg_incident ON incident_regulatory_reports(id_incident);
+CREATE INDEX idx_increg_org ON incident_regulatory_reports(id_organization);
+CREATE INDEX idx_increg_status ON incident_regulatory_reports(status_lu) WHERE status_lu IS NOT NULL;
+CREATE INDEX idx_increg_authority ON incident_regulatory_reports(reporting_authority);
 
 -- incident_timeline
 CREATE TABLE incident_timeline (
@@ -1683,7 +1760,8 @@ CREATE TABLE evidences (
   CONSTRAINT ck_evidence_entity CHECK (entity_type IN (
     'RISK', 'CONTROL', 'INCIDENT', 'AUDIT', 'FINDING', 'PLAN', 
     'BIA', 'CRISIS', 'TEST', 'COMPLIANCE', 'ASSET', 'SUPPLIER',
-    'PROCESS', 'PROCEDURE', 'REQUIREMENT', 'ORGANIZATION', 'THREAT', 'VULNERABILITY'
+    'PROCESS', 'PROCEDURE', 'REQUIREMENT', 'ORGANIZATION', 'THREAT', 'VULNERABILITY',
+    'INCIDENT_REG_REPORT'
   )),
   -- [V7→V8] NUEVA VALIDACIÓN: valid_until >= valid_from
   CONSTRAINT ck_evidence_dates CHECK (valid_until IS NULL OR valid_from IS NULL OR valid_until >= valid_from)
@@ -1778,7 +1856,7 @@ CREATE TABLE entity_tags (
     'RISK', 'THREAT', 'VULNERABILITY', 'CONTROL', 'REFERENCE_CONTROL',
     'ASSET', 'SUPPLIER', 'LOCATION', 'CONTACT',
     'INCIDENT', 'CRISIS', 'AUDIT', 'FINDING',
-    'PLAN', 'BIA', 'FRAMEWORK', 'REQUIREMENT', 'EVIDENCE', 'USER'
+    'PLAN', 'BIA', 'FRAMEWORK', 'REQUIREMENT', 'EVIDENCE', 'USER', 'INCIDENT_REG_REPORT'
   ))
 );
 CREATE INDEX idx_entity_tag_tag ON entity_tags(id_tag);
@@ -2303,7 +2381,7 @@ CREATE TABLE contact_links (
   created_at             TIMESTAMPTZ DEFAULT now(),
   CONSTRAINT ck_contact_entity_type CHECK (entity_type IN (
     'ORGANIZATION', 'SUPPLIER', 'PROCESS', 'SUBPROCESS', 'PROCEDURE',
-    'PLAN', 'INCIDENT', 'CRISIS', 'LOCATION', 'ASSET'
+    'PLAN', 'INCIDENT', 'CRISIS', 'LOCATION', 'ASSET', 'INCIDENT_REG_REPORT'
   ))
 );
 CREATE INDEX idx_contact_links_entity ON contact_links(entity_type, entity_id);
@@ -2346,7 +2424,7 @@ CREATE TABLE bcms_role_assignments (
   is_deleted             BOOLEAN DEFAULT FALSE,
   CONSTRAINT ck_bcms_scope_type CHECK (scope_type IN (
     'GLOBAL', 'ORGANIZATION', 'PROCESS', 'SUBPROCESS', 'PROCEDURE',
-    'PLAN', 'INCIDENT', 'CRISIS', 'LOCATION', 'ASSET'
+    'PLAN', 'INCIDENT', 'CRISIS', 'LOCATION', 'ASSET', 'INCIDENT_REG_REPORT'
   ))
 );
 CREATE INDEX idx_bcms_role_assign_user ON bcms_role_assignments(id_user);
@@ -2528,6 +2606,61 @@ CREATE TABLE management_review_outputs (
 CREATE INDEX idx_review_output_review ON management_review_outputs(id_review);
 
 -- ############################################################################
+-- FASE 25: APROBACIONES Y FIRMAS MULTIROL (V°B°)
+-- ############################################################################
+
+CREATE TABLE entity_approvals (
+  id_entity_approval     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- PK tecnica de la solicitud de aprobacion.
+  approval_code          VARCHAR(80) NOT NULL UNIQUE, -- Codigo unico de aprobacion (ej: APR-2026-0001).
+  entity_type            VARCHAR(50) NOT NULL, -- Valores comunes: BIA/RIA/PLAN/POLICY/SCOPE/STRATEGY/CHANGE.
+  entity_id              BIGINT NOT NULL, -- ID de la entidad objetivo segun entity_type.
+  entity_version         INT, -- Version numerica de la entidad (cuando aplique).
+  entity_version_label   VARCHAR(50), -- Etiqueta de version (ej: v1.0, 2026-Q1).
+  id_organization        INT NULL REFERENCES organizations(id_organization), -- Organizacion duena del flujo de aprobacion.
+  approval_scope         VARCHAR(50), -- Valores comunes: CREATION/UPDATE/REVIEW/PUBLICATION/CLOSURE.
+  workflow_name          VARCHAR(100), -- Nombre de flujo (ej: STANDARD_2_STEP, COMITE_DIRECTIVO).
+  current_step           INT DEFAULT 1, -- Paso actual del flujo.
+  total_steps            INT DEFAULT 1, -- Total de pasos del flujo.
+  status_lu              BIGINT NULL REFERENCES lookup_values(id_lookup_value), -- Estado global de aprobacion (PENDING/APPROVED/REJECTED).
+  requested_by           BIGINT NULL REFERENCES users(id_user), -- Usuario que inicia la solicitud de V°B°.
+  requested_at           TIMESTAMPTZ DEFAULT now(), -- Fecha/hora de solicitud.
+  due_at                 TIMESTAMPTZ, -- Fecha/hora objetivo de cierre.
+  decided_at             TIMESTAMPTZ, -- Fecha/hora de resolucion final.
+  final_decision_lu      BIGINT NULL REFERENCES lookup_values(id_lookup_value), -- Decision final consolidada.
+  final_comment          TEXT, -- Comentario final de cierre de aprobacion.
+  created_at             TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de creacion.
+  updated_at             TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de actualizacion.
+  created_by             VARCHAR(255), -- Auditoria: usuario creador.
+  updated_by             VARCHAR(255), -- Auditoria: usuario actualizador.
+  deleted_at             TIMESTAMPTZ, -- Auditoria: fecha de borrado logico.
+  deleted_by             VARCHAR(255), -- Auditoria: usuario que elimina logicamente.
+  is_deleted             BOOLEAN DEFAULT FALSE -- Soft delete.
+);
+
+CREATE TABLE entity_approval_signatures (
+  id_signature           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, -- PK tecnica de la firma/paso.
+  id_entity_approval     BIGINT NOT NULL REFERENCES entity_approvals(id_entity_approval) ON DELETE CASCADE, -- FK a cabecera de aprobacion.
+  step_order             INT NOT NULL, -- Orden del paso dentro del flujo.
+  id_bcms_role           BIGINT NULL REFERENCES bcms_roles(id_bcms_role), -- Rol BCMS requerido para firmar (si aplica).
+  required_user_id       BIGINT NULL REFERENCES users(id_user), -- Usuario esperado para firma nominal.
+  signed_by              BIGINT NULL REFERENCES users(id_user), -- Usuario que firma efectivamente.
+  signature_status_lu    BIGINT NULL REFERENCES lookup_values(id_lookup_value), -- Estado de firma (PENDING/SIGNED/REJECTED/SKIPPED).
+  decision_lu            BIGINT NULL REFERENCES lookup_values(id_lookup_value), -- Decision del paso (APPROVE/REJECT/REQUEST_CHANGES).
+  decision_comment       TEXT, -- Comentario de quien firma.
+  signed_at              TIMESTAMPTZ, -- Fecha/hora de firma efectiva.
+  is_required            BOOLEAN DEFAULT TRUE, -- true: paso obligatorio en el flujo.
+  is_delegated           BOOLEAN DEFAULT FALSE, -- true: firma realizada por delegacion.
+  delegated_from_user_id BIGINT NULL REFERENCES users(id_user), -- Usuario titular cuando hay delegacion.
+  created_at             TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de creacion.
+  updated_at             TIMESTAMPTZ DEFAULT now(), -- Auditoria: fecha de actualizacion.
+  created_by             VARCHAR(255), -- Auditoria: usuario creador.
+  updated_by             VARCHAR(255), -- Auditoria: usuario actualizador.
+  deleted_at             TIMESTAMPTZ, -- Auditoria: fecha de borrado logico.
+  deleted_by             VARCHAR(255), -- Auditoria: usuario que elimina logicamente.
+  is_deleted             BOOLEAN DEFAULT FALSE -- Soft delete.
+);
+
+-- ############################################################################
 -- RESUMEN DE CAMBIOS V9 -> V10
 -- ############################################################################
 -- NUEVAS AREAS:
@@ -2537,5 +2670,7 @@ CREATE INDEX idx_review_output_review ON management_review_outputs(id_review);
 -- - Planes de comunicacion: canales, stakeholders, mensajes y log
 -- - Participantes de actividades: soporte a capacitacion y ejercicios
 -- - Revision por la direccion: inputs y outputs formales
+-- - Aprobaciones/Firmas multirol: entity_approvals + entity_approval_signatures
+-- - Trazabilidad regulatoria de incidentes: incident_regulatory_reports (Ley 21.663)
 COMMIT;
 
