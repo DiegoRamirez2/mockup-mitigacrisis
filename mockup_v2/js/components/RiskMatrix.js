@@ -350,3 +350,4 @@ class RiskMatrix {
 
 // Exportar para uso global
 window.RiskMatrix = RiskMatrix;
+

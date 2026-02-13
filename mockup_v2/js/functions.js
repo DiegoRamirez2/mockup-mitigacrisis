@@ -137,29 +137,28 @@ function updatePageTitle(viewName) {
     'dashboard': { title: 'Dashboard Integrado', subtitle: 'Visión ejecutiva del Sistema BCMS' },
     'datos-maestros': { title: 'Datos Maestros', subtitle: 'Organización, Procesos, Ubicaciones y Personas' },
     'normativas-plantillas': { title: 'Normativas & Plantillas', subtitle: 'Gestión de marcos regulatorios' },
-    'proveedores': { title: 'Proveedores & Terceros', subtitle: 'Gestión de dependencias críticas' },
-    'cambios-bcms': { title: 'Gestión de Cambios', subtitle: 'Control de cambios del BCMS' },
-    'configuracion': { title: 'Configuración', subtitle: 'Parámetros del sistema' },
+    'proveedores': { title: 'Proveedores & Terceros Críticos', subtitle: 'Gestión de dependencias críticas' },
+    'cambios-bcms': { title: 'Gestión de Cambios BCMS', subtitle: 'Control de cambios del BCMS' },
+    'configuracion': { title: 'Configuración del Sistema', subtitle: 'Parámetros del sistema' },
     'usuarios': { title: 'Usuarios & Accesos', subtitle: 'Gestión de identidades y permisos' },
     'gobierno': { title: 'Políticas & Estrategias', subtitle: 'Gobierno del BCMS' },
     'bia': { title: 'BIA - Análisis de Impacto', subtitle: 'Business Impact Analysis' },
     'ria': { title: 'RIA - Análisis de Riesgos', subtitle: 'Risk Impact Analysis' },
     'riesgos-ciber': { title: 'Riesgos Ciber', subtitle: 'Gestión de ciberriesgos' },
-    'vista-integrada': { title: 'Vista Integrada', subtitle: 'BIA + RIA + Ciber unificado' },
-    'biblioteca': { title: 'Biblioteca Normativa', subtitle: 'Catálogo de normativas aplicables' },
-    'controles-ley': { title: 'Controles & Cumplimiento', subtitle: 'Gestión de evidencias' },
+    'vista-integrada': { title: 'Vista Integrada (BIA + RIA + Ciber)', subtitle: 'Trazabilidad unificada' },
     'recursos-capacidades': { title: 'Recursos & Capacidades', subtitle: 'Inventario de recursos críticos' },
-    'bcp': { title: 'Planes de Continuidad', subtitle: 'Business Continuity Plans' },
-    'drp': { title: 'Planes de Recuperación TI', subtitle: 'Disaster Recovery Plans' },
+    'bcp': { title: 'Planes de Continuidad (BCP)', subtitle: 'Business Continuity Plans' },
+    'drp': { title: 'Planes de Recuperación TI (DRP)', subtitle: 'Disaster Recovery Plans' },
     'incidentes': { title: 'Gestión de Incidentes', subtitle: 'Registro y seguimiento' },
     'crisis': { title: 'Gestión de Crisis', subtitle: 'Protocolo de escalamiento' },
     'comunicaciones-crisis': { title: 'Comunicaciones de Crisis', subtitle: 'Plantillas y canales' },
-    'pruebas': { title: 'Pruebas & Ejercicios', subtitle: 'Validación de planes' },
-    'capacitacion': { title: 'Capacitación', subtitle: 'Formación y concienciación' },
-    'auditoria': { title: 'Auditorías', subtitle: 'Evaluaciones internas y externas' },
-    'hallazgos': { title: 'Hallazgos', subtitle: 'No conformidades y acciones' },
+    'pruebas': { title: 'Pruebas y Simulacros', subtitle: 'Validación de planes' },
+    'capacitacion': { title: 'Capacitación & Concienciación', subtitle: 'Formación y concienciación' },
+    'auditoria': { title: 'Auditoría', subtitle: 'Evaluaciones internas y externas' },
+    'hallazgos': { title: 'Hallazgos & Planes de Acción', subtitle: 'No conformidades y acciones' },
     'aprendizajes': { title: 'Lecciones Aprendidas', subtitle: 'Mejora continua' },
-    'reportes': { title: 'Reportes Ejecutivos', subtitle: 'Informes y dashboards' }
+    'reportes': { title: 'Reportes Ejecutivos', subtitle: 'Informes y dashboards' },
+    'flujo-temporal': { title: 'Flujo (referencia interna)', subtitle: 'Mapa mental de trazabilidad BCMS' }
   };
   
   const config = viewConfig[viewName] || { title: viewName, subtitle: '' };
@@ -183,7 +182,7 @@ function onViewChange(viewName) {
     case 'bia':
       renderBIAProcessList();
       break;
-    case 'planes':
+    case 'bcp':
       renderPlansList();
       break;
     case 'proveedores':
@@ -230,10 +229,6 @@ function onViewChange(viewName) {
       renderComunicacionesHistorial();
       setTimeout(() => renderComunicacionesChart(), 100);
       break;
-    case 'controles-ley':
-      // Renderizar vista de Controles & Cumplimiento
-      renderControlesLey21663();
-      break;
     case 'auditoria':
       // Renderizar vista de Auditoría
       renderAuditoriaKPIs();
@@ -273,6 +268,30 @@ function onViewChange(viewName) {
       renderReportesKPIs();
       renderReportesTable();
       break;
+    case 'ria':
+      // Renderizar vista de RIA
+      renderRIAView();
+      break;
+    case 'incidentes':
+      // Renderizar vista de Incidentes
+      renderIncidentesView();
+      break;
+    case 'pruebas':
+      // Renderizar vista de Pruebas y Simulacros
+      renderPruebasView();
+      break;
+    case 'hallazgos':
+      // Renderizar vista de Hallazgos
+      renderHallazgosView();
+      break;
+    case 'aprendizajes':
+      // Renderizar vista de Lecciones Aprendidas
+      renderAprendizajesView();
+      break;
+    case 'vista-integrada':
+      // Renderizar vista integrada
+      renderVistaIntegradaView();
+      break;
   }
 }
 
@@ -307,9 +326,9 @@ function renderDashboard() {
   
   // Helper para determinar icono y clase
   const getStatusIcon = (status) => {
-    if (status === 'success') return { icon: 'fa-check-circle', class: 'status-success' };
-    if (status === 'warning') return { icon: 'fa-exclamation-triangle', class: 'status-warning' };
-    return { icon: 'fa-times-circle', class: 'status-danger' };
+    if (status === 'success') return { icon: 'bi-check-circle', class: 'status-success' };
+    if (status === 'warning') return { icon: 'bi-exclamation-triangle', class: 'status-warning' };
+    return { icon: 'bi-x-circle', class: 'status-danger' };
   };
   
   const biaStatus = getStatusIcon(biaCoverage >= 100 ? 'success' : (biaCoverage >= 80 ? 'warning' : 'danger'));
@@ -326,7 +345,7 @@ function renderDashboard() {
           <div class="kpi-label">Procesos Criticos</div>
           <div class="kpi-value">${metrics.criticalProcesses}</div>
           <div class="kpi-subtitle-with-icon ${biaStatus.class}">
-            <i class="fa-solid ${biaStatus.icon}"></i>
+            <i class="bi ${biaStatus.icon}"></i>
             <span>${Math.round(biaCoverage)}% con BIA</span>
           </div>
         </div>
@@ -336,7 +355,7 @@ function renderDashboard() {
           <div class="kpi-label">Planes BCP</div>
           <div class="kpi-value">${metrics.activePlans}</div>
           <div class="kpi-subtitle-with-icon ${testStatus.class}">
-            <i class="fa-solid ${testStatus.icon}"></i>
+            <i class="bi ${testStatus.icon}"></i>
             <span>${Math.round(testCoverage)}% probados</span>
           </div>
         </div>
@@ -346,7 +365,7 @@ function renderDashboard() {
           <div class="kpi-label">RTO Promedio</div>
           <div class="kpi-value">${avgRTO}h</div>
           <div class="kpi-subtitle-with-icon ${rtoStatusInfo.class}">
-            <i class="fa-solid ${rtoStatusInfo.icon}"></i>
+            <i class="bi ${rtoStatusInfo.icon}"></i>
             <span>Target: ${rtoTarget}h</span>
           </div>
         </div>
@@ -356,7 +375,7 @@ function renderDashboard() {
           <div class="kpi-label">Incidentes Abiertos</div>
           <div class="kpi-value">${metrics.openIncidents}</div>
           <div class="kpi-subtitle-with-icon ${incidentStatus.class}">
-            <i class="fa-solid ${incidentStatus.icon}"></i>
+            <i class="bi ${incidentStatus.icon}"></i>
             <span>${metrics.openIncidents === 0 ? 'Sin pendientes' : 'Requiere atencion'}</span>
           </div>
         </div>
@@ -648,7 +667,7 @@ function renderDashboardProcessTable() {
     pagination: { enabled: true, pageSize: 10 },
     showResetButton: false,  // El boton de limpiar esta en la toolbar externa
     emptyState: {
-      icon: 'fa-folder-open',
+      icon: 'bi-folder2-open',
       message: 'No se encontraron procesos con los filtros aplicados'
     },
     onRowClick: (row, index, event) => {
@@ -2100,7 +2119,7 @@ function renderEditorFrameworks() {
     html += `
       <div class="tree-node tree-node-framework" data-level="0">
         <div class="tree-node-content" onclick="toggleTreeNode('tree-${fw.id}', 'framework', '${fw.id}')">
-          <i class="fa-solid fa-chevron-right tree-chevron" id="tree-${fw.id}-chevron"></i>
+          <i class="bi bi-chevron-right tree-chevron" id="tree-${fw.id}-chevron"></i>
           <span class="tree-icon">${fw.icon}</span>
           <span class="tree-label">${fw.nombre}</span>
         </div>
@@ -2130,7 +2149,7 @@ function toggleTreeNode(nodeId, type, dataKey) {
   if (childrenContainer.style.display === 'none') {
     // Expandir
     childrenContainer.style.display = 'block';
-    chevron.className = 'fa-solid fa-chevron-down tree-chevron';
+    chevron.className = 'bi bi-chevron-down tree-chevron';
     
     // Cargar hijos si no están cargados
     if (childrenContainer.innerHTML.trim() === '' || childrenContainer.innerHTML.includes('cargarán')) {
@@ -2145,7 +2164,7 @@ function toggleTreeNode(nodeId, type, dataKey) {
   } else {
     // Colapsar
     childrenContainer.style.display = 'none';
-    chevron.className = 'fa-solid fa-chevron-right tree-chevron';
+    chevron.className = 'bi bi-chevron-right tree-chevron';
   }
   
   // Mostrar contenido en panel derecho
@@ -2210,8 +2229,8 @@ function loadFrameworkDominios(nodeId, frameworkKey) {
     html += `
       <div class="tree-node tree-node-dominio" data-level="1">
         <div class="tree-node-content" onclick="toggleTreeNode('${domId}', 'dominio', '${frameworkKey}-${idx}')">
-          <i class="fa-solid fa-chevron-right tree-chevron" id="${domId}-chevron"></i>
-          <span class="tree-icon"><i class="fa-solid fa-folder" style="color: #3b82f6;"></i></span>
+          <i class="bi bi-chevron-right tree-chevron" id="${domId}-chevron"></i>
+          <span class="tree-icon"><i class="bi bi-folder" style="color: #3b82f6;"></i></span>
           <span class="tree-label"><strong>${dom.codigo}</strong> ${dom.nombre}</span>
         </div>
         <div id="${domId}-children" class="tree-children" style="display: none;">
@@ -2264,8 +2283,8 @@ function loadDominioCategorias(nodeId, dominioKey) {
     html += `
       <div class="tree-node tree-node-categoria" data-level="2">
         <div class="tree-node-content" onclick="toggleTreeNode('${catId}', 'categoria', '${dominioKey}-${idx}')">
-          <i class="fa-solid fa-chevron-right tree-chevron" id="${catId}-chevron"></i>
-          <span class="tree-icon"><i class="fa-solid fa-layer-group" style="color: #10b981;"></i></span>
+          <i class="bi bi-chevron-right tree-chevron" id="${catId}-chevron"></i>
+          <span class="tree-icon"><i class="bi bi-layers" style="color: #10b981;"></i></span>
           <span class="tree-label">${cat.codigo} ${cat.nombre}</span>
         </div>
         <div id="${catId}-children" class="tree-children" style="display: none;">
@@ -2298,7 +2317,7 @@ function loadCategoriaControles(nodeId, categoriaKey) {
     html += `
       <div class="tree-node tree-node-control" data-level="3">
         <div class="tree-node-content tree-node-leaf" onclick="showEditorContentPanel('control', '${categoriaKey}-${idx}')">
-          <span class="tree-icon"><i class="fa-solid fa-shield-halved" style="color: #f59e0b;"></i></span>
+          <span class="tree-icon"><i class="bi bi-shield-shaded" style="color: #f59e0b;"></i></span>
           <span class="tree-label">${ctrl.codigo} ${ctrl.nombre}</span>
         </div>
       </div>
@@ -2324,7 +2343,7 @@ function showEditorContentPanel(type, dataKey) {
       <div style="padding: 24px;">
         <div style="margin-bottom: 20px;">
           <h3 style="font-size: 18px; margin-bottom: 8px;">
-            <i class="fa-solid fa-sitemap"></i> Framework: ISO 22301:2019
+            <i class="bi bi-diagram-3"></i> Framework: ISO 22301:2019
           </h3>
           <div style="font-size: 12px; color: var(--text-muted);">Sistemas de gestión de la continuidad del negocio</div>
         </div>
@@ -2346,19 +2365,19 @@ function showEditorContentPanel(type, dataKey) {
         
         <div style="display: flex; gap: 8px; margin-bottom: 24px;">
           <button class="btn btn-primary">
-            <i class="fa-solid fa-plus"></i> Añadir Dominio
+            <i class="bi bi-plus"></i> Añadir Dominio
           </button>
           <button class="btn btn-secondary">
-            <i class="fa-solid fa-pen"></i> Editar Framework
+            <i class="bi bi-pencil"></i> Editar Framework
           </button>
           <button class="btn btn-outline">
-            <i class="fa-solid fa-file-export"></i> Exportar
+            <i class="bi bi-box-arrow-up-right"></i> Exportar
           </button>
         </div>
         
         <div style="background: #dbeafe; border-left: 3px solid #3b82f6; padding: 16px; border-radius: 4px;">
           <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">
-            <i class="fa-solid fa-info-circle"></i> Información del Framework
+            <i class="bi bi-info-circle"></i> Información del Framework
           </div>
           <div style="font-size: 11px; line-height: 1.6;">
             <strong>Estado:</strong> Activo<br>
@@ -2374,10 +2393,10 @@ function showEditorContentPanel(type, dataKey) {
       <div style="padding: 24px;">
         <div style="margin-bottom: 20px;">
           <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">
-            <i class="fa-solid fa-sitemap"></i> ISO 22301:2019
+            <i class="bi bi-diagram-3"></i> ISO 22301:2019
           </div>
           <h3 style="font-size: 18px; margin-bottom: 8px;">
-            <i class="fa-solid fa-folder"></i> Dominio: 8.2 Análisis de Impacto (BIA)
+            <i class="bi bi-folder"></i> Dominio: 8.2 Análisis de Impacto (BIA)
           </h3>
         </div>
         
@@ -2394,13 +2413,13 @@ function showEditorContentPanel(type, dataKey) {
         
         <div style="display: flex; gap: 8px; margin-bottom: 24px;">
           <button class="btn btn-primary">
-            <i class="fa-solid fa-plus"></i> Añadir Categoría
+            <i class="bi bi-plus"></i> Añadir Categoría
           </button>
           <button class="btn btn-secondary">
-            <i class="fa-solid fa-pen"></i> Editar Dominio
+            <i class="bi bi-pencil"></i> Editar Dominio
           </button>
           <button class="btn btn-outline" style="color: var(--accent-danger);">
-            <i class="fa-solid fa-trash"></i> Eliminar
+            <i class="bi bi-trash"></i> Eliminar
           </button>
         </div>
         
@@ -2416,10 +2435,10 @@ function showEditorContentPanel(type, dataKey) {
       <div style="padding: 24px;">
         <div style="margin-bottom: 20px;">
           <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">
-            <i class="fa-solid fa-sitemap"></i> ISO 22301:2019 > 8.2 BIA
+            <i class="bi bi-diagram-3"></i> ISO 22301:2019 > 8.2 BIA
           </div>
           <h3 style="font-size: 18px; margin-bottom: 8px;">
-            <i class="fa-solid fa-layer-group"></i> Categoría: 8.2.1 Identificación de Procesos
+            <i class="bi bi-layers"></i> Categoría: 8.2.1 Identificación de Procesos
           </h3>
         </div>
         
@@ -2430,13 +2449,13 @@ function showEditorContentPanel(type, dataKey) {
         
         <div style="display: flex; gap: 8px; margin-bottom: 24px;">
           <button class="btn btn-primary">
-            <i class="fa-solid fa-plus"></i> Añadir Control
+            <i class="bi bi-plus"></i> Añadir Control
           </button>
           <button class="btn btn-secondary">
-            <i class="fa-solid fa-pen"></i> Editar Categoría
+            <i class="bi bi-pencil"></i> Editar Categoría
           </button>
           <button class="btn btn-outline" style="color: var(--accent-danger);">
-            <i class="fa-solid fa-trash"></i> Eliminar
+            <i class="bi bi-trash"></i> Eliminar
           </button>
         </div>
         
@@ -2452,10 +2471,10 @@ function showEditorContentPanel(type, dataKey) {
       <div style="padding: 24px;">
         <div style="margin-bottom: 20px;">
           <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">
-            <i class="fa-solid fa-sitemap"></i> ISO 22301:2019 > 8.2 BIA > 8.2.1 Identificación
+            <i class="bi bi-diagram-3"></i> ISO 22301:2019 > 8.2 BIA > 8.2.1 Identificación
           </div>
           <h3 style="font-size: 18px; margin-bottom: 8px;">
-            <i class="fa-solid fa-shield-halved"></i> Control: CTRL-001
+            <i class="bi bi-shield-shaded"></i> Control: CTRL-001
           </h3>
           <div style="font-size: 14px; font-weight: 600; margin-bottom: 16px;">Control de implementación</div>
         </div>
@@ -2474,13 +2493,13 @@ function showEditorContentPanel(type, dataKey) {
         
         <div style="display: flex; gap: 8px; margin-bottom: 24px;">
           <button class="btn btn-secondary">
-            <i class="fa-solid fa-pen"></i> Editar Control
+            <i class="bi bi-pencil"></i> Editar Control
           </button>
           <button class="btn btn-outline">
-            <i class="fa-solid fa-link"></i> Ver Evidencias
+            <i class="bi bi-link-45deg"></i> Ver Evidencias
           </button>
           <button class="btn btn-outline" style="color: var(--accent-danger);">
-            <i class="fa-solid fa-trash"></i> Eliminar
+            <i class="bi bi-trash"></i> Eliminar
           </button>
         </div>
         
@@ -2553,9 +2572,9 @@ function renderDominiosDelFramework(fwId, frameworkKey) {
   
   let html = `
     <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-      <i class="fa-solid fa-folder"></i> Dominios del Framework (${dominios.length})
+      <i class="bi bi-folder"></i> Dominios del Framework (${dominios.length})
       <button class="btn btn-primary btn-sm" style="margin-left: auto;" onclick="showToast('Añadir dominio en desarrollo', 'info')">
-        <i class="fa-solid fa-plus"></i> Añadir Dominio
+        <i class="bi bi-plus"></i> Añadir Dominio
       </button>
     </h4>
     <table>
@@ -2581,13 +2600,13 @@ function renderDominiosDelFramework(fwId, frameworkKey) {
         <td>${dom.controles}</td>
         <td>
           <button class="btn btn-outline btn-sm" onclick="toggleEditorDominioDetalle('${domId}', '${frameworkKey}', ${domIdx})">
-            <i class="fa-solid fa-chevron-down" id="${domId}-icon"></i> Ver
+            <i class="bi bi-chevron-down" id="${domId}-icon"></i> Ver
           </button>
           <button class="btn btn-outline btn-sm">
-            <i class="fa-solid fa-pen"></i>
+            <i class="bi bi-pencil"></i>
           </button>
           <button class="btn btn-outline btn-sm" style="color: var(--accent-danger);">
-            <i class="fa-solid fa-trash"></i>
+            <i class="bi bi-trash"></i>
           </button>
         </td>
       </tr>
@@ -2625,7 +2644,7 @@ function toggleEditorDominioDetalle(domId, frameworkKey, domIdx) {
   if (detalleRow.style.display === 'none') {
     // Mostrar detalle
     detalleRow.style.display = 'table-row';
-    icon.className = 'fa-solid fa-chevron-up';
+    icon.className = 'bi bi-chevron-up';
     
     // Cargar categorías si no están cargadas
     if (content.innerHTML.trim() === '' || content.innerHTML.includes('categorías se cargarán')) {
@@ -2634,7 +2653,7 @@ function toggleEditorDominioDetalle(domId, frameworkKey, domIdx) {
   } else {
     // Ocultar detalle
     detalleRow.style.display = 'none';
-    icon.className = 'fa-solid fa-chevron-down';
+    icon.className = 'bi bi-chevron-down';
   }
 }
 
@@ -2681,9 +2700,9 @@ function renderCategoriasEditor(domId, frameworkKey, domIdx) {
   
   let html = `
     <h4 style="font-size: 12px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-      <i class="fa-solid fa-layer-group"></i> Categorías (${categorias.length})
+      <i class="bi bi-layers"></i> Categorías (${categorias.length})
       <button class="btn btn-secondary btn-sm" style="margin-left: auto; font-size: 10px;" onclick="showToast('Añadir categoría en desarrollo', 'info')">
-        <i class="fa-solid fa-plus"></i> Añadir
+        <i class="bi bi-plus"></i> Añadir
       </button>
     </h4>
     <table style="margin: 0; font-size: 12px;">
@@ -2707,13 +2726,13 @@ function renderCategoriasEditor(domId, frameworkKey, domIdx) {
         <td>${cat.controles}</td>
         <td>
           <button class="btn btn-outline btn-sm" onclick="toggleEditorCategoriaDetalle('${catId}', ${catIdx})">
-            <i class="fa-solid fa-chevron-down" id="${catId}-icon"></i> Ver
+            <i class="bi bi-chevron-down" id="${catId}-icon"></i> Ver
           </button>
           <button class="btn btn-outline btn-sm">
-            <i class="fa-solid fa-pen"></i>
+            <i class="bi bi-pencil"></i>
           </button>
           <button class="btn btn-outline btn-sm" style="color: var(--accent-danger);">
-            <i class="fa-solid fa-trash"></i>
+            <i class="bi bi-trash"></i>
           </button>
         </td>
       </tr>
@@ -2750,7 +2769,7 @@ function toggleEditorCategoriaDetalle(catId, catIdx) {
   if (detalleRow.style.display === 'none') {
     // Mostrar detalle
     detalleRow.style.display = 'table-row';
-    icon.className = 'fa-solid fa-chevron-up';
+    icon.className = 'bi bi-chevron-up';
     
     // Cargar controles si no están cargados
     if (content.innerHTML.trim() === '' || content.innerHTML.includes('controles se cargarán')) {
@@ -2759,7 +2778,7 @@ function toggleEditorCategoriaDetalle(catId, catIdx) {
   } else {
     // Ocultar detalle
     detalleRow.style.display = 'none';
-    icon.className = 'fa-solid fa-chevron-down';
+    icon.className = 'bi bi-chevron-down';
   }
 }
 
@@ -2781,9 +2800,9 @@ function renderControlesEditor(catId, catIdx) {
   
   let html = `
     <h4 style="font-size: 11px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-      <i class="fa-solid fa-shield-halved"></i> Controles (${controles.length})
+      <i class="bi bi-shield-shaded"></i> Controles (${controles.length})
       <button class="btn btn-secondary btn-sm" style="margin-left: auto; font-size: 9px;" onclick="showToast('Añadir control en desarrollo', 'info')">
-        <i class="fa-solid fa-plus"></i> Añadir
+        <i class="bi bi-plus"></i> Añadir
       </button>
     </h4>
     <table style="margin: 0; font-size: 11px;">
@@ -2806,10 +2825,10 @@ function renderControlesEditor(catId, catIdx) {
         <td style="font-size: 10px; color: var(--text-muted);">${ctrl.descripcion}</td>
         <td>
           <button class="btn btn-outline btn-sm" onclick="showToast('Editar control en desarrollo', 'info')">
-            <i class="fa-solid fa-pen"></i>
+            <i class="bi bi-pencil"></i>
           </button>
           <button class="btn btn-outline btn-sm" style="color: var(--accent-danger);" onclick="showToast('Eliminar control en desarrollo', 'warning')">
-            <i class="fa-solid fa-trash"></i>
+            <i class="bi bi-trash"></i>
           </button>
         </td>
       </tr>
@@ -2938,10 +2957,10 @@ function verDetalleMarco(marcoId) {
           <div style="font-size: 10px; color: #047857; margin-top: 4px;">Marco implementado y en uso</div>
         </div>
         <button class="btn btn-outline btn-sm" style="width: 100%;" onclick="showNormativasTab('editor')">
-          <i class="fa-solid fa-pen"></i> Editar estructura
+          <i class="bi bi-pencil"></i> Editar estructura
         </button>
         <button class="btn btn-outline btn-sm" style="width: 100%; color: var(--accent-danger);">
-          <i class="fa-solid fa-ban"></i> Desactivar marco
+          <i class="bi bi-slash-circle"></i> Desactivar marco
         </button>
       `;
     } else if (marco.estado === 'En Configuración') {
@@ -2951,10 +2970,10 @@ function verDetalleMarco(marcoId) {
           <div style="font-size: 10px; color: #78350f; margin-top: 4px;">Importado - ${marco.implementacion}% configurado</div>
         </div>
         <button class="btn btn-primary btn-sm" style="width: 100%;" onclick="showNormativasTab('editor')">
-          <i class="fa-solid fa-pen"></i> Continuar configuración
+          <i class="bi bi-pencil"></i> Continuar configuración
         </button>
         <button class="btn btn-outline btn-sm" style="width: 100%; color: var(--accent-danger);">
-          <i class="fa-solid fa-trash"></i> Eliminar
+          <i class="bi bi-trash"></i> Eliminar
         </button>
       `;
     } else { // Disponible
@@ -2964,10 +2983,10 @@ function verDetalleMarco(marcoId) {
           <div style="font-size: 10px; color: #1e3a8a; margin-top: 4px;">Plantilla lista para importar</div>
         </div>
         <button class="btn btn-primary btn-sm" style="width: 100%;" onclick="importarPlantilla('${marcoId}'); showNormativasTab('editor')">
-          <i class="fa-solid fa-download"></i> Importar al Editor
+          <i class="bi bi-download"></i> Importar al Editor
         </button>
         <button class="btn btn-outline btn-sm" style="width: 100%;">
-          <i class="fa-solid fa-file-export"></i> Exportar JSON
+          <i class="bi bi-box-arrow-up-right"></i> Exportar JSON
         </button>
       `;
     }
@@ -3031,7 +3050,7 @@ function verDetalleMarco(marcoId) {
     if (dominios.length === 0) {
       tablaDominios.innerHTML = `
         <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
-          <i class="fa-solid fa-info-circle"></i> No hay dominios configurados para este marco
+          <i class="bi bi-info-circle"></i> No hay dominios configurados para este marco
         </td></tr>
       `;
     } else {
@@ -3052,7 +3071,7 @@ function verDetalleMarco(marcoId) {
             <td><span class="badge ${badgeClass}">${dominio.implementacion > 0 ? dominio.implementacion + '%' : 'Sin iniciar'}</span></td>
             <td>
               <button class="btn btn-outline btn-sm" onclick="toggleDominioDetalle('${dominioId}', '${marcoId}', ${idx})">
-                <i class="fa-solid fa-chevron-down" id="${dominioId}-icon"></i> Ver
+                <i class="bi bi-chevron-down" id="${dominioId}-icon"></i> Ver
               </button>
             </td>
           </tr>
@@ -3110,7 +3129,7 @@ function toggleDominioDetalle(dominioId, marcoId, idx) {
   if (detalleRow.style.display === 'none') {
     // Mostrar detalle
     detalleRow.style.display = 'table-row';
-    icon.className = 'fa-solid fa-chevron-up';
+    icon.className = 'bi bi-chevron-up';
     
     // Cargar categorías si no están cargadas
     if (content.innerHTML.trim() === '' || content.innerHTML.includes('categorías se cargarán')) {
@@ -3119,7 +3138,7 @@ function toggleDominioDetalle(dominioId, marcoId, idx) {
   } else {
     // Ocultar detalle
     detalleRow.style.display = 'none';
-    icon.className = 'fa-solid fa-chevron-down';
+    icon.className = 'bi bi-chevron-down';
   }
 }
 
@@ -3174,7 +3193,7 @@ function renderCategoriasDelDominio(dominioId, marcoId, idx) {
   
   let html = `
     <h4 style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 12px;">
-      <i class="fa-solid fa-layer-group"></i> Categorías (${categorias.length})
+      <i class="bi bi-layers"></i> Categorías (${categorias.length})
     </h4>
     <table style="margin: 0;">
       <thead>
@@ -3197,7 +3216,7 @@ function renderCategoriasDelDominio(dominioId, marcoId, idx) {
         <td>${cat.controles}</td>
         <td>
           <button class="btn btn-outline btn-sm" onclick="toggleCategoriaDetalle('${catId}', '${dominioId}', ${catIdx})">
-            <i class="fa-solid fa-chevron-down" id="${catId}-icon"></i> Ver
+            <i class="bi bi-chevron-down" id="${catId}-icon"></i> Ver
           </button>
         </td>
       </tr>
@@ -3235,7 +3254,7 @@ function toggleCategoriaDetalle(catId, dominioId, catIdx) {
   if (detalleRow.style.display === 'none') {
     // Mostrar detalle
     detalleRow.style.display = 'table-row';
-    icon.className = 'fa-solid fa-chevron-up';
+    icon.className = 'bi bi-chevron-up';
     
     // Cargar controles si no están cargados
     if (content.innerHTML.trim() === '' || content.innerHTML.includes('controles se cargarán')) {
@@ -3244,7 +3263,7 @@ function toggleCategoriaDetalle(catId, dominioId, catIdx) {
   } else {
     // Ocultar detalle
     detalleRow.style.display = 'none';
-    icon.className = 'fa-solid fa-chevron-down';
+    icon.className = 'bi bi-chevron-down';
   }
 }
 
@@ -3266,7 +3285,7 @@ function renderControlesDeCategoria(catId, catIdx) {
   
   let html = `
     <h4 style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">
-      <i class="fa-solid fa-shield-halved"></i> Controles (${controles.length})
+      <i class="bi bi-shield-shaded"></i> Controles (${controles.length})
     </h4>
     <table style="margin: 0; font-size: 11px;">
       <thead>
@@ -3381,7 +3400,7 @@ function renderRiesgosCiberKPIs() {
       value: riesgosActivos.length.toString(),
       trend: `${riesgosCriticos.length + riesgosAltos.length} críticos/altos`,
       subtitle: `Total identificados: ${riesgosCiber.length}`,
-      icon: 'fa-bug',
+      icon: 'bi-bug',
       variant: riesgosCriticos.length > 0 ? 'danger' : 'warning'
     },
     {
@@ -3389,14 +3408,14 @@ function renderRiesgosCiberKPIs() {
       value: riesgosCriticos.length.toString(),
       trend: riesgosCriticos.length > 0 ? 'Requieren atención' : 'Sin críticos',
       subtitle: `${riesgosAltos.length} altos adicionales`,
-      icon: 'fa-triangle-exclamation',
+      icon: 'bi-exclamation-triangle-fill',
       variant: riesgosCriticos.length > 0 ? 'danger' : 'success'
     },
     {
       title: 'Puntaje Promedio CVSS',
       value: avgScore + '/10',
       subtitle: 'Score promedio de riesgos activos',
-      icon: 'fa-gauge-high',
+      icon: 'bi-speedometer2',
       variant: avgScore >= 7.0 ? 'danger' : (avgScore >= 4.0 ? 'warning' : 'success')
     },
     {
@@ -3404,7 +3423,7 @@ function renderRiesgosCiberKPIs() {
       value: controlesCiber.length.toString(),
       trend: `${efectividad}% efectividad`,
       subtitle: 'Controles implementados',
-      icon: 'fa-shield-halved',
+      icon: 'bi-shield-shaded',
       variant: 'primary'
     },
     {
@@ -3412,7 +3431,7 @@ function renderRiesgosCiberKPIs() {
       value: (vulnerabilidadesAltas + vulnerabilidadesMedias).toString(),
       trend: `${vulnerabilidadesAltas} altas, ${vulnerabilidadesMedias} medias`,
       subtitle: 'Requieren remediación',
-      icon: 'fa-exclamation-triangle',
+      icon: 'bi-exclamation-triangle',
       variant: vulnerabilidadesAltas > 0 ? 'warning' : 'neutral'
     }
   ];
@@ -3604,7 +3623,7 @@ function renderRiesgosCiberTable() {
       <td>${riesgo.ownerName || 'N/A'}</td>
       <td>
         <button class="btn btn-outline btn-sm" onclick="showDetalleRiesgoCiber('${riesgo.code}')">
-          <i class="fa-solid fa-eye"></i> Detalle
+          <i class="bi bi-eye"></i> Detalle
         </button>
       </td>
     `;
@@ -3728,35 +3747,35 @@ function renderDRPKPIs() {
       title: 'Planes DRP Activos',
       value: planesActivos.length.toString(),
       subtitle: 'Sistemas críticos cubiertos',
-      icon: 'fa-shield-halved',
+      icon: 'bi-shield-shaded',
       variant: 'primary'
     },
     {
       title: 'RTO Promedio',
       value: rtoPromedio + 'h',
       subtitle: 'Objetivo: 2h',
-      icon: 'fa-clock',
+      icon: 'bi-clock',
       variant: parseFloat(rtoPromedio) <= 2 ? 'success' : 'warning'
     },
     {
       title: 'Sites Alternos',
       value: sitesAlternos.toString(),
       subtitle: 'Cloud + On-premise',
-      icon: 'fa-server',
+      icon: 'bi-hdd-rack',
       variant: 'secondary'
     },
     {
       title: 'Replicación Sincrónica',
       value: replicacionSincronica.toString(),
       subtitle: 'RPO = 0 minutos',
-      icon: 'fa-rotate',
+      icon: 'bi-arrow-clockwise',
       variant: 'secondary'
     },
     {
       title: 'Activaciones 2025',
       value: activaciones2025.toString(),
       subtitle: 'Todas exitosas',
-      icon: 'fa-check-circle',
+      icon: 'bi-check-circle',
       variant: 'neutral'
     }
   ];
@@ -3916,7 +3935,7 @@ function renderDRPProveedoresTable() {
       <td><button class="badge badge-info" onclick="showView('proveedores')" style="cursor: pointer; border: none;">${prov.planContingencia}</button></td>
       <td>
         <button class="btn btn-outline btn-sm" onclick="showView('proveedores')">
-          <i class="fa-solid fa-eye"></i> Ver Plan
+          <i class="bi bi-eye"></i> Ver Plan
         </button>
       </td>
     `;
@@ -4005,7 +4024,7 @@ function renderCrisisSemaforo() {
       bgStart: '#10b981',
       bgEnd: '#059669',
       textColor: '#fff',
-      icon: 'fa-circle-check',
+      icon: 'bi-check-circle-fill',
       label: 'ESTADO ACTUAL',
       estado: 'VERDE - Normal',
       desc: 'No hay crisis activas · Operación normal · Comité en standby'
@@ -4014,7 +4033,7 @@ function renderCrisisSemaforo() {
       bgStart: '#f59e0b',
       bgEnd: '#d97706',
       textColor: '#fff',
-      icon: 'fa-triangle-exclamation',
+      icon: 'bi-exclamation-triangle-fill',
       label: 'ALERTA ACTIVADA',
       estado: 'AMARILLO - Alerta',
       desc: 'Situación monitoreada · Comité en alerta · Revisión continua'
@@ -4023,7 +4042,7 @@ function renderCrisisSemaforo() {
       bgStart: '#dc2626',
       bgEnd: '#991b1b',
       textColor: '#fff',
-      icon: 'fa-circle-exclamation',
+      icon: 'bi-exclamation-circle-fill',
       label: 'CRISIS ACTIVA',
       estado: 'ROJO - Crisis Total',
       desc: 'Protocolo activado · Comité reunido · Gestión en curso'
@@ -4041,7 +4060,7 @@ function renderCrisisSemaforo() {
     <div class="crisis-semaforo-icon"></div>
     <div class="crisis-semaforo-content">
       <div class="crisis-semaforo-label">
-        <i class="fa-solid ${cfg.icon}"></i> ${cfg.label}
+        <i class="bi ${cfg.icon}"></i> ${cfg.label}
       </div>
       <div class="crisis-semaforo-estado">${cfg.estado}</div>
       <div class="crisis-semaforo-desc">${cfg.desc}</div>
@@ -4138,7 +4157,7 @@ function renderCrisisHistorial() {
       <td>${crisis.resolvedAt ? 'Calculado' : 'En curso'}</td>
       <td><span class="badge badge-danger">Crítico</span></td>
       <td><span class="badge ${crisis.status === 'CLOSED' ? 'badge-success' : 'badge-active'}">${crisis.status === 'CLOSED' ? 'Resuelta' : 'Activa'}</span></td>
-      <td><button class="btn btn-outline btn-sm"><i class="fa-solid fa-eye"></i> Detalle</button></td>
+      <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Detalle</button></td>
     `;
     tbody.appendChild(row);
   });
@@ -4200,35 +4219,35 @@ function renderComunicacionesKPIs() {
       title: 'Comunicados Emitidos',
       value: comunicacionesLogs.length.toString(),
       subtitle: 'Total en 2025',
-      icon: 'fa-paper-plane',
+      icon: 'bi-send',
       variant: 'primary'
     },
     {
       title: 'Borradores Pendientes',
       value: '5',
       subtitle: 'Requieren aprobación',
-      icon: 'fa-file-pen',
+      icon: 'bi-file-earmark-text',
       variant: 'warning'
     },
     {
       title: 'Stakeholders Activos',
       value: '87',
       subtitle: '12 grupos definidos',
-      icon: 'fa-users',
+      icon: 'bi-persons',
       variant: 'secondary'
     },
     {
       title: 'Canales Operativos',
       value: '7/7',
       subtitle: '100% disponibilidad',
-      icon: 'fa-tower-broadcast',
+      icon: 'bi-broadcast',
       variant: 'success'
     },
     {
       title: 'Tasa Entrega',
       value: '98%',
       subtitle: 'Apertura: 94%',
-      icon: 'fa-chart-line',
+      icon: 'bi-graph-up',
       variant: 'success'
     }
   ];
@@ -4297,7 +4316,7 @@ function renderComunicacionesPlantillas() {
       <td>${plantilla.channels ? plantilla.channels.join(', ') : 'N/A'}</td>
       <td>${plantilla.targetAudience || 'N/A'}</td>
       <td><span class="badge badge-success">Activa</span></td>
-      <td><button class="btn btn-outline btn-sm"><i class="fa-solid fa-eye"></i> Ver</button></td>
+      <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
     `;
     tbody.appendChild(row);
   });
@@ -4325,108 +4344,7 @@ function renderComunicacionesHistorial() {
       <td>${log.recipientCount || 0}</td>
       <td>${log.channel || 'N/A'}</td>
       <td><span class="badge badge-success">${log.status || 'Enviado'}</span></td>
-      <td><button class="btn btn-outline btn-sm"><i class="fa-solid fa-eye"></i> Detalle</button></td>
-    `;
-    tbody.appendChild(row);
-  });
-}
-
-/**
- * ============================================================================
- * CONTROLES & CUMPLIMIENTO - Funciones de renderizado
- * ============================================================================
- */
-
-function showControlesTab(tabName) {
-  // Ocultar todos los contenidos
-  const allContents = document.querySelectorAll('.controles-tab-content');
-  allContents.forEach(content => content.style.display = 'none');
-  
-  // Desactivar todos los botones
-  const allButtons = document.querySelectorAll('.tab-button[data-tab]');
-  allButtons.forEach(button => {
-    button.classList.remove('active');
-    button.style.borderBottom = '3px solid transparent';
-    button.style.color = 'var(--text-muted)';
-  });
-  
-  // Mostrar contenido seleccionado
-  const selectedContent = document.getElementById(`controles-${tabName}`);
-  if (selectedContent) selectedContent.style.display = 'block';
-  
-  // Activar botón seleccionado
-  const selectedButton = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
-  if (selectedButton) {
-    selectedButton.classList.add('active');
-    selectedButton.style.borderBottom = '3px solid var(--accent-primary)';
-    selectedButton.style.color = 'var(--accent-primary)';
-  }
-}
-
-function renderControlesLey21663() {
-  const tbody = document.getElementById('controles-ley21663-tbody');
-  if (!tbody) return;
-  
-  tbody.innerHTML = '';
-  
-  // Datos de ejemplo de controles
-  const controles = [
-    {
-      requisito: 'Definir e implementar un Marco de Gestión de Riesgos de Ciberseguridad',
-      control: 'Política de Gestión de Riesgos Ciber aprobada por Directorio',
-      evidencia: 'Acta de Directorio, política vigente, matriz de riesgos',
-      periodicidad: 'Anual',
-      estado: 'Cumplido',
-      estadoClass: 'badge-success',
-      dueno: 'Gerencia de Riesgos / CISO'
-    },
-    {
-      requisito: 'Establecer capacidades de monitoreo y respuesta a incidentes',
-      control: 'SOC interno con monitoreo 24/7 y playbooks documentados',
-      evidencia: 'Registros SIEM, playbooks, reportes de incidentes',
-      periodicidad: 'Continuo',
-      estado: 'En fortalecimiento',
-      estadoClass: 'badge-warning',
-      dueno: 'CISO / Jefe SOC'
-    },
-    {
-      requisito: 'Realizar pruebas periódicas de continuidad operacional',
-      control: 'Plan anual de pruebas BCP/DRP con escenarios por servicio',
-      evidencia: 'Informes de pruebas, registro de hallazgos',
-      periodicidad: 'Anual',
-      estado: 'Parcialmente cumplido',
-      estadoClass: 'badge-warning',
-      dueno: 'BCM Officer'
-    },
-    {
-      requisito: 'Gestionar riesgos de ciberseguridad en la cadena de suministro',
-      control: 'Cláusulas contractuales, evaluación de proveedores',
-      evidencia: 'Registro de evaluaciones, contratos',
-      periodicidad: 'Anual',
-      estado: 'Brechas identificadas',
-      estadoClass: 'badge-danger',
-      dueno: 'Legal / Compras / CISO'
-    },
-    {
-      requisito: 'Implementar controles de acceso lógico basados en privilegios mínimos',
-      control: 'Sistema IAM con RBAC, MFA obligatorio',
-      evidencia: 'Logs de Active Directory, políticas IAM',
-      periodicidad: 'Trimestral',
-      estado: 'Cumplido',
-      estadoClass: 'badge-success',
-      dueno: 'TI / Seguridad Info'
-    }
-  ];
-  
-  controles.forEach(control => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td style="font-size: 12px; line-height: 1.5;">${control.requisito}</td>
-      <td style="font-size: 12px; line-height: 1.5;">${control.control}</td>
-      <td style="font-size: 12px; line-height: 1.5;">${control.evidencia}</td>
-      <td style="font-size: 11px; color: var(--text-muted);">${control.periodicidad}</td>
-      <td><span class="badge ${control.estadoClass}">${control.estado}</span></td>
-      <td style="font-size: 12px;">${control.dueno}</td>
+      <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Detalle</button></td>
     `;
     tbody.appendChild(row);
   });
@@ -4448,11 +4366,11 @@ function renderAuditoriaKPIs() {
   const hallazgos = BCMSDataStore.api.getAll('findings') || [];
   
   const kpis = [
-    { title: 'Auditorías 2025', value: auditorias.length.toString(), subtitle: 'Completadas y programadas', icon: 'fa-clipboard-check', variant: 'primary' },
-    { title: 'Hallazgos Totales', value: hallazgos.length.toString(), subtitle: 'NC Mayor + NC Menor', icon: 'fa-triangle-exclamation', variant: 'warning' },
-    { title: 'Hallazgos Abiertos', value: hallazgos.filter(h => h.status !== 'CLOSED').length.toString(), subtitle: 'Requieren atención', icon: 'fa-exclamation-circle', variant: 'danger' },
-    { title: 'Acciones Correctivas', value: '34', subtitle: '26 cerradas | 8 activas', icon: 'fa-tasks', variant: 'secondary' },
-    { title: 'Índice Madurez', value: '4.2', subtitle: '/ 5.0 (Optimizado)', icon: 'fa-star', variant: 'secondary' }
+    { title: 'Auditorías 2025', value: auditorias.length.toString(), subtitle: 'Completadas y programadas', icon: 'bi-clipboard-check', variant: 'primary' },
+    { title: 'Hallazgos Totales', value: hallazgos.length.toString(), subtitle: 'NC Mayor + NC Menor', icon: 'bi-exclamation-triangle-fill', variant: 'warning' },
+    { title: 'Hallazgos Abiertos', value: hallazgos.filter(h => h.status !== 'CLOSED').length.toString(), subtitle: 'Requieren atención', icon: 'bi-exclamation-circle', variant: 'danger' },
+    { title: 'Acciones Correctivas', value: '34', subtitle: '26 cerradas | 8 activas', icon: 'bi-list-task', variant: 'secondary' },
+    { title: 'Índice Madurez', value: '4.2', subtitle: '/ 5.0 (Optimizado)', icon: 'bi-star-fill', variant: 'secondary' }
   ];
   
   kpis.forEach(kpi => {
@@ -4476,7 +4394,7 @@ function renderAuditoriaTables() {
     });
   }
   
-  const tbodyH = document.getElementById('tbody-hallazgos');
+  const tbodyH = document.getElementById('tbody-hallazgos-recientes');
   if (tbodyH) {
     tbodyH.innerHTML = '';
     const hallazgos = BCMSDataStore.api.getAll('findings') || [];
@@ -4527,11 +4445,11 @@ function renderRecursosKPIs() {
   container.innerHTML = '';
   
   const kpis = [
-    { title: 'Cobertura vs Procesos', value: '95%', subtitle: '18/19 procesos', icon: 'fa-check-circle', variant: 'secondary' },
-    { title: 'Recursos sin Backup', value: '7', subtitle: 'Requieren acción', icon: 'fa-exclamation-triangle', variant: 'danger' },
-    { title: 'Brechas Capacidad', value: '5', subtitle: '2 críticas, 3 moderadas', icon: 'fa-triangle-exclamation', variant: 'warning' },
-    { title: 'Dependencias Terceros', value: '12', subtitle: '8 con SLA vigente', icon: 'fa-handshake', variant: 'primary' },
-    { title: 'Capacidad Operativa', value: '78%', subtitle: '↑ 5% vs mes anterior', icon: 'fa-gauge-high', variant: 'secondary' }
+    { title: 'Cobertura vs Procesos', value: '95%', subtitle: '18/19 procesos', icon: 'bi-check-circle', variant: 'secondary' },
+    { title: 'Recursos sin Backup', value: '7', subtitle: 'Requieren acción', icon: 'bi-exclamation-triangle', variant: 'danger' },
+    { title: 'Brechas Capacidad', value: '5', subtitle: '2 críticas, 3 moderadas', icon: 'bi-exclamation-triangle-fill', variant: 'warning' },
+    { title: 'Dependencias Terceros', value: '12', subtitle: '8 con SLA vigente', icon: 'bi-people', variant: 'primary' },
+    { title: 'Capacidad Operativa', value: '78%', subtitle: '↑ 5% vs mes anterior', icon: 'bi-speedometer2', variant: 'secondary' }
   ];
   
   kpis.forEach(kpi => {
@@ -4625,10 +4543,10 @@ function renderCapacitacionKPIs() {
   container.innerHTML = '';
   
   const kpis = [
-    { title: 'Cobertura Capacitación', value: '87%', subtitle: '↑ 12% vs 2024 | Meta: 95%', icon: 'fa-graduation-cap', variant: 'secondary' },
-    { title: 'Cursos Completados', value: '342', subtitle: 'En 2025 | 28.5 promedio/mes', icon: 'fa-book', variant: 'primary' },
-    { title: 'Simulacros Realizados', value: '8', subtitle: '4 BCP | 4 Crisis | Part. 92%', icon: 'fa-clipboard-check', variant: 'primary' },
-    { title: 'Nivel Concienciación', value: '8.2/10', subtitle: '↑ 0.8 vs 2024', icon: 'fa-star', variant: 'secondary' }
+    { title: 'Cobertura Capacitación', value: '87%', subtitle: '↑ 12% vs 2024 | Meta: 95%', icon: 'bi-mortarboard', variant: 'secondary' },
+    { title: 'Cursos Completados', value: '342', subtitle: 'En 2025 | 28.5 promedio/mes', icon: 'bi-book', variant: 'primary' },
+    { title: 'Simulacros Realizados', value: '8', subtitle: '4 BCP | 4 Crisis | Part. 92%', icon: 'bi-clipboard-check', variant: 'primary' },
+    { title: 'Nivel Concienciación', value: '8.2/10', subtitle: '↑ 0.8 vs 2024', icon: 'bi-star-fill', variant: 'secondary' }
   ];
   
   kpis.forEach(kpi => {
@@ -4725,9 +4643,9 @@ function renderCambiosKPIs() {
   container.innerHTML = '';
   
   const kpis = [
-    { title: 'Cambios 2025', value: '18', subtitle: '12 aprobados | 4 pendientes', icon: 'fa-clipboard-list', variant: 'primary' },
-    { title: 'Tiempo Promedio Aprobación', value: '5.2 días', subtitle: '↓ -1.8d vs 2024 | Meta: 7 días', icon: 'fa-clock', variant: 'secondary' },
-    { title: 'Tasa de Implementación Exitosa', value: '95.8%', subtitle: '11/12 sin rollback', icon: 'fa-check-circle', variant: 'secondary' }
+    { title: 'Cambios 2025', value: '18', subtitle: '12 aprobados | 4 pendientes', icon: 'bi-clipboard-data', variant: 'primary' },
+    { title: 'Tiempo Promedio Aprobación', value: '5.2 días', subtitle: '↓ -1.8d vs 2024 | Meta: 7 días', icon: 'bi-clock', variant: 'secondary' },
+    { title: 'Tasa de Implementación Exitosa', value: '95.8%', subtitle: '11/12 sin rollback', icon: 'bi-check-circle', variant: 'secondary' }
   ];
   
   kpis.forEach(kpi => {
@@ -4804,11 +4722,11 @@ function renderUsuariosKPIs() {
   const mfaEnabled = usuarios.filter(u => u.mfaEnabled);
   
   const kpis = [
-    { title: 'Usuarios Registrados', value: usuarios.length.toString(), subtitle: `${usuariosActivos.length} activos`, icon: 'fa-users', variant: 'primary' },
-    { title: 'Roles Activos', value: roles.length.toString(), subtitle: 'RBAC configurado', icon: 'fa-user-shield', variant: 'secondary' },
-    { title: 'Administradores', value: admins.length.toString(), subtitle: `${Math.round((admins.length/usuarios.length)*100)}% del total`, icon: 'fa-crown', variant: 'primary' },
-    { title: 'Accesos Últimas 24h', value: '14', subtitle: '77.8% actividad', icon: 'fa-clock', variant: 'primary' },
-    { title: 'MFA Habilitado', value: `${mfaEnabled.length}/${usuarios.length}`, subtitle: '100% cobertura', icon: 'fa-shield-halved', variant: 'secondary' }
+    { title: 'Usuarios Registrados', value: usuarios.length.toString(), subtitle: `${usuariosActivos.length} activos`, icon: 'bi-persons', variant: 'primary' },
+    { title: 'Roles Activos', value: roles.length.toString(), subtitle: 'RBAC configurado', icon: 'bi-shield-lock', variant: 'secondary' },
+    { title: 'Administradores', value: admins.length.toString(), subtitle: `${Math.round((admins.length/usuarios.length)*100)}% del total`, icon: 'bi-gem', variant: 'primary' },
+    { title: 'Accesos Últimas 24h', value: '14', subtitle: '77.8% actividad', icon: 'bi-clock', variant: 'primary' },
+    { title: 'MFA Habilitado', value: `${mfaEnabled.length}/${usuarios.length}`, subtitle: '100% cobertura', icon: 'bi-shield-shaded', variant: 'secondary' }
   ];
   
   kpis.forEach(kpi => {
@@ -4834,7 +4752,7 @@ function renderUsuariosRBAC() {
   roles.forEach(role => {
     const p = role.permissions;
     tbody.innerHTML += `<tr>
-      <td><strong><i class="fa-solid fa-user"></i> ${role.name}</strong></td>
+      <td><strong><i class="bi bi-person"></i> ${role.name}</strong></td>
       <td>${permissionBadge(p.dashboard)}</td>
       <td>${permissionBadge(p.riesgos)}</td>
       <td>${permissionBadge(p.bcpdrp)}</td>
@@ -4876,7 +4794,7 @@ function renderUsuariosTable() {
       <td><span class="badge ${user.isActive ? 'badge-success' : 'badge-expired'}">${user.isActive ? 'Activo' : 'Inactivo'}</span></td>
       <td class="actions-cell">
         <button class="btn btn-outline" onclick="showToast('Editar usuario ${user.firstName} ${user.lastName}', 'info')">
-          <i class="fa-solid fa-pen"></i> Editar
+          <i class="bi bi-pencil"></i> Editar
         </button>
       </td>
     </tr>`;
@@ -4896,10 +4814,10 @@ function renderReportesKPIs() {
   container.innerHTML = '';
   
   const kpis = [
-    { title: 'Reportes Generados', value: '142', subtitle: '+18 este mes', icon: 'fa-chart-line', variant: 'primary' },
-    { title: 'Programados', value: '28', subtitle: '12 semanales, 16 mensuales', icon: 'fa-calendar-check', variant: 'secondary' },
-    { title: 'Exportaciones', value: '385', subtitle: 'PDF (62%), Excel (38%)', icon: 'fa-file-export', variant: 'primary' },
-    { title: 'Integraciones BI', value: '3', subtitle: 'Power BI, Tableau, Qlik', icon: 'fa-link', variant: 'secondary' }
+    { title: 'Reportes Generados', value: '142', subtitle: '+18 este mes', icon: 'bi-graph-up', variant: 'primary' },
+    { title: 'Programados', value: '28', subtitle: '12 semanales, 16 mensuales', icon: 'bi-calendar-check', variant: 'secondary' },
+    { title: 'Exportaciones', value: '385', subtitle: 'PDF (62%), Excel (38%)', icon: 'bi-box-arrow-up-right', variant: 'primary' },
+    { title: 'Integraciones BI', value: '3', subtitle: 'Power BI, Tableau, Qlik', icon: 'bi-link-45deg', variant: 'secondary' }
   ];
   
   kpis.forEach(kpi => {
@@ -4931,7 +4849,7 @@ function renderReportesTable() {
       <td style="font-size: 12px;">${r.usuario}</td>
       <td style="font-size: 12px;">${r.tamano}</td>
       <td>
-        <button class="btn-secondary btn-sm"><i class="fa-solid fa-download"></i></button>
+        <button class="btn-secondary btn-sm"><i class="bi bi-download"></i></button>
       </td>
     </tr>`;
   });
@@ -4958,7 +4876,7 @@ function renderConfiguracionKPIs() {
       value: '8',
       trend: '2 agregadas este mes',
       subtitle: '4 sistemas | 4 canales',
-      icon: 'fa-plug',
+      icon: 'bi-plug',
       variant: 'success'
     },
     {
@@ -4966,7 +4884,7 @@ function renderConfiguracionKPIs() {
       value: '12,547',
       trend: '+8.3%',
       subtitle: 'vs promedio 7 días',
-      icon: 'fa-code',
+      icon: 'bi-code-slash',
       variant: 'primary'
     },
     {
@@ -4974,14 +4892,14 @@ function renderConfiguracionKPIs() {
       value: '4/4',
       trend: '100%',
       subtitle: 'Email | SMS | Teams | Web',
-      icon: 'fa-tower-broadcast',
+      icon: 'bi-broadcast',
       variant: 'success'
     },
     {
       title: 'Backups Diarios',
       value: '3',
       subtitle: 'Último: hace 2 horas',
-      icon: 'fa-database',
+      icon: 'bi-database',
       variant: 'neutral'
     }
   ];
@@ -5020,14 +4938,14 @@ function renderGobiernoKPIs() {
       title: 'Políticas Vigentes',
       value: '14',
       subtitle: 'BCMS + Ciber + RRHH',
-      icon: 'fa-file-contract',
+      icon: 'bi-file-earmark-text',
       variant: 'primary'
     },
     {
       title: 'Estrategias Activas',
       value: '3',
       subtitle: '2025-2027',
-      icon: 'fa-chess',
+      icon: 'bi-diagram-3',
       variant: 'neutral'
     },
     {
@@ -5035,21 +4953,21 @@ function renderGobiernoKPIs() {
       value: '8',
       trend: '75% cumplidos',
       subtitle: '6 cumplidos | 2 en curso',
-      icon: 'fa-bullseye',
+      icon: 'bi-bullseye',
       variant: 'success'
     },
     {
       title: 'Roles Definidos',
       value: '12',
       subtitle: 'Gobierno BCMS',
-      icon: 'fa-users-gear',
+      icon: 'bi-people-fill',
       variant: 'primary'
     },
     {
       title: 'Estándares Adoptados',
       value: '5',
       subtitle: 'ISO + NIST + Ley',
-      icon: 'fa-certificate',
+      icon: 'bi-patch-check',
       variant: 'success'
     }
   ];
@@ -5619,7 +5537,7 @@ function renderProveedoresRegistroTable() {
         <td><span class="badge ${supplier.isActive ? 'badge-success' : 'badge-warning'}">${supplier.isActive ? 'Activo' : 'Inactivo'}</span></td>
         <td class="actions-cell">
           <button class="btn btn-outline" onclick="showToast('Ver detalle de ${supplier.name}', 'info')">
-            <i class="fa-solid fa-eye"></i> Ver detalle
+            <i class="bi bi-eye"></i> Ver detalle
           </button>
         </td>
       </tr>
@@ -5686,7 +5604,7 @@ function renderProveedoresEvaluacionesTable() {
         <td>${reviewInfo}</td>
         <td class="actions-cell">
           <button class="btn btn-outline" onclick="event.stopPropagation(); toggleDetalleEvaluacionTPRM()">
-            <i class="fa-solid fa-eye"></i> Ver Detalle
+            <i class="bi bi-eye"></i> Ver Detalle
           </button>
         </td>
       </tr>
@@ -5745,7 +5663,7 @@ function renderProveedoresContingenciaTable() {
         <td><span class="badge ${statusClass}">${statusLabel}</span></td>
         <td class="actions-cell">
           <button class="btn btn-outline" onclick="event.stopPropagation(); toggleDetallePlanContingencia()">
-            <i class="fa-solid fa-eye"></i> Ver Detalle
+            <i class="bi bi-eye"></i> Ver Detalle
           </button>
         </td>
       </tr>
@@ -5852,4 +5770,675 @@ function mostrarTabContingencia(tabName) {
   }
 }
 
+/**
+ * ============================================================================
+ * HALLAZGOS & PLANES DE ACCIÓN - Funciones de renderizado
+ * Vista: view-hallazgos | Entidad: findings + findingActions
+ * ============================================================================
+ */
+
+function renderHallazgosView() {
+  renderHallazgosKPIs();
+  renderHallazgosTable();
+}
+
+function renderHallazgosKPIs() {
+  const container = document.getElementById('hallazgos-kpis-container');
+  if (!container) return;
+  const findings = BCMSDataStore.entities.findings || [];
+  const ncMajor = findings.filter(f => f.findingType === 'NC_MAJOR').length;
+  const ncMinor = findings.filter(f => f.findingType === 'NC_MINOR').length;
+  const obs = findings.filter(f => f.findingType === 'OBSERVATION').length;
+  const open = findings.filter(f => ['OPEN','IN_PROGRESS'].includes(f.status)).length;
+  const closed = findings.filter(f => f.status === 'CLOSED').length;
+  container.innerHTML = new KPICard({ title: 'Total Hallazgos', value: findings.length, icon: 'bi-search' }).render() +
+    new KPICard({ title: 'NC Mayor', value: ncMajor, icon: 'bi-exclamation-triangle', color: '#ef4444' }).render() +
+    new KPICard({ title: 'NC Menor', value: ncMinor, icon: 'bi-exclamation-circle', color: '#f59e0b' }).render() +
+    new KPICard({ title: 'Observaciones', value: obs, icon: 'bi-info-circle', color: '#6366f1' }).render() +
+    new KPICard({ title: 'Abiertos', value: open, icon: 'bi-folder2-open', color: '#ef4444' }).render();
+}
+
+function renderHallazgosTable() {
+  const tbody = document.getElementById('hallazgos-tbody');
+  if (!tbody) return;
+  const findings = BCMSDataStore.entities.findings || [];
+  const audits = BCMSDataStore.entities.audits || [];
+  const users = BCMSDataStore.entities.users || [];
+  const actions = BCMSDataStore.entities.findingActions || [];
+  tbody.innerHTML = findings.map(f => {
+    const audit = audits.find(a => a.id === f.auditId);
+    const user = users.find(u => u.id === f.responsibleUserId);
+    const fActions = actions.filter(a => a.findingId === f.id);
+    const completedActions = fActions.filter(a => a.status === 'COMPLETED').length;
+    const totalActions = fActions.length;
+    const typeBadge = f.findingType === 'NC_MAJOR' ? 'badge-danger' : f.findingType === 'NC_MINOR' ? 'badge-warning' : f.findingType === 'POSITIVE' ? 'badge-success' : 'badge-info';
+    const typeLabel = f.findingType === 'NC_MAJOR' ? 'NC Mayor' : f.findingType === 'NC_MINOR' ? 'NC Menor' : f.findingType === 'POSITIVE' ? 'Positivo' : 'Observación';
+    const sevBadge = f.severity === 'HIGH' ? 'badge-danger' : f.severity === 'MEDIUM' ? 'badge-warning' : f.severity === 'LOW' ? 'badge-info' : 'badge-success';
+    const statusBadge = f.status === 'CLOSED' ? 'badge-success' : f.status === 'IN_PROGRESS' ? 'badge-warning' : 'badge-info';
+    const statusLabel = f.status === 'CLOSED' ? 'Cerrado' : f.status === 'IN_PROGRESS' ? 'En Progreso' : 'Abierto';
+    return `<tr onclick="showDetalleHallazgo(${f.id})" style="cursor:pointer;">
+      <td class="fw-600">${f.code}</td>
+      <td>${audit ? audit.code : '-'}</td>
+      <td>${f.relatedRequirementCode || '-'}</td>
+      <td><span class="badge ${sevBadge}">${f.severity}</span></td>
+      <td><span class="badge ${typeBadge}">${typeLabel}</span></td>
+      <td class="fs-12">${f.title}</td>
+      <td class="fs-12">${totalActions > 0 ? completedActions + '/' + totalActions + ' acciones' : 'Sin acciones'}</td>
+      <td class="fs-12">${user ? user.fullName : '-'}</td>
+      <td class="fs-12">${f.dueDate || '-'}</td>
+      <td><span class="badge ${statusBadge}">${statusLabel}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function showDetalleHallazgo(id) {
+  const panel = document.getElementById('detalle-hallazgo');
+  if (!panel) return;
+  const f = BCMSDataStore.entities.findings.find(x => x.id === id);
+  if (!f) return;
+  const audits = BCMSDataStore.entities.audits || [];
+  const users = BCMSDataStore.entities.users || [];
+  const actions = BCMSDataStore.entities.findingActions.filter(a => a.findingId === id);
+  const audit = audits.find(a => a.id === f.auditId);
+  const user = users.find(u => u.id === f.responsibleUserId);
+  const sevBadge = f.severity === 'HIGH' ? 'badge-danger' : f.severity === 'MEDIUM' ? 'badge-warning' : f.severity === 'LOW' ? 'badge-info' : 'badge-success';
+  const statusBadge = f.status === 'CLOSED' ? 'badge-success' : f.status === 'IN_PROGRESS' ? 'badge-warning' : 'badge-info';
+  const statusLabel = f.status === 'CLOSED' ? 'Cerrado' : f.status === 'IN_PROGRESS' ? 'En Progreso' : 'Abierto';
+  const completedActions = actions.filter(a => a.status === 'COMPLETED').length;
+  const progressPct = actions.length > 0 ? Math.round((completedActions / actions.length) * 100) : 0;
+  
+  panel.innerHTML = `
+    <div class="card mb-24" style="border-left: 4px solid ${f.severity === 'HIGH' ? '#ef4444' : f.severity === 'MEDIUM' ? '#f59e0b' : '#6366f1'};">
+      <div class="card-header">
+        <div>
+          <h3><i class="bi bi-search"></i> ${f.code} - ${f.title}</h3>
+          <div class="fs-12 color-muted mt-4">Hallazgo de ${audit ? audit.code + ' - ' + audit.title : 'auditoría no especificada'}</div>
+        </div>
+        <div class="d-flex gap-8">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('detalle-hallazgo').classList.add('d-none')"><i class="bi bi-x"></i> Cerrar</button>
+        </div>
+      </div>
+      <div class="p-20">
+        <div class="d-grid grid-3-equal gap-16 mb-24">
+          <div><span class="fs-11 fw-600 color-muted">Auditoría Origen</span><div class="fs-13 mt-4">${audit ? audit.code : '-'}</div></div>
+          <div><span class="fs-11 fw-600 color-muted">Severidad</span><div class="mt-4"><span class="badge ${sevBadge}">${f.severity}</span></div></div>
+          <div><span class="fs-11 fw-600 color-muted">Estado</span><div class="mt-4"><span class="badge ${statusBadge}">${statusLabel}</span></div></div>
+          <div><span class="fs-11 fw-600 color-muted">Marco / Requisito</span><div class="fs-13 mt-4">${f.relatedRequirementCode || '-'}</div></div>
+          <div><span class="fs-11 fw-600 color-muted">Responsable</span><div class="fs-13 mt-4">${user ? user.fullName : '-'}</div></div>
+          <div><span class="fs-11 fw-600 color-muted">Fecha Límite</span><div class="fs-13 mt-4">${f.dueDate || '-'}</div></div>
+        </div>
+        <div class="mb-24">
+          <h4 class="fs-13 fw-600 mb-8">Descripción del Hallazgo</h4>
+          <p class="fs-13 color-secondary" style="line-height:1.6;">${f.description}</p>
+        </div>
+        ${f.rootCause ? `<div class="mb-24"><h4 class="fs-13 fw-600 mb-8">Causa Raíz</h4><p class="fs-13 color-secondary" style="line-height:1.6;">${f.rootCause}</p></div>` : ''}
+        ${f.recommendation ? `<div class="mb-24"><h4 class="fs-13 fw-600 mb-8">Recomendación</h4><p class="fs-13 color-secondary" style="line-height:1.6;">${f.recommendation}</p></div>` : ''}
+        <div class="mb-16">
+          <h4 class="fs-13 fw-600 mb-8">Plan de Acción Correctiva</h4>
+          <div class="d-flex ai-center gap-12 mb-12">
+            <div class="progress-track flex-1"><div style="width:${progressPct}%; height:100%; background: var(--accent-primary); border-radius: 4px;"></div></div>
+            <span class="fs-12 fw-600">${progressPct}%</span>
+          </div>
+          ${actions.length > 0 ? `<table class="fs-12"><thead><tr><th>Tipo</th><th>Descripción</th><th>Responsable</th><th>Fecha Límite</th><th>Estado</th></tr></thead><tbody>` + 
+            actions.map(a => {
+              const aUser = users.find(u => u.id === a.ownerUserId);
+              const aBadge = a.status === 'COMPLETED' ? 'badge-success' : a.status === 'IN_PROGRESS' ? 'badge-warning' : 'badge-info';
+              const aLabel = a.status === 'COMPLETED' ? 'Completada' : a.status === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente';
+              const tBadge = a.actionType === 'CORRECTIVE' ? 'badge-danger' : a.actionType === 'PREVENTIVE' ? 'badge-warning' : 'badge-info';
+              return `<tr><td><span class="badge ${tBadge}">${a.actionType}</span></td><td>${a.description}</td><td>${aUser ? aUser.fullName : '-'}</td><td>${a.dueDate || '-'}</td><td><span class="badge ${aBadge}">${aLabel}</span></td></tr>`;
+            }).join('') + `</tbody></table>` : '<p class="fs-12 color-muted">Sin acciones registradas</p>'}
+        </div>
+      </div>
+    </div>`;
+  panel.classList.remove('d-none');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/**
+ * ============================================================================
+ * LECCIONES APRENDIDAS - Funciones de renderizado
+ * Vista: view-aprendizajes | Entidad: lessonsLearned
+ * ============================================================================
+ */
+
+function renderAprendizajesView() {
+  renderAprendizajesKPIs();
+  renderAprendizajesRepositorio();
+  renderAprendizajesInforme();
+}
+
+function renderAprendizajesKPIs() {
+  const container = document.getElementById('aprendizajes-kpis-container');
+  if (!container) return;
+  const lessons = BCMSDataStore.entities.lessonsLearned || [];
+  const implemented = lessons.filter(l => l.status === 'implemented' || l.status === 'validated').length;
+  const inProgress = lessons.filter(l => l.status === 'in_progress').length;
+  const totalImprovement = lessons.reduce((sum, l) => {
+    if (l.effectivenessMetrics && l.effectivenessMetrics.improvement_percentage) return sum + l.effectivenessMetrics.improvement_percentage;
+    return sum;
+  }, 0);
+  const avgImprovement = lessons.length > 0 ? Math.round(totalImprovement / lessons.length) : 0;
+  container.innerHTML = new KPICard({ title: 'Lecciones Registradas', value: lessons.length, icon: 'bi-lightbulb' }).render() +
+    new KPICard({ title: 'Mejoras Implementadas', value: implemented, icon: 'bi-check-circle', color: '#10b981' }).render() +
+    new KPICard({ title: 'En Progreso', value: inProgress, icon: 'bi-clock', color: '#f59e0b' }).render() +
+    new KPICard({ title: 'Impacto Promedio', value: avgImprovement + '%', icon: 'bi-graph-down-arrow', color: '#6366f1' }).render() +
+    new KPICard({ title: 'Tasa Efectividad', value: Math.round((implemented / Math.max(lessons.length, 1)) * 100) + '%', icon: 'bi-trophy', color: '#10b981' }).render();
+}
+
+function renderAprendizajesRepositorio() {
+  const container = document.getElementById('aprendizajes-repositorio');
+  if (!container) return;
+  const lessons = BCMSDataStore.entities.lessonsLearned || [];
+  const users = BCMSDataStore.entities.users || [];
+  
+  container.innerHTML = lessons.map(l => {
+    const user = users.find(u => u.id === l.responsibleId);
+    const statusBadge = l.status === 'validated' ? 'badge-success' : l.status === 'implemented' ? 'badge-info' : 'badge-warning';
+    const statusLabel = l.status === 'validated' ? 'Validada' : l.status === 'implemented' ? 'Implementada' : 'En Progreso';
+    const priorBadge = l.priority === 'high' ? 'badge-danger' : l.priority === 'medium' ? 'badge-warning' : 'badge-info';
+    const sourceLabel = l.sourceType === 'INCIDENT' ? 'Incidente' : l.sourceType === 'EXERCISE' ? 'Ejercicio' : l.sourceType;
+    const metrics = l.effectivenessMetrics || {};
+    
+    return `<div class="card mb-16">
+      <div class="card-header">
+        <div>
+          <h3 class="fs-14">${l.code} - ${l.title}</h3>
+          <div class="d-flex gap-8 mt-4">
+            <span class="badge ${priorBadge}">${l.priority}</span>
+            <span class="badge badge-secondary">${sourceLabel}</span>
+            <span class="badge ${statusBadge}">${statusLabel}</span>
+            <span class="fs-11 color-muted">${l.lessonDate}</span>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="this.closest('.card').querySelector('.lesson-detail').classList.toggle('d-none')"><i class="bi bi-chevron-down"></i> Detalle</button>
+      </div>
+      <div class="lesson-detail d-none p-20">
+        <div class="mb-16">
+          <h4 class="fs-13 fw-600 mb-8">Lección Aprendida</h4>
+          <p class="fs-13 color-secondary" style="line-height:1.6;">${l.description}</p>
+        </div>
+        <div class="d-grid grid-2-equal gap-20">
+          <div>
+            <h4 class="fs-13 fw-600 mb-8">Mejora Implementada</h4>
+            <p class="fs-12 color-secondary mb-8">${l.improvementActions || l.actionsTaken || '-'}</p>
+            <div class="fs-12"><strong>Responsable:</strong> ${user ? user.fullName : '-'}</div>
+            <div class="fs-12 mt-4"><strong>Estado:</strong> <span class="badge ${statusBadge}">${statusLabel}</span></div>
+          </div>
+          <div>
+            <h4 class="fs-13 fw-600 mb-8">Métricas de Efectividad</h4>
+            ${Object.keys(metrics).length > 0 ? Object.entries(metrics).map(([k, v]) => 
+              `<div class="d-flex jc-between fs-12 mb-4"><span class="color-muted">${k.replace(/_/g, ' ')}</span><span class="fw-600">${v}</span></div>`
+            ).join('') : '<p class="fs-12 color-muted">Sin métricas definidas</p>'}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAprendizajesInforme() {
+  const container = document.getElementById('aprendizajes-informe');
+  if (!container) return;
+  const lessons = BCMSDataStore.entities.lessonsLearned || [];
+  const implemented = lessons.filter(l => l.status === 'implemented' || l.status === 'validated').length;
+  const bySource = {};
+  lessons.forEach(l => { bySource[l.sourceType] = (bySource[l.sourceType] || 0) + 1; });
+  
+  container.innerHTML = `
+    <div class="d-grid grid-2-equal gap-20">
+      <div>
+        <h4 class="fs-13 fw-600 mb-12">Métricas Clave</h4>
+        <div class="d-flex jc-between fs-12 mb-8 pb-8 border-bottom-soft"><span>Total lecciones registradas</span><span class="fw-600">${lessons.length}</span></div>
+        <div class="d-flex jc-between fs-12 mb-8 pb-8 border-bottom-soft"><span>Mejoras implementadas</span><span class="fw-600 color-green">${implemented}</span></div>
+        <div class="d-flex jc-between fs-12 mb-8 pb-8 border-bottom-soft"><span>Tasa de cierre</span><span class="fw-600">${Math.round((implemented/Math.max(lessons.length,1))*100)}%</span></div>
+        ${Object.entries(bySource).map(([k,v]) => `<div class="d-flex jc-between fs-12 mb-8 pb-8 border-bottom-soft"><span>Fuente: ${k}</span><span class="fw-600">${v}</span></div>`).join('')}
+      </div>
+      <div>
+        <h4 class="fs-13 fw-600 mb-12">Resumen Ejecutivo</h4>
+        <p class="fs-12 color-secondary" style="line-height:1.6;">
+          El programa de lecciones aprendidas ha registrado <strong>${lessons.length}</strong> lecciones durante el período, 
+          de las cuales <strong>${implemented}</strong> ya han sido implementadas o validadas. 
+          La tasa de efectividad general del programa es del <strong>${Math.round((implemented/Math.max(lessons.length,1))*100)}%</strong>.
+        </p>
+      </div>
+    </div>`;
+}
+
+/**
+ * ============================================================================
+ * PRUEBAS Y SIMULACROS - Funciones de renderizado
+ * Vista: view-pruebas | Entidad: planTests + continuityPlans
+ * ============================================================================
+ */
+
+function renderPruebasView() {
+  renderPruebasKPIs();
+  renderPruebasCalendario();
+  renderPruebasEscenarios();
+  renderPruebasTable();
+}
+
+function renderPruebasKPIs() {
+  const container = document.getElementById('pruebas-kpis-container');
+  if (!container) return;
+  const tests = BCMSDataStore.entities.planTests || [];
+  const scheduled = tests.filter(t => t.status === 'SCHEDULED').length;
+  const completed = tests.filter(t => !t.status || t.status === 'COMPLETED');
+  const avgSuccess = completed.length > 0 ? Math.round(completed.reduce((s,t) => s + (t.successRatePct||0), 0) / completed.length) : 0;
+  const totalIssues = tests.reduce((s,t) => s + (t.issuesFound || 0), 0);
+  const nextTest = tests.filter(t => t.status === 'SCHEDULED').sort((a,b) => a.testDate > b.testDate ? 1 : -1)[0];
+  container.innerHTML = new KPICard({ title: 'Pruebas Programadas', value: tests.length, icon: 'bi-calendar-check' }).render() +
+    new KPICard({ title: 'Tasa Éxito', value: avgSuccess + '%', icon: 'bi-check-circle', color: '#10b981' }).render() +
+    new KPICard({ title: 'Hallazgos Abiertos', value: totalIssues, icon: 'bi-exclamation-triangle', color: '#f59e0b' }).render() +
+    new KPICard({ title: 'Próxima Prueba', value: nextTest ? nextTest.testDate.substring(5,10) : '-', icon: 'bi-calendar-event', color: '#6366f1' }).render();
+}
+
+function renderPruebasCalendario() {
+  const container = document.getElementById('pruebas-calendario');
+  if (!container) return;
+  const tests = BCMSDataStore.entities.planTests || [];
+  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const typeColors = { 'TABLETOP': '#8b5cf6', 'SIMULATION': '#f59e0b', 'FULL_EXERCISE': '#ef4444', 'TECHNICAL_TEST': '#3b82f6', 'WALKTHROUGH': '#10b981' };
+  
+  let html = '<div style="display:grid; grid-template-columns: repeat(12, 1fr); gap:8px;">';
+  months.forEach((m, i) => {
+    const monthTests = tests.filter(t => { const d = new Date(t.testDate); return d.getMonth() === i; });
+    html += `<div style="text-align:center; padding:8px 4px; background: ${monthTests.length > 0 ? '#f5f3ff' : '#f9fafb'}; border-radius:8px; border: 1px solid ${monthTests.length > 0 ? 'var(--accent-primary)' : '#e5e7eb'};">
+      <div class="fs-11 fw-600 mb-4">${m}</div>
+      ${monthTests.length > 0 ? monthTests.map(t => `<div style="width:8px;height:8px;border-radius:50%;background:${typeColors[t.testType]||'#6b7280'};margin:2px auto;" title="${t.title}"></div>`).join('') : '<div class="fs-10 color-muted">-</div>'}
+    </div>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function renderPruebasEscenarios() {
+  const container = document.getElementById('pruebas-escenarios');
+  if (!container) return;
+  const scenarios = [
+    { type: 'Tabletop', icon: 'bi-people', color: '#8b5cf6', desc: 'Ejercicio de mesa con escenarios hipotéticos y discusión grupal', duration: '2-4 horas', complexity: 'Baja' },
+    { type: 'Simulación', icon: 'bi-pc-display', color: '#f59e0b', desc: 'Prueba técnica con simulación parcial de disrupción en ambiente controlado', duration: '4-8 horas', complexity: 'Media' },
+    { type: 'Ejercicio Real', icon: 'bi-lightning', color: '#ef4444', desc: 'Ejecución completa del plan con activación real de procedimientos de recuperación', duration: '8-24 horas', complexity: 'Alta' }
+  ];
+  container.innerHTML = `<div class="d-grid grid-3-equal gap-16">` + scenarios.map(s => `
+    <div class="card" style="border-top: 3px solid ${s.color};">
+      <div class="p-16">
+        <div class="d-flex ai-center gap-8 mb-12"><i class="bi ${s.icon}" style="font-size:20px;color:${s.color}"></i><span class="fw-600 fs-14">${s.type}</span></div>
+        <p class="fs-12 color-secondary mb-12" style="line-height:1.5;">${s.desc}</p>
+        <div class="d-flex jc-between fs-11 color-muted"><span>Duración: ${s.duration}</span><span>Complejidad: ${s.complexity}</span></div>
+      </div>
+    </div>`).join('') + '</div>';
+}
+
+function renderPruebasTable() {
+  const tbody = document.getElementById('pruebas-tbody');
+  if (!tbody) return;
+  const tests = BCMSDataStore.entities.planTests || [];
+  const plans = BCMSDataStore.entities.continuityPlans || [];
+  const processes = BCMSDataStore.entities.processes || [];
+  
+  tbody.innerHTML = tests.map(t => {
+    const plan = plans.find(p => p.id === t.planId);
+    const proc = plan && plan.targetProcessId ? processes.find(p => p.id === plan.targetProcessId) : null;
+    const typeBadge = t.testType === 'TABLETOP' ? 'badge-purple' : t.testType === 'SIMULATION' ? 'badge-warning' : t.testType === 'FULL_EXERCISE' ? 'badge-danger' : 'badge-info';
+    const statusBadge = t.status === 'SCHEDULED' ? 'badge-info' : (t.successRatePct >= 90 ? 'badge-success' : t.successRatePct >= 70 ? 'badge-warning' : 'badge-danger');
+    const statusLabel = t.status === 'SCHEDULED' ? 'Programada' : (t.successRatePct >= 90 ? 'Exitosa' : t.successRatePct >= 70 ? 'Parcial' : 'Fallida');
+    return `<tr>
+      <td class="fs-12">${t.testDate}</td>
+      <td><span class="badge ${typeBadge}">${t.testType}</span></td>
+      <td class="fs-12">${plan ? plan.code : '-'} ${proc ? '/ ' + proc.name : ''}</td>
+      <td class="fs-12 text-center">${plan ? (plan.rtoTarget || '-') + 'h' : '-'}</td>
+      <td class="fs-12 text-center fw-600">${t.successRatePct ? Math.round(plan?.rtoTarget * (1 + (100 - t.successRatePct)/100)) + 'h' : '-'}</td>
+      <td class="fs-12 text-center">${plan ? (plan.rpoTarget || '-') + 'h' : '-'}</td>
+      <td class="fs-12 text-center fw-600">${t.successRatePct ? Math.round(plan?.rpoTarget * (1 + (100 - t.successRatePct)/200)) + 'h' : '-'}</td>
+      <td class="fs-12 text-center">${t.issuesFound || 0}</td>
+      <td><span class="badge ${statusBadge}">${statusLabel}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+/**
+ * ============================================================================
+ * RIA - ANÁLISIS DE RIESGOS - Funciones de renderizado
+ * Vista: view-ria | Entidad: risks (filtrado riskDomain !== 'CYBER')
+ * ============================================================================
+ */
+
+function renderRIAView() {
+  renderRIAKPIs();
+  renderRIATable();
+}
+
+function renderRIAKPIs() {
+  const container = document.getElementById('ria-kpis-container');
+  if (!container) return;
+  const risks = (BCMSDataStore.entities.risks || []).filter(r => r.riskDomain !== 'CYBER' && !r.code.startsWith('RCIBER'));
+  const open = risks.filter(r => r.status !== 'CLOSED').length;
+  const critical = risks.filter(r => r.inherentScore >= 20).length;
+  const treating = risks.filter(r => r.status === 'TREATING').length;
+  const highResidual = risks.filter(r => r.residualScore >= 15).length;
+  container.innerHTML = new KPICard({ title: 'Riesgos Registrados', value: risks.length, icon: 'bi-shield-exclamation' }).render() +
+    new KPICard({ title: 'Riesgos Críticos', value: critical, icon: 'bi-exclamation-triangle', color: '#ef4444' }).render() +
+    new KPICard({ title: 'En Tratamiento', value: treating, icon: 'bi-wrench', color: '#f59e0b' }).render() +
+    new KPICard({ title: 'Residual Alto', value: highResidual, icon: 'bi-arrow-up-circle', color: '#ef4444' }).render() +
+    new KPICard({ title: 'Monitoreados', value: risks.filter(r => r.status === 'MONITORED').length, icon: 'bi-eye', color: '#10b981' }).render();
+}
+
+function renderRIATable() {
+  const tbody = document.getElementById('ria-tbody');
+  if (!tbody) return;
+  const risks = (BCMSDataStore.entities.risks || []).filter(r => r.riskDomain !== 'CYBER' && !r.code.startsWith('RCIBER'));
+  const processes = BCMSDataStore.entities.processes || [];
+  
+  tbody.innerHTML = risks.map(r => {
+    const proc = processes.find(p => p.id === r.targetProcessId);
+    const inhBadge = r.inherentScore >= 20 ? 'badge-danger' : r.inherentScore >= 12 ? 'badge-warning' : r.inherentScore >= 6 ? 'badge-info' : 'badge-success';
+    const resBadge = r.residualScore >= 20 ? 'badge-danger' : r.residualScore >= 12 ? 'badge-warning' : r.residualScore >= 6 ? 'badge-info' : 'badge-success';
+    const statusBadge = r.status === 'TREATING' ? 'badge-warning' : r.status === 'MONITORED' ? 'badge-success' : 'badge-info';
+    const treatLabel = r.treatmentType === 'MITIGATE' ? 'Mitigar' : r.treatmentType === 'ACCEPT' ? 'Aceptar' : r.treatmentType === 'TRANSFER' ? 'Transferir' : r.treatmentType || '-';
+    return `<tr onclick="showDetalleRIA(${r.id})" style="cursor:pointer;">
+      <td class="fw-600">${r.code}</td>
+      <td class="fs-12">${r.title}</td>
+      <td class="fs-12">${proc ? proc.name : r.riskScope || '-'}</td>
+      <td class="fs-12">${r.riskDomain || '-'}</td>
+      <td class="text-center"><span class="badge ${inhBadge}">${r.inherentScore}</span></td>
+      <td class="text-center"><span class="badge ${resBadge}">${r.residualScore}</span></td>
+      <td class="fs-12">${treatLabel}</td>
+      <td><span class="badge ${statusBadge}">${r.status}</span></td>
+      <td><button class="btn btn-secondary btn-sm"><i class="bi bi-eye"></i></button></td>
+    </tr>`;
+  }).join('');
+}
+
+function showDetalleRIA(riskId) {
+  const panel = document.getElementById('detalle-ria');
+  if (!panel) return;
+  const r = BCMSDataStore.entities.risks.find(x => x.id === riskId);
+  if (!r) return;
+  const processes = BCMSDataStore.entities.processes || [];
+  const proc = processes.find(p => p.id === r.targetProcessId);
+  const controls = r.controls || [];
+  const allControls = BCMSDataStore.entities.controls || [];
+  
+  panel.innerHTML = `
+    <div class="card mb-24" style="border-left: 4px solid ${r.inherentScore >= 20 ? '#ef4444' : '#f59e0b'};">
+      <div class="card-header">
+        <div><h3><i class="bi bi-shield-exclamation"></i> ${r.code} - ${r.title}</h3></div>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('detalle-ria').classList.add('d-none')"><i class="bi bi-x"></i> Cerrar</button>
+      </div>
+      <div class="p-20">
+        <div class="d-grid grid-3-equal gap-16 mb-24">
+          <div><span class="fs-11 fw-600 color-muted">Proceso/Activo</span><div class="fs-13 mt-4">${proc ? proc.name : r.riskScope || '-'}</div></div>
+          <div><span class="fs-11 fw-600 color-muted">Dominio</span><div class="fs-13 mt-4">${r.riskDomain}</div></div>
+          <div><span class="fs-11 fw-600 color-muted">Estado</span><div class="mt-4"><span class="badge ${r.status === 'TREATING' ? 'badge-warning' : 'badge-success'}">${r.status}</span></div></div>
+          <div><span class="fs-11 fw-600 color-muted">Escenario</span><div class="fs-12 mt-4">${r.scenario || '-'}</div></div>
+          <div><span class="fs-11 fw-600 color-muted">Causa</span><div class="fs-12 mt-4">${r.cause || '-'}</div></div>
+          <div><span class="fs-11 fw-600 color-muted">Efecto</span><div class="fs-12 mt-4">${r.effect || '-'}</div></div>
+        </div>
+        <div class="d-grid grid-2-equal gap-20 mb-24">
+          <div class="card p-16" style="background:#fef2f2;border:1px solid #fecaca;">
+            <h4 class="fs-12 fw-600 color-danger mb-8">Riesgo Inherente</h4>
+            <div class="d-flex jc-between fs-12 mb-4"><span>Probabilidad</span><span class="fw-600">${r.inherentProbability}</span></div>
+            <div class="d-flex jc-between fs-12 mb-4"><span>Impacto</span><span class="fw-600">${r.inherentImpact}</span></div>
+            <div class="d-flex jc-between fs-13 fw-600 pt-8 border-top-soft"><span>Score</span><span>${r.inherentScore}</span></div>
+          </div>
+          <div class="card p-16" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+            <h4 class="fs-12 fw-600 color-green mb-8">Riesgo Residual</h4>
+            <div class="d-flex jc-between fs-12 mb-4"><span>Probabilidad</span><span class="fw-600">${r.residualProbability}</span></div>
+            <div class="d-flex jc-between fs-12 mb-4"><span>Impacto</span><span class="fw-600">${r.residualImpact}</span></div>
+            <div class="d-flex jc-between fs-13 fw-600 pt-8 border-top-soft"><span>Score</span><span>${r.residualScore}</span></div>
+          </div>
+        </div>
+        <div class="mb-16">
+          <h4 class="fs-13 fw-600 mb-8">Controles Identificados</h4>
+          ${controls.length > 0 ? `<table class="fs-12"><thead><tr><th>Control</th><th>Tipo</th><th>Efectividad</th></tr></thead><tbody>` +
+            controls.map(cId => {
+              const ctrl = allControls.find(c => c.id === cId || c.code === cId);
+              return ctrl ? `<tr><td>${ctrl.code} - ${ctrl.name}</td><td>${ctrl.type || '-'}</td><td>${ctrl.effectiveness || '-'}</td></tr>` : '';
+            }).join('') + `</tbody></table>` : '<p class="fs-12 color-muted">Sin controles vinculados</p>'}
+        </div>
+        <div>
+          <h4 class="fs-13 fw-600 mb-8">Plan de Tratamiento</h4>
+          <div class="fs-12"><strong>Estrategia:</strong> ${r.treatmentType || '-'}</div>
+        </div>
+      </div>
+    </div>`;
+  panel.classList.remove('d-none');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/**
+ * ============================================================================
+ * BIA - ANÁLISIS DE IMPACTO - Funciones de renderizado
+ * Vista: view-bia | Entidad: processes + biaDependencies
+ * ============================================================================
+ */
+
+function renderBIAResumen() {
+  const container = document.getElementById('bia-resumen-container');
+  if (!container) return;
+  const processes = (BCMSDataStore.entities.processes || []).filter(p => !p.isDeleted);
+  
+  container.innerHTML = `<table class="fs-12">
+    <thead><tr><th>Código</th><th>Proceso/Servicio</th><th>Criticidad</th><th>RTO (h)</th><th>MTPD (h)</th><th>Margen (h)</th><th>Cumplimiento</th></tr></thead>
+    <tbody>${processes.filter(p => p.businessCriticality === 'CRITICAL' || p.businessCriticality === 'HIGH').map(p => {
+      const rto = p.rto || (p.targetRtoMinutes ? p.targetRtoMinutes / 60 : null);
+      const mtpd = p.mtpdMinutes ? p.mtpdMinutes / 60 : (p.maximumTolerableDowntimeMinutes ? p.maximumTolerableDowntimeMinutes / 60 : null);
+      const margen = (rto !== null && mtpd !== null) ? Math.round((mtpd - rto) * 10) / 10 : null;
+      const cumple = margen !== null ? margen >= 0 : null;
+      const critBadge = p.businessCriticality === 'CRITICAL' ? 'badge-danger' : 'badge-warning';
+      return `<tr class="${cumple === false ? 'row-danger-bg' : ''}">
+        <td class="fw-600">${p.code}</td><td>${p.name}</td>
+        <td><span class="badge ${critBadge}">${p.businessCriticality}</span></td>
+        <td class="text-center">${rto !== null ? rto : '-'}</td>
+        <td class="text-center">${mtpd !== null ? mtpd : '-'}</td>
+        <td class="text-center ${margen !== null && margen < 0 ? 'color-danger fw-600' : 'color-green fw-600'}">${margen !== null ? (margen >= 0 ? '+' : '') + margen : '-'}</td>
+        <td class="text-center">${cumple === null ? '-' : cumple ? '<span class="badge badge-success">Cumple</span>' : '<span class="badge badge-danger">No cumple</span>'}</td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+/**
+ * ============================================================================
+ * BCP - PLANES DE CONTINUIDAD - Funciones de renderizado
+ * Vista: view-bcp | Entidad: continuityPlans + recoveryStrategies + activationCriteria
+ * ============================================================================
+ */
+
+function renderBCPKPIs() {
+  const container = document.getElementById('bcp-kpis-container');
+  if (!container) return;
+  const plans = (BCMSDataStore.entities.continuityPlans || []).filter(p => p.planType === 'BCP');
+  const active = plans.filter(p => p.status === 'ACTIVE').length;
+  const tests = BCMSDataStore.entities.planTests || [];
+  const testedPlanIds = [...new Set(tests.map(t => t.planId))];
+  const testedBCP = plans.filter(p => testedPlanIds.includes(p.id)).length;
+  const avgRto = plans.length > 0 ? Math.round(plans.reduce((s,p) => s + (p.rtoTarget || 0), 0) / plans.length * 10) / 10 : 0;
+  container.innerHTML = new KPICard({ title: 'Total Planes BCP', value: plans.length, icon: 'bi-journal-check' }).render() +
+    new KPICard({ title: 'Vigentes', value: active, icon: 'bi-check-circle', color: '#10b981' }).render() +
+    new KPICard({ title: 'Probados', value: testedBCP, icon: 'bi-clipboard-check', color: '#6366f1' }).render() +
+    new KPICard({ title: 'RTO Promedio', value: avgRto + 'h', icon: 'bi-clock-history', color: '#f59e0b' }).render() +
+    new KPICard({ title: 'Requieren Prueba', value: plans.length - testedBCP, icon: 'bi-exclamation-circle', color: '#ef4444' }).render();
+}
+
+/**
+ * ============================================================================
+ * INCIDENTES - Funciones de renderizado
+ * Vista: view-incidentes | Entidad: incidents
+ * ============================================================================
+ */
+
+function renderIncidentesView() {
+  renderIncidentesKPIs();
+  renderIncidentesBacklog();
+  renderIncidentesList();
+}
+
+function renderIncidentesKPIs() {
+  const container = document.getElementById('incidentes-kpis-container');
+  if (!container) return;
+  const incidents = BCMSDataStore.entities.incidents || [];
+  const active = incidents.filter(i => ['OPEN','IN_PROGRESS','ESCALATED'].includes(i.status)).length;
+  const critical = incidents.filter(i => i.severity === 'HIGH' && ['OPEN','IN_PROGRESS','ESCALATED'].includes(i.status)).length;
+  const resolved30d = incidents.filter(i => { if (!i.resolvedAt) return false; const d = new Date(i.resolvedAt); const now = new Date(); return (now - d) / 86400000 <= 30; }).length;
+  const closed = incidents.filter(i => i.status === 'CLOSED');
+  const avgResolve = closed.length > 0 ? Math.round(closed.filter(i => i.resolvedAt && i.reportedAt).reduce((s, i) => { return s + (new Date(i.resolvedAt) - new Date(i.reportedAt)) / 3600000; }, 0) / closed.filter(i => i.resolvedAt && i.reportedAt).length * 10) / 10 : 0;
+  const escalated = incidents.filter(i => i.status === 'ESCALATED').length;
+  container.innerHTML = new KPICard({ title: 'Activos', value: active, icon: 'bi-exclamation-diamond', color: '#ef4444' }).render() +
+    new KPICard({ title: 'Críticos', value: critical, icon: 'bi-exclamation-triangle', color: '#ef4444' }).render() +
+    new KPICard({ title: 'MTTR (h)', value: avgResolve, icon: 'bi-clock', color: '#f59e0b' }).render() +
+    new KPICard({ title: 'Resueltos 30d', value: resolved30d, icon: 'bi-check-circle', color: '#10b981' }).render() +
+    new KPICard({ title: 'Escalados', value: escalated, icon: 'bi-arrow-up-right', color: '#8b5cf6' }).render();
+}
+
+function renderIncidentesBacklog() {
+  const container = document.getElementById('incidentes-backlog');
+  if (!container) return;
+  const incidents = BCMSDataStore.entities.incidents || [];
+  const severities = ['HIGH', 'MEDIUM', 'LOW'];
+  const sevLabels = { HIGH: 'Alta', MEDIUM: 'Media', LOW: 'Baja' };
+  const sevColors = { HIGH: '#ef4444', MEDIUM: '#f59e0b', LOW: '#6366f1' };
+  
+  container.innerHTML = `<table class="fs-12"><thead><tr><th>Severidad</th><th>Abiertos</th><th>En Curso</th><th>Escalados</th><th>Resueltos</th><th>Cerrados</th></tr></thead><tbody>` +
+    severities.map(sev => {
+      const filtered = incidents.filter(i => i.severity === sev);
+      return `<tr>
+        <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sevColors[sev]};margin-right:6px;"></span>${sevLabels[sev]}</td>
+        <td class="text-center">${filtered.filter(i => i.status === 'OPEN').length}</td>
+        <td class="text-center">${filtered.filter(i => i.status === 'IN_PROGRESS').length}</td>
+        <td class="text-center">${filtered.filter(i => i.status === 'ESCALATED').length}</td>
+        <td class="text-center">${filtered.filter(i => i.status === 'RESOLVED').length}</td>
+        <td class="text-center">${filtered.filter(i => i.status === 'CLOSED').length}</td>
+      </tr>`;
+    }).join('') + '</tbody></table>';
+}
+
+function renderIncidentesList() {
+  const container = document.getElementById('incidentes-lista');
+  if (!container) return;
+  const incidents = BCMSDataStore.entities.incidents || [];
+  
+  container.innerHTML = incidents.sort((a, b) => new Date(b.reportedAt) - new Date(a.reportedAt)).map(inc => {
+    const sevColor = inc.severity === 'HIGH' ? '#ef4444' : inc.severity === 'MEDIUM' ? '#f59e0b' : '#6366f1';
+    const statusBadge = inc.status === 'CLOSED' ? 'badge-success' : inc.status === 'RESOLVED' ? 'badge-success' : inc.status === 'ESCALATED' ? 'badge-danger' : inc.status === 'IN_PROGRESS' ? 'badge-warning' : 'badge-info';
+    const statusLabel = inc.status === 'CLOSED' ? 'Cerrado' : inc.status === 'RESOLVED' ? 'Resuelto' : inc.status === 'ESCALATED' ? 'Escalado' : inc.status === 'IN_PROGRESS' ? 'En Curso' : 'Abierto';
+    return `<div class="card mb-8 p-12" style="border-left:3px solid ${sevColor};cursor:pointer;" onclick="selectIncidente(${inc.id})">
+      <div class="d-flex jc-between ai-center">
+        <div>
+          <div class="fw-600 fs-12">${inc.code}</div>
+          <div class="fs-11 color-muted" style="margin-top:2px;">${inc.title.substring(0, 40)}${inc.title.length > 40 ? '...' : ''}</div>
+        </div>
+        <span class="badge ${statusBadge} fs-10">${statusLabel}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectIncidente(id) {
+  const panel = document.getElementById('incidente-detalle');
+  if (!panel) return;
+  const inc = BCMSDataStore.entities.incidents.find(x => x.id === id);
+  if (!inc) return;
+  const users = BCMSDataStore.entities.users || [];
+  const processes = BCMSDataStore.entities.processes || [];
+  const reporter = users.find(u => u.id === inc.reportedBy);
+  const proc = processes.find(p => p.id === inc.affectedProcessId);
+  const sevBadge = inc.severity === 'HIGH' ? 'badge-danger' : inc.severity === 'MEDIUM' ? 'badge-warning' : 'badge-info';
+  
+  const workflowSteps = ['OPEN', 'IN_PROGRESS', 'ESCALATED', 'RESOLVED', 'CLOSED'];
+  const stepLabels = { OPEN: 'Abierto', IN_PROGRESS: 'En Curso', ESCALATED: 'Escalado', RESOLVED: 'Resuelto', CLOSED: 'Cerrado' };
+  const currentStepIdx = workflowSteps.indexOf(inc.status);
+  
+  panel.innerHTML = `
+    <div class="mb-16">
+      <h3 class="fs-16 fw-600 mb-4">${inc.code} - ${inc.title}</h3>
+      <div class="d-flex gap-8"><span class="badge ${sevBadge}">${inc.severity}</span><span class="badge badge-secondary">${inc.type}</span></div>
+    </div>
+    <div class="d-grid grid-3-equal gap-12 mb-16">
+      <div><span class="fs-11 color-muted">Reportado por</span><div class="fs-12 mt-2">${reporter ? reporter.fullName : '-'}</div></div>
+      <div><span class="fs-11 color-muted">Fecha Reporte</span><div class="fs-12 mt-2">${inc.reportedAt ? inc.reportedAt.substring(0, 10) : '-'}</div></div>
+      <div><span class="fs-11 color-muted">Proceso Afectado</span><div class="fs-12 mt-2">${proc ? proc.name : '-'}</div></div>
+    </div>
+    <div class="mb-16"><p class="fs-12 color-secondary" style="line-height:1.6;">${inc.description || ''}</p></div>
+    <div class="mb-16">
+      <h4 class="fs-12 fw-600 mb-8">Workflow</h4>
+      <div class="d-flex gap-4 ai-center">
+        ${workflowSteps.map((step, i) => {
+          const isActive = i <= currentStepIdx;
+          const isCurrent = i === currentStepIdx;
+          return `<div style="flex:1;text-align:center;">
+            <div style="height:6px;border-radius:3px;background:${isActive ? 'var(--accent-primary)' : '#e5e7eb'};${isCurrent ? 'box-shadow:0 0 0 2px var(--accent-primary);' : ''}"></div>
+            <div class="fs-10 mt-4 ${isActive ? 'fw-600' : 'color-muted'}">${stepLabels[step]}</div>
+          </div>${i < workflowSteps.length - 1 ? '' : ''}`;
+        }).join('')}
+      </div>
+    </div>
+    ${inc.impactDescription ? `<div class="mb-16"><h4 class="fs-12 fw-600 mb-4">Impacto</h4><p class="fs-12 color-secondary">${inc.impactDescription}</p></div>` : ''}
+    ${inc.rootCause ? `<div class="mb-16"><h4 class="fs-12 fw-600 mb-4">Causa Raíz</h4><p class="fs-12 color-secondary">${inc.rootCause}</p></div>` : ''}
+    ${inc.resolutionSummary ? `<div class="mb-16"><h4 class="fs-12 fw-600 mb-4">Resolución</h4><p class="fs-12 color-secondary">${inc.resolutionSummary}</p></div>` : ''}
+    <div class="d-flex gap-8 mt-16">
+      <button class="btn btn-primary btn-sm"><i class="bi bi-arrow-up-right"></i> Escalar</button>
+      <button class="btn btn-secondary btn-sm"><i class="bi bi-check-circle"></i> Marcar Resuelto</button>
+      <button class="btn btn-secondary btn-sm"><i class="bi bi-chat-dots"></i> Comentar</button>
+    </div>`;
+  
+  // Highlight selected in list
+  document.querySelectorAll('#incidentes-lista .card').forEach(c => c.style.background = '');
+  const cards = document.querySelectorAll('#incidentes-lista .card');
+  const idx = BCMSDataStore.entities.incidents.sort((a,b) => new Date(b.reportedAt) - new Date(a.reportedAt)).findIndex(i => i.id === id);
+  if (cards[idx]) cards[idx].style.background = '#f5f3ff';
+}
+
+function showIncidentesTab(tabName) {
+  document.querySelectorAll('.incidentes-tab').forEach(t => t.classList.add('d-none'));
+  const tab = document.getElementById('incidentes-tab-' + tabName);
+  if (tab) tab.classList.remove('d-none');
+  document.querySelectorAll('.incidentes-tab-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`.incidentes-tab-btn[data-tab="${tabName}"]`);
+  if (btn) btn.classList.add('active');
+}
+
+/**
+ * ============================================================================
+ * VISTA INTEGRADA - Funciones de renderizado
+ * Vista: view-vista-integrada | Entidades: risks, processes, continuityPlans, controls
+ * ============================================================================
+ */
+
+function renderVistaIntegradaView() {
+  renderVistaIntegradaContinuidad();
+  renderVistaIntegradaCiber();
+}
+
+function renderVistaIntegradaContinuidad() {
+  const container = document.getElementById('integrada-continuidad-stats');
+  if (!container) return;
+  const processes = (BCMSDataStore.entities.processes || []).filter(p => !p.isDeleted);
+  const criticalProcesses = processes.filter(p => p.businessCriticality === 'CRITICAL' || p.businessCriticality === 'HIGH').length;
+  const risks = (BCMSDataStore.entities.risks || []).filter(r => r.riskDomain !== 'CYBER' && !r.code.startsWith('RCIBER'));
+  const activeRisks = risks.filter(r => r.status !== 'CLOSED').length;
+  const plans = (BCMSDataStore.entities.continuityPlans || []).filter(p => p.planType === 'BCP');
+  const coverage = processes.length > 0 ? Math.round((plans.length / processes.length) * 100) : 0;
+  container.innerHTML = `
+    <div class="integrada-stat-card"><div class="integrada-stat-value">${criticalProcesses}</div><div class="integrada-stat-label">Procesos Críticos/Altos</div></div>
+    <div class="integrada-stat-card"><div class="integrada-stat-value">${activeRisks}</div><div class="integrada-stat-label">Riesgos Activos</div></div>
+    <div class="integrada-stat-card"><div class="integrada-stat-value">${Math.min(coverage, 100)}%</div><div class="integrada-stat-label">Cobertura BCP</div></div>`;
+}
+
+function renderVistaIntegradaCiber() {
+  const container = document.getElementById('integrada-ciber-stats');
+  if (!container) return;
+  const risks = (BCMSDataStore.entities.risks || []).filter(r => r.riskDomain === 'CYBER' || r.code.startsWith('RCIBER'));
+  const criticalCiber = risks.filter(r => r.inherentScore >= 15).length;
+  const controls = BCMSDataStore.entities.controls || [];
+  const activeControls = controls.filter(c => c.status === 'ACTIVE' || c.status === 'IMPLEMENTED').length;
+  const coverage = controls.length > 0 ? Math.round((activeControls / controls.length) * 100) : 0;
+  container.innerHTML = `
+    <div class="integrada-stat-card"><div class="integrada-stat-value">${risks.length}</div><div class="integrada-stat-label">Riesgos Ciber</div></div>
+    <div class="integrada-stat-card"><div class="integrada-stat-value">${criticalCiber}</div><div class="integrada-stat-label">Críticos Ciber</div></div>
+    <div class="integrada-stat-card"><div class="integrada-stat-value">${activeControls}</div><div class="integrada-stat-label">Controles Activos</div></div>
+    <div class="integrada-stat-card"><div class="integrada-stat-value">${coverage}%</div><div class="integrada-stat-label">Cobertura Controles</div></div>`;
+}
+
 console.log('functions.js cargado correctamente');
+

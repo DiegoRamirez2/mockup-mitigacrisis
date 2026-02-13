@@ -41,11 +41,11 @@ Consolidar en un solo documento:
   - Asociaciones proceso-org existen por tabla puente: `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:358`.
 - Impacto: potencial leakage entre tenants/clientes y dificultad para segmentar cumplimiento por organizacion.
 
-5. Trazabilidad regulatoria modelada como "estado agregado" y no como bitacora de envios.
+5. Trazabilidad regulatoria (ajustada con bitacora de envios).
 - Evidencia:
-  - `incident_regulatory_reports`: `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:1387`.
-  - Campos de hitos en una sola fila (early/second/action/final): `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:1402` a `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:1409`.
-- Impacto: auditoria y prueba legal debiles para DS 295 cuando existan reenvios, parciales y correcciones.
+  - `incident_regulatory_reports`: `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:1392`.
+  - `incident_regulatory_submissions`: `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:1441`.
+- Impacto actual: se fortalece trazabilidad legal por envio/reenvio; se mantiene como mejora futura normalizar autoridades/plantillas por lookup.
 
 ### 3.3 Medios
 6. Polimorfismo no uniforme entre modulos (listas distintas de `entity_type` / `scope_type`).
@@ -102,8 +102,9 @@ Consolidar en un solo documento:
 - `ria_items`: `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:1286`
 
 4. Base inicial de cumplimiento regulatorio de incidentes:
-- `incidents` campos regulatorios: `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:1361`
-- `incident_regulatory_reports`: `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:1387`
+- `incidents` campos regulatorios: `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:1342`
+- `incident_regulatory_reports`: `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:1392`
+- `incident_regulatory_submissions`: `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:1441`
 
 ### 3.5 Estado tras ajustes pequeños (2026-02-11)
 Resueltos en esta iteracion (sin compilacion):
@@ -134,6 +135,9 @@ Resueltos en esta iteracion (sin compilacion):
 8. Base de Pérdida (pendiente 9):
   - Nueva tabla `loss_events` como extension `[EXT_BE]`: `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:1469`
   - Alcance aplicado: sin `loss_event_impacts` en esta iteracion.
+9. Trazabilidad regulatoria detallada (pendiente 4):
+  - Nueva tabla `incident_regulatory_submissions` como bitacora por envio: `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:1441`
+  - Se mantiene `incident_regulatory_reports` como cabecera/resumen del caso.
 
 ## 4) Mapa de solapes y posibles consolidaciones
 
@@ -303,11 +307,12 @@ Nota: se listan requerimientos operativos/compliance relevantes para sujetos obl
 ## 7) Contraste rapido v11 vs norma (estado actual)
 
 1. Reportabilidad y plazos 3h/24-72h/15d.
-- Estado: Parcialmente cubierto.
+- Estado: Cubierto a nivel estructural.
 - Evidencia:
   - `incidents`: `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:1342`
   - `incident_regulatory_reports`: `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:1392`
-- Brecha: falta granularidad por envio (multi-registro) para auditoria fuerte.
+  - `incident_regulatory_submissions`: `mockup_v2/docs/BCMS_PostgreSQL_schema_v11.sql:1441`
+- Brecha residual: definir en backend reglas de obligatoriedad por hito/plazo y consistencia de estados.
 
 2. Criterios de efecto significativo.
 - Estado: Parcial.
@@ -339,8 +344,8 @@ Nota: se listan requerimientos operativos/compliance relevantes para sujetos obl
 - Brecha: falta clasificacion formal de confidencialidad y reglas de acceso por nivel legal.
 
 ## 8) Lista de tareas derivadas (solo a nivel tablas/columnas por ahora)
-1. Crear detalle de envios regulatorios (tabla hija de `incident_regulatory_reports`) para auditoria de cada hito/reporte parcial.
-2. Validar en reglas de backend que `bia_dependency_assessments` no se use para crear baseline paralelo.
+1. Validar en reglas de backend que `bia_dependency_assessments` no se use para crear baseline paralelo.
+2. Evaluar normalizacion de `reporting_authority` y plantilla taxonomica por version (lookup + plantilla).
 
 ## 9) Observaciones de uso
 - Este documento es una foto de estado para no perder decisiones.

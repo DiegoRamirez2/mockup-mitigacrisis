@@ -15,7 +15,7 @@ class KPICard {
    * @param {string} config.label - Etiqueta del KPI
    * @param {string|number} config.value - Valor principal del KPI
    * @param {string} [config.subtitle] - Subtítulo opcional
-   * @param {string} [config.icon] - Ícono Font Awesome (ej: 'fa-chart-line')
+   * @param {string} [config.icon] - Ícono Bootstrap Icons (ej: 'bi-graph-up')
    * @param {string} [config.color] - Color de acento (primary, secondary, success, warning, danger, info)
    * @param {string} [config.trend] - Tendencia: 'up', 'down', 'neutral'
    * @param {string} [config.trendText] - Texto de la tendencia
@@ -52,7 +52,7 @@ class KPICard {
     if (this.config.icon) {
       const iconEl = document.createElement('div');
       iconEl.className = 'kpi-icon';
-      iconEl.innerHTML = `<i class="fa-solid ${this.config.icon}"></i>`;
+      iconEl.innerHTML = `<i class="bi ${this.config.icon}"></i>`;
       
       // Aplicar color si está definido
       if (this.config.color) {
@@ -89,7 +89,7 @@ class KPICard {
       if (this.config.trend) {
         const trendIcon = this.getTrendIcon(this.config.trend);
         const trendColor = this.getTrendColor(this.config.trend);
-        subtitleEl.innerHTML = `<i class="fa-solid ${trendIcon}" style="color: ${trendColor};"></i> `;
+        subtitleEl.innerHTML = `<i class="bi ${trendIcon}" style="color: ${trendColor};"></i> `;
       }
       
       // Texto del subtitle
@@ -133,11 +133,11 @@ class KPICard {
    */
   getTrendIcon(trend) {
     const icons = {
-      'up': 'fa-arrow-trend-up',
-      'down': 'fa-arrow-trend-down',
-      'neutral': 'fa-minus'
+      'up': 'bi-graph-up-arrow',
+      'down': 'bi-graph-down-arrow',
+      'neutral': 'bi-dash'
     };
-    return icons[trend] || 'fa-minus';
+    return icons[trend] || 'bi-dash';
   }
 
   /**
@@ -199,3 +199,4 @@ function renderKPIGrid(container, kpisConfig) {
 // Exportar para uso global
 window.KPICard = KPICard;
 window.renderKPIGrid = renderKPIGrid;
+

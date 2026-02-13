@@ -184,6 +184,10 @@ Sin pendientes en este bloque por ahora.
    - Se creó `loss_events` como extensión `[EXT_BE]` para Base de Pérdida (BBPP).
    - Se conectó a `organizations`, `risks`, `incidents` y proceso objetivo polimórfico.
    - Se decidió no crear `loss_event_impacts` en esta iteración para evitar solape con `incident_impacts`.
+21. Pendiente 4 ejecutado:
+   - Se mantuvo `incident_regulatory_reports` como cabecera/resumen de caso regulatorio.
+   - Se creó `incident_regulatory_submissions` como bitácora por envío regulatorio.
+   - Se incorporaron etapas: `EARLY_ALERT`, `SECOND_REPORT`, `PARTIAL_UPDATE`, `ACTION_PLAN`, `FINAL_REPORT`, `ADDITIONAL_INFO`, `OTHER`.
 
 ## 7) Criterios para aceptar cada fase
 
@@ -256,27 +260,32 @@ Resultado:
 1. Ownership organizacional explícito en el núcleo de perfil BCMS y riesgos.
 2. Sin cambios en catálogos técnicos/globales.
 
-### 9.4 Pendiente 4 - Trazabilidad regulatoria de reportes (Ley 21.663/DS 295)
+### 9.4 Pendiente 4 - Trazabilidad regulatoria de reportes (Ley 21.663/DS 295) (**Completado**)
 Objetivo:
 - Mejorar trazabilidad de envíos regulatorios sin tocar aún constraints avanzadas.
 
-Problema actual:
-- `incident_regulatory_reports` concentra varios hitos en una sola fila.
-- Falta bitácora detallada por envío/reenvío/parcial.
+Problema resuelto:
+- `incident_regulatory_reports` concentra hitos, pero ahora se complementa con detalle por envío.
+- Se cubre traza de envío/reenvío/parcial por registro individual.
 
-Modelo propuesto:
+Modelo aplicado:
 1. Mantener `incident_regulatory_reports` como cabecera del caso regulatorio.
 2. Agregar tabla hija tipo `incident_regulatory_submissions` para cada envío.
 
-Columnas base sugeridas de la hija:
+Columnas aplicadas en la hija:
 - `id_submission` BIGINT identity PK.
 - `id_incident_reg_report` BIGINT FK a cabecera.
-- `submission_stage` (EARLY_ALERT, SECOND_REPORT, PARTIAL_UPDATE, ACTION_PLAN, FINAL_REPORT).
+- `submission_stage` (EARLY_ALERT, SECOND_REPORT, PARTIAL_UPDATE, ACTION_PLAN, FINAL_REPORT, ADDITIONAL_INFO, OTHER).
 - `submitted_at`.
 - `due_at_snapshot`.
+- `reporting_authority`.
 - `authority_reference`.
 - `payload_json`.
 - `status_lu`.
+- `response_received_at`.
+- `response_reference`.
+- `is_resubmission`.
+- `notes`.
 - Auditoría estándar (`created_at`, `updated_at`, `created_by`, `updated_by`, `deleted_at`, `deleted_by`, `is_deleted`).
 
 ### 9.5 Pendiente 5 - Normalizar polimorfismo (`entity_type` / `scope_type`) (**Completado en tablas objetivo**)
@@ -385,4 +394,4 @@ Ajuste:
 2. Mantener coherencia con el resto de tablas legacy de proceso.
 
 ## 10) Orden sugerido de ejecución (sin compilar)
-1. Pendiente 4 (bitácora regulatoria detallada).
+1. Sin pendientes visuales priorizados en este ciclo.

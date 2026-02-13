@@ -14,7 +14,7 @@ class HierarchyTree {
    * @param {Object} config - Configuración del árbol
    * @param {string} config.container - Selector CSS del contenedor
    * @param {Array} config.data - Datos jerárquicos [{id, name, children: [...]}]
-   * @param {Object} [config.icons] - Íconos por nivel {level0: 'fa-icon', level1: '...'}
+   * @param {Object} [config.icons] - Íconos por nivel {level0: 'bi-icon', level1: '...'}
    * @param {Object} [config.colors] - Colores por nivel
    * @param {Function} [config.onNodeClick] - Callback al hacer clic en nodo
    * @param {Function} [config.onNodeExpand] - Callback al expandir/colapsar
@@ -26,11 +26,11 @@ class HierarchyTree {
       container: null,
       data: [],
       icons: {
-        level0: 'fa-building',
-        level1: 'fa-diagram-project',
-        level2: 'fa-sitemap',
-        level3: 'fa-list-check',
-        default: 'fa-folder'
+        level0: 'bi-building',
+        level1: 'bi-diagram-3',
+        level2: 'bi-diagram-3',
+        level3: 'bi-list-check',
+        default: 'bi-folder'
       },
       colors: {
         level0: '#1f6feb',
@@ -97,7 +97,7 @@ class HierarchyTree {
         color: var(--text-muted);
       `;
       emptyState.innerHTML = `
-        <i class="fa-solid fa-folder-open" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+        <i class="bi bi-folder2-open" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
         <p>${this.config.emptyMessage}</p>
       `;
       this.containerEl.appendChild(emptyState);
@@ -181,7 +181,7 @@ class HierarchyTree {
       `;
       
       const isExpanded = this.expandedNodes.has(node.id);
-      expandBtn.innerHTML = `<i class="fa-solid fa-chevron-${isExpanded ? 'down' : 'right'}"></i>`;
+      expandBtn.innerHTML = `<i class="bi bi-chevron-${isExpanded ? 'down' : 'right'}"></i>`;
       
       nodeEl.appendChild(expandBtn);
     } else {
@@ -208,7 +208,7 @@ class HierarchyTree {
       color: ${iconColor};
       font-size: 14px;
     `;
-    icon.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
+    icon.innerHTML = `<i class="bi ${iconClass}"></i>`;
     nodeEl.appendChild(icon);
 
     // Nombre del nodo
@@ -426,3 +426,4 @@ class HierarchyTree {
 
 // Exportar para uso global
 window.HierarchyTree = HierarchyTree;
+

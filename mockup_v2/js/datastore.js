@@ -241,12 +241,12 @@ const BCMSDataStore = {
 
     // Tipos de recursos (resource types)
     resourceTypes: [
-      { id: 1, code: 'PERSONNEL', label: 'Personal', icon: 'fa-users' },
-      { id: 2, code: 'FACILITY', label: 'Instalaciones', icon: 'fa-building' },
-      { id: 3, code: 'TECHNOLOGY', label: 'Tecnología', icon: 'fa-laptop' },
-      { id: 4, code: 'EQUIPMENT', label: 'Equipamiento', icon: 'fa-toolbox' },
-      { id: 5, code: 'INVENTORY', label: 'Inventario', icon: 'fa-boxes' },
-      { id: 6, code: 'SUPPLIER', label: 'Proveedor', icon: 'fa-handshake' }
+      { id: 1, code: 'PERSONNEL', label: 'Personal', icon: 'bi-persons' },
+      { id: 2, code: 'FACILITY', label: 'Instalaciones', icon: 'bi-building' },
+      { id: 3, code: 'TECHNOLOGY', label: 'Tecnología', icon: 'bi-laptop' },
+      { id: 4, code: 'EQUIPMENT', label: 'Equipamiento', icon: 'bi-toolbox' },
+      { id: 5, code: 'INVENTORY', label: 'Inventario', icon: 'bi-boxes' },
+      { id: 6, code: 'SUPPLIER', label: 'Proveedor', icon: 'bi-people' }
     ],
 
     // Tipos de capacitación (training types)
@@ -2501,6 +2501,57 @@ const BCMSDataStore = {
         impactDescription: '45 usuarios afectados en teletrabajo',
         rootCause: 'Configuración incorrecta de timeout en concentrador VPN',
         resolutionSummary: 'Ajuste de parámetros de keep-alive'
+      },
+      {
+        id: 9,
+        code: 'INC-2025-009',
+        title: 'Fallo en sistema de pagos internacionales',
+        description: 'Sistema SWIFT presentó errores intermitentes durante procesamiento batch de transferencias',
+        type: 'APPLICATION',
+        severity: 'HIGH',
+        status: 'OPEN',
+        reportedAt: '2025-01-20T09:15:00Z',
+        reportedBy: 2,
+        affectedProcessId: 1,
+        impactDescription: 'Transacciones internacionales represadas por 4 horas'
+      },
+      {
+        id: 10,
+        code: 'INC-2025-010',
+        title: 'Intento de phishing dirigido a alta gerencia',
+        description: 'Campaña de spear phishing detectada con emails suplantando al CEO, 3 usuarios reportaron el correo',
+        type: 'SECURITY',
+        severity: 'HIGH',
+        status: 'ESCALATED',
+        reportedAt: '2025-01-25T11:30:00Z',
+        reportedBy: 4,
+        impactDescription: 'Sin impacto confirmado, investigación en curso por CISO'
+      },
+      {
+        id: 11,
+        code: 'INC-2025-011',
+        title: 'Degradación de rendimiento en portal clientes',
+        description: 'Tiempos de respuesta del portal web incrementados en 300%, afectando consultas de saldo',
+        type: 'APPLICATION',
+        severity: 'MEDIUM',
+        status: 'IN_PROGRESS',
+        reportedAt: '2025-02-01T08:45:00Z',
+        reportedBy: 1,
+        affectedProcessId: 3,
+        impactDescription: 'Experiencia de usuario degradada, sin pérdida de datos'
+      },
+      {
+        id: 12,
+        code: 'INC-2025-012',
+        title: 'Corte eléctrico en datacenter secundario',
+        description: 'Falla del suministro eléctrico comercial y retraso de 8 minutos en activación de generador de respaldo',
+        type: 'INFRASTRUCTURE',
+        severity: 'LOW',
+        status: 'RESOLVED',
+        reportedAt: '2025-02-05T03:20:00Z',
+        reportedBy: 3,
+        resolvedAt: '2025-02-05T03:28:00Z',
+        impactDescription: 'Interrupción breve de servicios no críticos, UPS mantuvo sistemas core'
       }
     ],
 
@@ -3241,7 +3292,86 @@ const BCMSDataStore = {
         title: 'Excelente gestión de incidente reciente',
         description: 'La respuesta al incidente INC-2024-001 demostró madurez del SGCN',
         severity: 'INFO',
-        status: 'CLOSED'
+        status: 'CLOSED',
+        relatedRequirementCode: 'ISO 22301:8.4',
+        responsibleUserId: 3,
+        dueDate: null,
+        closedAt: '2024-11-20'
+      },
+      {
+        id: 4,
+        code: 'FND-2025-001',
+        auditId: 2,
+        findingType: 'NC_MAJOR',
+        title: 'BIA no actualizado para procesos críticos',
+        description: 'El análisis de impacto en el negocio (BIA) de 3 procesos críticos no ha sido actualizado en más de 18 meses, incumpliendo la política de revisión anual',
+        severity: 'HIGH',
+        status: 'IN_PROGRESS',
+        relatedRequirementCode: 'ISO 22301:8.2.2',
+        rootCause: 'Falta de asignación de responsable y seguimiento periódico',
+        recommendation: 'Asignar responsables por proceso y establecer calendario de actualización',
+        responsibleUserId: 2,
+        dueDate: '2025-03-15'
+      },
+      {
+        id: 5,
+        code: 'FND-2025-002',
+        auditId: 2,
+        findingType: 'NC_MINOR',
+        title: 'Documentación de pruebas incompleta',
+        description: 'Los registros de 2 pruebas de simulacro no incluyen métricas de RTO/RPO alcanzado ni evaluación de efectividad',
+        severity: 'MEDIUM',
+        status: 'OPEN',
+        relatedRequirementCode: 'ISO 22301:8.5',
+        rootCause: 'Formato de informe de prueba incompleto',
+        recommendation: 'Actualizar plantilla de informe post-ejercicio incluyendo campos obligatorios',
+        responsibleUserId: 4,
+        dueDate: '2025-02-28'
+      },
+      {
+        id: 6,
+        code: 'FND-2025-003',
+        auditId: 3,
+        findingType: 'NC_MINOR',
+        title: 'Control de accesos sin revisión periódica',
+        description: 'No existe evidencia de revisión semestral de permisos de acceso a sistemas críticos del BCMS',
+        severity: 'MEDIUM',
+        status: 'OPEN',
+        relatedRequirementCode: 'ISO 27001:A.9.2.5',
+        rootCause: 'Proceso de recertificación no implementado',
+        recommendation: 'Implementar proceso de recertificación semestral de accesos',
+        responsibleUserId: 1,
+        dueDate: '2025-04-30'
+      },
+      {
+        id: 7,
+        code: 'FND-2025-004',
+        auditId: 3,
+        findingType: 'NC_MAJOR',
+        title: 'Proveedores críticos sin plan de contingencia',
+        description: '2 de 5 proveedores clasificados como críticos no cuentan con plan de contingencia evaluado ni alternativa documentada',
+        severity: 'HIGH',
+        status: 'IN_PROGRESS',
+        relatedRequirementCode: 'ISO 22301:8.3.5',
+        rootCause: 'Proceso de evaluación de proveedores no incluye requisitos de contingencia',
+        recommendation: 'Incluir evaluación de planes de contingencia en proceso de onboarding de proveedores críticos',
+        responsibleUserId: 5,
+        dueDate: '2025-03-31'
+      },
+      {
+        id: 8,
+        code: 'FND-2025-005',
+        auditId: 3,
+        findingType: 'OBSERVATION',
+        title: 'Oportunidad de mejora en comunicaciones de crisis',
+        description: 'Las plantillas de comunicación no incluyen canales alternativos ante falla del email corporativo',
+        severity: 'LOW',
+        status: 'OPEN',
+        relatedRequirementCode: 'ISO 22301:8.4.3',
+        rootCause: 'Diseño original no contempló escenario de falla del canal principal',
+        recommendation: 'Agregar canales SMS y WhatsApp como alternativa en plantillas de crisis',
+        responsibleUserId: 3,
+        dueDate: '2025-05-15'
       }
     ],
 
@@ -3286,6 +3416,60 @@ const BCMSDataStore = {
         actionType: 'IMPROVEMENT',
         description: 'Implementar plataforma de gestión de capacitaciones',
         ownerUserId: 1,
+        dueDate: '2025-03-31',
+        status: 'NOT_STARTED'
+      },
+      {
+        id: 5,
+        findingId: 4,
+        actionType: 'CORRECTIVE',
+        description: 'Actualizar BIA de los 3 procesos críticos identificados',
+        ownerUserId: 2,
+        dueDate: '2025-02-28',
+        status: 'IN_PROGRESS'
+      },
+      {
+        id: 6,
+        findingId: 4,
+        actionType: 'PREVENTIVE',
+        description: 'Implementar alerta automática de vencimiento de BIA por proceso',
+        ownerUserId: 1,
+        dueDate: '2025-03-15',
+        status: 'NOT_STARTED'
+      },
+      {
+        id: 7,
+        findingId: 5,
+        actionType: 'CORRECTIVE',
+        description: 'Completar registros de pruebas con métricas RTO/RPO alcanzado',
+        ownerUserId: 4,
+        dueDate: '2025-02-15',
+        status: 'IN_PROGRESS'
+      },
+      {
+        id: 8,
+        findingId: 6,
+        actionType: 'CORRECTIVE',
+        description: 'Ejecutar revisión de permisos de acceso a sistemas BCMS',
+        ownerUserId: 1,
+        dueDate: '2025-03-31',
+        status: 'NOT_STARTED'
+      },
+      {
+        id: 9,
+        findingId: 7,
+        actionType: 'CORRECTIVE',
+        description: 'Evaluar planes de contingencia de proveedores críticos faltantes',
+        ownerUserId: 5,
+        dueDate: '2025-03-15',
+        status: 'IN_PROGRESS'
+      },
+      {
+        id: 10,
+        findingId: 7,
+        actionType: 'PREVENTIVE',
+        description: 'Actualizar checklist de onboarding de proveedores con requisitos de contingencia',
+        ownerUserId: 5,
         dueDate: '2025-03-31',
         status: 'NOT_STARTED'
       }
@@ -4662,3 +4846,4 @@ console.log('BCMSDataStore v2.1 cargado correctamente');
 console.log(`   - Entidades: ${Object.keys(BCMSDataStore.entities).length}`);
 console.log(`   - Lookups: ${Object.keys(BCMSDataStore.lookups).length}`);
 console.log('   - Cumple ISO 22301:2019 [OK]');
+

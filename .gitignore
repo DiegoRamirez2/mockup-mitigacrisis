@@ -1,2 +1,7 @@
 
 .conda/envs/bcms-tools/
+.codex/
+.conda/
+.cursor/
+.github/
+.vscode/

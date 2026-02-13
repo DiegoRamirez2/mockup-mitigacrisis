@@ -187,11 +187,11 @@ function renderBCMSDiffText(diff, color) {
   const container = document.getElementById('indiceBCMS-diff');
   if (!container) return;
   
-  const icon = diff >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+  const icon = diff >= 0 ? 'bi-arrow-up' : 'bi-arrow-down';
   const text = diff >= 0 ? `+${diff}% sobre meta` : `${Math.abs(diff)}% bajo meta`;
   
   container.innerHTML = `
-    <i class="fa-solid ${icon}" style="color: ${color};"></i>
+    <i class="bi ${icon}" style="color: ${color};"></i>
     <span style="color: ${color};">${text}</span>
   `;
 }

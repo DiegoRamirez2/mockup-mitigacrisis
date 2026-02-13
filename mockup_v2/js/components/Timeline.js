@@ -32,11 +32,11 @@ class Timeline {
         'default': '#64748b'
       },
       typeIcons: {
-        'info': 'fa-circle-info',
-        'success': 'fa-circle-check',
-        'warning': 'fa-triangle-exclamation',
-        'danger': 'fa-circle-exclamation',
-        'default': 'fa-circle'
+        'info': 'bi-info-circle-fill',
+        'success': 'bi-check-circle-fill',
+        'warning': 'bi-exclamation-triangle-fill',
+        'danger': 'bi-exclamation-circle-fill',
+        'default': 'bi-circle-fill'
       },
       showDate: true,
       showTime: true,
@@ -83,7 +83,7 @@ class Timeline {
         color: var(--text-muted);
       `;
       emptyState.innerHTML = `
-        <i class="fa-solid fa-clock" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+        <i class="bi bi-clock" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
         <p>${this.config.emptyMessage}</p>
       `;
       this.containerEl.appendChild(emptyState);
@@ -174,7 +174,7 @@ class Timeline {
       font-size: 10px;
       z-index: 1;
     `;
-    dot.innerHTML = `<i class="fa-solid ${dotIcon}"></i>`;
+    dot.innerHTML = `<i class="bi ${dotIcon}"></i>`;
     eventEl.appendChild(dot);
 
     // Contenido del evento
@@ -229,7 +229,7 @@ class Timeline {
         dateStr += (dateStr ? ' • ' : '') + timeStr;
       }
       
-      dateEl.innerHTML = `<i class="fa-solid fa-clock"></i> ${dateStr}`;
+      dateEl.innerHTML = `<i class="bi bi-clock"></i> ${dateStr}`;
       content.appendChild(dateEl);
     }
 
@@ -257,10 +257,10 @@ class Timeline {
       
       const metaItems = [];
       if (event.metadata.user) {
-        metaItems.push(`<i class="fa-solid fa-user"></i> ${event.metadata.user}`);
+        metaItems.push(`<i class="bi bi-person"></i> ${event.metadata.user}`);
       }
       if (event.metadata.status) {
-        metaItems.push(`<i class="fa-solid fa-circle-dot"></i> ${event.metadata.status}`);
+        metaItems.push(`<i class="bi bi-record-circle"></i> ${event.metadata.status}`);
       }
       if (event.metadata.tags) {
         event.metadata.tags.forEach(tag => {
@@ -332,3 +332,4 @@ class Timeline {
 
 // Exportar para uso global
 window.Timeline = Timeline;
+

@@ -37,7 +37,7 @@ class DynamicTable {
       pagination: { enabled: false, pageSize: 10 },
       onRowClick: null,
       data: [],
-      emptyState: { icon: 'fa-inbox', message: 'No hay datos disponibles' },
+      emptyState: { icon: 'bi-inbox', message: 'No hay datos disponibles' },
       showResetButton: true,
       tableId: 'dynamic-table-' + Date.now(),
       ...config
@@ -166,7 +166,7 @@ class DynamicTable {
       const resetBtn = document.createElement('button');
       resetBtn.type = 'button';
       resetBtn.className = 'btn btn-secondary btn-sm';
-      resetBtn.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Limpiar';
+      resetBtn.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Limpiar';
       resetBtn.addEventListener('click', () => this.resetFilters());
       
       resetWrapper.appendChild(resetBtn);
@@ -392,7 +392,7 @@ class DynamicTable {
       if (col.sortable !== false) {
         th.classList.add('sortable');
         const sortIcon = document.createElement('i');
-        sortIcon.className = 'fa-solid fa-sort sort-icon';
+        sortIcon.className = 'bi bi-arrow-down-up sort-icon';
         headerContent.appendChild(sortIcon);
 
         th.addEventListener('click', () => this.handleSort(col.key));
@@ -546,7 +546,7 @@ class DynamicTable {
       emptyCell.colSpan = this.config.columns.length;
       emptyCell.innerHTML = `
         <div class="empty-state">
-          <i class="fa-solid ${this.config.emptyState.icon}"></i>
+          <i class="bi ${this.config.emptyState.icon}"></i>
           <p>${this.config.emptyState.message}</p>
         </div>
       `;
@@ -607,9 +607,9 @@ class DynamicTable {
       case 'icon':
         const icon = document.createElement('i');
         if (value) {
-          icon.className = `fa-solid ${col.iconTrue || 'fa-check'} icon-success`;
+          icon.className = `bi ${col.iconTrue || 'bi-check2'} icon-success`;
         } else {
-          icon.className = `fa-solid ${col.iconFalse || 'fa-times'} icon-danger`;
+          icon.className = `bi ${col.iconFalse || 'bi-x-lg'} icon-danger`;
         }
         container.appendChild(icon);
         break;
@@ -673,7 +673,7 @@ class DynamicTable {
           btn.type = 'button';
           btn.className = `action-btn ${action.class || ''}`;
           btn.title = action.tooltip || action.label || '';
-          btn.innerHTML = action.icon ? `<i class="fa-solid ${action.icon}"></i>` : action.label;
+          btn.innerHTML = action.icon ? `<i class="bi ${action.icon}"></i>` : action.label;
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (action.onClick) action.onClick(row, e);
@@ -720,9 +720,9 @@ class DynamicTable {
       if (!icon) return;
 
       if (th.dataset.column === this.state.sortColumn) {
-        icon.className = `fa-solid fa-sort-${this.state.sortDirection === 'asc' ? 'up' : 'down'} sort-icon active`;
+        icon.className = `bi bi-sort-${this.state.sortDirection === 'asc' ? 'up' : 'down'} sort-icon active`;
       } else {
-        icon.className = 'fa-solid fa-sort sort-icon';
+        icon.className = 'bi bi-arrow-down-up sort-icon';
       }
     });
   }
@@ -761,7 +761,7 @@ class DynamicTable {
     const prevBtn = document.createElement('button');
     prevBtn.type = 'button';
     prevBtn.className = 'pagination-btn';
-    prevBtn.innerHTML = '<i class="fa-solid fa-chevron-left"></i>';
+    prevBtn.innerHTML = '<i class="bi bi-chevron-left"></i>';
     prevBtn.disabled = currentPage === 1;
     prevBtn.addEventListener('click', () => this.goToPage(currentPage - 1));
     buttons.appendChild(prevBtn);
@@ -803,7 +803,7 @@ class DynamicTable {
     const nextBtn = document.createElement('button');
     nextBtn.type = 'button';
     nextBtn.className = 'pagination-btn';
-    nextBtn.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
+    nextBtn.innerHTML = '<i class="bi bi-chevron-right"></i>';
     nextBtn.disabled = currentPage === totalPages;
     nextBtn.addEventListener('click', () => this.goToPage(currentPage + 1));
     buttons.appendChild(nextBtn);
@@ -966,3 +966,4 @@ class DynamicTable {
 
 // Exportar para uso global
 window.DynamicTable = DynamicTable;
+

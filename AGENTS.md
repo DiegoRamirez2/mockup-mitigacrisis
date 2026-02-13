@@ -143,7 +143,8 @@ La regla base es: **Datos Maestros** es el hub (source of truth) y el resto de v
 ---
 
 # Que hacer
-- Siempre que necesites responder una pregunta de diseño, de lógica de negocios, etc. Apoyate en el archivo `final_mockup\mockup_v2\docs\BCMS_PostgreSQL_schema_v10.sql` para obtener la información correcta. No de los archivos `.md`.
+- Siempre que necesites responder una pregunta de diseño, de lógica de negocios, etc. Apoyate primero en `final_mockup\mockup_v2\docs\BCMS_PostgreSQL_schema_v11.sql` (si falta algo puntual, revisar también v10). No de los archivos `.md`.
+- Para contexto consolidado de brechas y mapeo operativo (v11 vs datastore + BancoEstado), usar `final_mockup\mockup_v2\docs\BCMS_V11_DATASTORE_BANCOESTADO_CONTEXTO_MAESTRO.md` y validar todo contra SQL/datastore.
 - Siempre que te pidan responder, discutir algo, resumir lo realizado, es a través del chat.
 - Ten en cuenta que la información en los archivos `.md` puede estar desactualizada o incompleta, por lo que siempre debes verificar con el archivo de diseño SQL o el `datastore.js`. Esto sucede ya que tú mismo eres el que crea los archivos `.md`.
 - Toda tabla que no sea intermedia y cuente como una entidad, debe tener los campos de auditoría: `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`, `is_deleted`  (esto no aplica para `final_mockup\mockup_v2\docs\BCMS_PostgreSQL_schema_v10.sql`). Salvo casos excepcionales que se te indiquen.
@@ -152,6 +153,8 @@ La regla base es: **Datos Maestros** es el hub (source of truth) y el resto de v
 - Toda seccion de auditoria en formularios/tablas debe mostrar: Creado el, Actualizado el, Creado por, Actualizado por, Eliminado el, Eliminado por (y estado si aplica).
 - Antes de proceder con un cambio grande, siempre confirma los detalles con el usuario a través del chat.
 - Las modificaciones se hacen en el `index.html` alimentandose con `mockup_final.html`.
+- Para la línea de refactor actual, las adaptaciones UI deben priorizar `mockup_v2/index_refactor.html` tomando como base funcional `mockup_v2/backup/mockup_final.html`.
+- En tablas de vistas adaptadas, aplicar patrón responsive con scroll horizontal (contenedor con `overflow-x: auto`) como criterio mínimo de aceptación visual.
 - Para referencias de la ISO 22301 a seguir, usar el documento `final_mockup\mockup_v2\docs\docs\ISO_22301_2019_Guia_Completa_Accesible.md`
 - Para referencias del sistema legacy de B-GRC que se usa para importación, revisa : `final_mockup\mockup_v2\docs\docs\MitigaResilience - MitigaData.csv`, pero esto es solo para la migración, las estructuras que se deben mantener para BCMS son las extensiones de las tablas *_bcms
 
