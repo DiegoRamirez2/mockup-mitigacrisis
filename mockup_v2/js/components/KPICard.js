@@ -42,6 +42,10 @@ class KPICard {
   render() {
     const card = document.createElement('div');
     card.className = 'kpi-card';
+    if (this.config.color) {
+      card.classList.add(this.config.color);
+      card.style.setProperty('--kpi-icon-accent', `var(--accent-${this.config.color})`);
+    }
     
     if (this.config.onClick) {
       card.style.cursor = 'pointer';
@@ -52,21 +56,19 @@ class KPICard {
     if (this.config.icon) {
       const iconEl = document.createElement('div');
       iconEl.className = 'kpi-icon';
-      iconEl.innerHTML = `<i class="bi ${this.config.icon}"></i>`;
-      
-      // Aplicar color si está definido
-      if (this.config.color) {
-        iconEl.style.color = `var(--accent-${this.config.color})`;
-      }
+      iconEl.innerHTML = `<span class="kpi-icon-inner"><i class="bi ${this.getIconWithFallback(this.config.icon)}"></i></span>`;
       
       card.appendChild(iconEl);
     }
+
+    const contentEl = document.createElement('div');
+    contentEl.className = 'kpi-content';
 
     // Label
     const labelEl = document.createElement('div');
     labelEl.className = 'kpi-label';
     labelEl.textContent = this.config.label;
-    card.appendChild(labelEl);
+    contentEl.appendChild(labelEl);
 
     // Value
     const valueEl = document.createElement('div');
@@ -78,7 +80,7 @@ class KPICard {
       valueEl.style.color = `var(--accent-${this.config.color})`;
     }
     
-    card.appendChild(valueEl);
+    contentEl.appendChild(valueEl);
 
     // Subtitle con tendencia opcional
     if (this.config.subtitle || this.config.trend) {
@@ -102,8 +104,10 @@ class KPICard {
       }
       
       subtitleEl.appendChild(textSpan);
-      card.appendChild(subtitleEl);
+      contentEl.appendChild(subtitleEl);
     }
+
+    card.appendChild(contentEl);
 
     return card;
   }
@@ -152,6 +156,21 @@ class KPICard {
       'neutral': 'var(--text-muted)'
     };
     return colors[trend] || 'var(--text-muted)';
+  }
+
+  /**
+   * Normaliza íconos para evitar clases no disponibles en el set cargado.
+   * @param {string} icon - Clase esperada de Bootstrap Icons
+   * @returns {string}
+   */
+  getIconWithFallback(icon) {
+    if (typeof icon !== 'string' || !icon.trim()) return 'bi-circle';
+    const normalized = icon.trim();
+    const fallbackMap = {
+      'bi-calendar-event': 'bi-calendar3',
+      'bi-calendar-check': 'bi-clipboard-check'
+    };
+    return fallbackMap[normalized] || normalized;
   }
 
   /**

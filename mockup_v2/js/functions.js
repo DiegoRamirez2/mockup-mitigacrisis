@@ -20,11 +20,58 @@
 const AppState = {
   currentView: 'dashboard',
   selectedProcess: null,
+  selectedBIATargetType: 'PROCESS',
+  selectedBIATargetId: null,
+  selectedBIATargetKey: '',
   selectedPlan: null,
+  selectedIncidente: null,
+  integradaTab: 'continuidad',
+  crisisManualLevel: null,
+  biaSearchTerm: '',
+  biaMatrixSearchTerm: '',
+  biaMatrixPageByProcess: {},
+  biaMatrixPageSize: 10,
+  biaStickyColumnsEnabled: true,
+  riaDomainFilter: 'TRIGGERED',
+  biaImpactOverrides: {},
+  biaLevantamientoByProcess: {},
+  biaLevantamientoImportFileName: '',
+  biaLevantamientoScenarioDraft: null,
   modals: {},
   tables: {}, // Almacena instancias de DynamicTable
   charts: {} // Instancias de Chart.js para evitar duplicados
 };
+/**
+ * Crea o reemplaza un gráfico Chart.js asociado a un canvas.
+ * Evita errores por reinicialización al cambiar de vista.
+ * @param {HTMLCanvasElement} ctx - Canvas destino
+ * @param {Object} config - Configuración de Chart.js
+ * @param {string} [key] - Clave opcional para registrar instancia
+ * @returns {Chart|null}
+ */
+function createManagedChart(ctx, config, key = null) {
+  if (!ctx || typeof Chart === 'undefined') return null;
+
+  const chartKey = key || ctx.id;
+
+  if (chartKey && AppState.charts[chartKey]) {
+    AppState.charts[chartKey].destroy();
+    delete AppState.charts[chartKey];
+  }
+
+  const existingChart = typeof Chart.getChart === 'function' ? Chart.getChart(ctx) : null;
+  if (existingChart) {
+    existingChart.destroy();
+  }
+
+  const chart = new Chart(ctx, config);
+
+  if (chartKey) {
+    AppState.charts[chartKey] = chart;
+  }
+
+  return chart;
+}
 
 /* ============================================================================
    1. INICIALIZACIÓN
@@ -99,6 +146,11 @@ function refreshData() {
  * @param {string} viewName - Nombre de la vista a mostrar
  */
 function showView(viewName) {
+  // Vista temporalmente fuera de alcance visual del demo
+  if (viewName === 'gobierno') {
+    viewName = 'dashboard';
+  }
+
   // Ocultar todas las vistas
   document.querySelectorAll('.view').forEach(view => {
     view.classList.remove('active');
@@ -142,22 +194,22 @@ function updatePageTitle(viewName) {
     'configuracion': { title: 'Configuración del Sistema', subtitle: 'Parámetros del sistema' },
     'usuarios': { title: 'Usuarios & Accesos', subtitle: 'Gestión de identidades y permisos' },
     'gobierno': { title: 'Políticas & Estrategias', subtitle: 'Gobierno del BCMS' },
-    'bia': { title: 'BIA - Análisis de Impacto', subtitle: 'Business Impact Analysis' },
-    'ria': { title: 'RIA - Análisis de Riesgos', subtitle: 'Risk Impact Analysis' },
+    'bia': { title: 'BIA - Análisis de Impacto', subtitle: 'Análisis de Impacto al Negocio' },
+    'ria': { title: 'RIA - Riesgo de Interrupción por Proceso', subtitle: 'Evaluación RIA gatillada por resultado BIA' },
     'riesgos-ciber': { title: 'Riesgos Ciber', subtitle: 'Gestión de ciberriesgos' },
     'vista-integrada': { title: 'Vista Integrada (BIA + RIA + Ciber)', subtitle: 'Trazabilidad unificada' },
     'recursos-capacidades': { title: 'Recursos & Capacidades', subtitle: 'Inventario de recursos críticos' },
-    'bcp': { title: 'Planes de Continuidad (BCP)', subtitle: 'Business Continuity Plans' },
-    'drp': { title: 'Planes de Recuperación TI (DRP)', subtitle: 'Disaster Recovery Plans' },
-    'incidentes': { title: 'Gestión de Incidentes', subtitle: 'Registro y seguimiento' },
-    'crisis': { title: 'Gestión de Crisis', subtitle: 'Protocolo de escalamiento' },
-    'comunicaciones-crisis': { title: 'Comunicaciones de Crisis', subtitle: 'Plantillas y canales' },
+    'bcp': { title: 'Planes de Continuidad (BCP)', subtitle: 'Planes de Continuidad del Negocio' },
+    'drp': { title: 'Planes de Recuperación TI (DRP)', subtitle: 'Planes de Recuperación ante Desastres' },
+    'incidentes': { title: 'Incidentes', subtitle: 'Registro y seguimiento' },
+    'crisis': { title: 'Crisis', subtitle: 'Protocolo de escalamiento' },
+    'comunicaciones-crisis': { title: 'Comunicaciones en Crisis', subtitle: 'Plantillas y canales' },
     'pruebas': { title: 'Pruebas y Simulacros', subtitle: 'Validación de planes' },
-    'capacitacion': { title: 'Capacitación & Concienciación', subtitle: 'Formación y concienciación' },
+    'capacitacion': { title: 'Formación & Concienciación', subtitle: 'Formación y concienciación' },
     'auditoria': { title: 'Auditoría', subtitle: 'Evaluaciones internas y externas' },
     'hallazgos': { title: 'Hallazgos & Planes de Acción', subtitle: 'No conformidades y acciones' },
     'aprendizajes': { title: 'Lecciones Aprendidas', subtitle: 'Mejora continua' },
-    'reportes': { title: 'Reportes Ejecutivos', subtitle: 'Informes y dashboards' },
+    'reportes': { title: 'Reportes Ejecutivos', subtitle: 'Informes y tableros' },
     'flujo-temporal': { title: 'Flujo (referencia interna)', subtitle: 'Mapa mental de trazabilidad BCMS' }
   };
   
@@ -180,9 +232,10 @@ function onViewChange(viewName) {
       renderDashboard();
       break;
     case 'bia':
-      renderBIAProcessList();
+      renderBIAView();
       break;
     case 'bcp':
+      renderBCPKPIs();
       renderPlansList();
       break;
     case 'proveedores':
@@ -220,6 +273,7 @@ function onViewChange(viewName) {
       renderCrisisSemaforo();
       renderCrisisKPIs();
       renderCrisisHistorial();
+      initCrisisActivationForm();
       setTimeout(() => renderCrisisChart(), 100);
       break;
     case 'comunicaciones-crisis':
@@ -1190,117 +1244,1304 @@ function renderChangesTable() {
 }
 
 /**
- * Renderiza la lista de procesos para BIA
+ * Renderiza la vista BIA completa (KPIs + resumen + lista)
  */
-function renderBIAProcessList() {
-  const list = document.getElementById('bia-process-list');
-  if (!list) return;
-  
-  const processes = BCMSDataStore.api.getAll('processes');
-  
-  list.innerHTML = processes.map(p => `
-    <li class="list-group-item list-group-item-action bia-process-item ${AppState.selectedProcess === p.id ? 'selected' : ''}" 
-        onclick="selectBIAProcess(${p.id})">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <strong>${p.name}</strong>
-          <br><small class="text-muted">${p.code}</small>
-        </div>
-        <span class="badge badge-${p.businessCriticality.toLowerCase()}">${p.businessCriticality}</span>
-      </div>
-    </li>
-  `).join('');
+function renderBIAView() {
+  renderBIAKPIs();
+  renderBIAResumen();
+  renderBIAProcessList();
+  bindBIASearch();
+
+  if (AppState.selectedBIATargetKey) {
+    const selected = parseBIATargetKey(AppState.selectedBIATargetKey);
+    if (selected) {
+      selectBIAEntity(selected.targetType, selected.targetId);
+      return;
+    }
+  }
+
+  if (AppState.selectedProcess) {
+    selectBIAProcess(AppState.selectedProcess);
+  }
+}
+
+function getBIAImpactLevels() {
+  return getBIALookupLabels('biaImpactLevels', ['Bajo', 'Medio Bajo', 'Medio', 'Medio Alto', 'Alto']);
+}
+
+function getBIALookupLabels(lookupName, fallback = []) {
+  const lookup = (typeof BCMSDataStore !== 'undefined' && BCMSDataStore && BCMSDataStore.lookups)
+    ? BCMSDataStore.lookups[lookupName]
+    : null;
+  if (!Array.isArray(lookup) || lookup.length === 0) return fallback;
+  return [...lookup]
+    .sort((a, b) => (Number(a.order || a.id || 0) - Number(b.order || b.id || 0)))
+    .map(item => String(item.label || '').trim())
+    .filter(Boolean);
+}
+
+function getBIAEntityTypeLabel(targetType) {
+  const normalized = String(targetType || '').toUpperCase();
+  const labels = {
+    MACROPROCESS: 'Macroproceso',
+    PROCESS: 'Proceso',
+    SUBPROCESS: 'Subproceso'
+  };
+  return labels[normalized] || 'Proceso';
+}
+
+function getBIATargetKey(targetType, targetId) {
+  const normalizedType = String(targetType || 'PROCESS').toUpperCase();
+  return `${normalizedType}:${Number(targetId || 0)}`;
+}
+
+function parseBIATargetKey(targetKey) {
+  if (!targetKey || typeof targetKey !== 'string' || !targetKey.includes(':')) return null;
+  const [targetTypeRaw, targetIdRaw] = targetKey.split(':');
+  const targetId = Number(targetIdRaw);
+  if (!targetTypeRaw || Number.isNaN(targetId)) return null;
+  const targetType = String(targetTypeRaw).toUpperCase();
+  return {
+    targetType,
+    targetId,
+    targetKey: getBIATargetKey(targetType, targetId)
+  };
+}
+
+function resolveBIATargetRef(targetRef, targetId = null) {
+  if (targetId !== null && targetId !== undefined) {
+    const normalizedType = String(targetRef || 'PROCESS').toUpperCase();
+    const normalizedId = Number(targetId);
+    return {
+      targetType: normalizedType,
+      targetId: normalizedId,
+      targetKey: getBIATargetKey(normalizedType, normalizedId)
+    };
+  }
+
+  if (typeof targetRef === 'number') {
+    return { targetType: 'PROCESS', targetId: Number(targetRef), targetKey: getBIATargetKey('PROCESS', targetRef) };
+  }
+
+  if (typeof targetRef === 'string') {
+    const parsed = parseBIATargetKey(targetRef);
+    if (parsed) return parsed;
+    return { targetType: 'PROCESS', targetId: Number(targetRef), targetKey: getBIATargetKey('PROCESS', targetRef) };
+  }
+
+  if (targetRef && typeof targetRef === 'object') {
+    if (targetRef.targetType && targetRef.targetId !== undefined) {
+      return {
+        targetType: String(targetRef.targetType).toUpperCase(),
+        targetId: Number(targetRef.targetId),
+        targetKey: getBIATargetKey(targetRef.targetType, targetRef.targetId)
+      };
+    }
+    if (targetRef.id !== undefined && (targetRef.code || targetRef.name)) {
+      const inferredType = String(targetRef.entityType || targetRef.targetType || 'PROCESS').toUpperCase();
+      return {
+        targetType: inferredType,
+        targetId: Number(targetRef.id),
+        targetKey: getBIATargetKey(inferredType, targetRef.id)
+      };
+    }
+  }
+
+  return null;
+}
+
+function getBIAEntityCatalog() {
+  const users = BCMSDataStore.entities.users || [];
+  const macroprocesses = (BCMSDataStore.entities.macroprocesses || []).filter(m => !m.isDeleted);
+  const processes = (BCMSDataStore.entities.processes || []).filter(p => !p.isDeleted);
+  const subprocesses = (BCMSDataStore.entities.subprocesses || []).filter(sp => !sp.isDeleted);
+  const dependencies = BCMSDataStore.entities.biaDependencies || [];
+  const criticalityRank = { CRITICAL: 1, HIGH: 2, MEDIUM: 3, LOW: 4 };
+
+  const processById = new Map(processes.map(p => [Number(p.id), p]));
+  const processesByMacro = processes.reduce((acc, proc) => {
+    const macroId = Number(proc.macroprocessId || 0);
+    if (!acc[macroId]) acc[macroId] = [];
+    acc[macroId].push(proc);
+    return acc;
+  }, {});
+
+  const dependencyCountByProcess = dependencies.reduce((acc, dep) => {
+    const processKey = Number(dep.processId);
+    acc[processKey] = (acc[processKey] || 0) + 1;
+    return acc;
+  }, {});
+
+  const getUserFullName = (userId, fallback = '-') => {
+    const user = users.find(u => Number(u.id) === Number(userId));
+    return user ? `${user.firstName} ${user.lastName}` : fallback;
+  };
+
+  const getMinNumeric = (values) => {
+    const numeric = values.filter(v => typeof v === 'number' && !Number.isNaN(v));
+    return numeric.length > 0 ? Math.min(...numeric) : null;
+  };
+
+  const macroTargets = macroprocesses.map((macro) => {
+    const childProcesses = processesByMacro[Number(macro.id)] || [];
+    const processIds = childProcesses.map(p => Number(p.id));
+    const dependencyCount = dependencies.filter(dep => processIds.includes(Number(dep.processId))).length;
+    const rto = getMinNumeric(childProcesses.map(p => p.targetRtoMinutes));
+    const rpo = getMinNumeric(childProcesses.map(p => p.targetRpoMinutes));
+    const mtpd = getMinNumeric(childProcesses.map(p => p.mtpdMinutes ?? p.maximumTolerableDowntimeMinutes));
+    const ownerName = getUserFullName(macro.governanceOwnerId, '-');
+
+    return {
+      targetType: 'MACROPROCESS',
+      targetId: Number(macro.id),
+      targetKey: getBIATargetKey('MACROPROCESS', macro.id),
+      code: macro.code || '-',
+      name: macro.name || '-',
+      businessCriticality: macro.strategicImportance || 'MEDIUM',
+      targetRtoMinutes: rto,
+      targetRpoMinutes: rpo,
+      mtpdMinutes: mtpd,
+      maximumTolerableDowntimeMinutes: mtpd,
+      mbcoPercent: null,
+      ownerName,
+      owner: ownerName,
+      responsibleUnitId: null,
+      processCategory: 'Macroproceso',
+      description: macro.description || 'Sin descripción registrada.',
+      parentProcessId: null,
+      dependencyCount,
+      createdAt: macro.createdAt,
+      updatedAt: macro.updatedAt,
+      createdBy: macro.createdBy,
+      updatedBy: macro.updatedBy
+    };
+  });
+
+  const processTargets = processes.map((proc) => {
+    const mtpd = proc.mtpdMinutes ?? proc.maximumTolerableDowntimeMinutes ?? null;
+    return {
+      targetType: 'PROCESS',
+      targetId: Number(proc.id),
+      targetKey: getBIATargetKey('PROCESS', proc.id),
+      code: proc.code || '-',
+      name: proc.name || '-',
+      businessCriticality: proc.businessCriticality || 'MEDIUM',
+      targetRtoMinutes: proc.targetRtoMinutes,
+      targetRpoMinutes: proc.targetRpoMinutes,
+      mtpdMinutes: mtpd,
+      maximumTolerableDowntimeMinutes: mtpd,
+      mbcoPercent: proc.mbcoPercent || null,
+      ownerName: proc.ownerName || proc.owner || '-',
+      owner: proc.owner || proc.ownerName || '-',
+      responsibleUnitId: proc.responsibleUnitId || null,
+      processCategory: proc.processCategory || '-',
+      description: proc.description || 'Sin descripción registrada.',
+      parentProcessId: null,
+      dependencyCount: dependencyCountByProcess[Number(proc.id)] || 0,
+      createdAt: proc.createdAt,
+      updatedAt: proc.updatedAt,
+      createdBy: proc.createdBy,
+      updatedBy: proc.updatedBy
+    };
+  });
+
+  const subprocessTargets = subprocesses.map((sub) => {
+    const parentProcess = processById.get(Number(sub.processId));
+    const inheritedCriticality = parentProcess?.businessCriticality || 'MEDIUM';
+    const effectiveCriticality = sub.overrideCriticality || (sub.criticalityInherited ? inheritedCriticality : inheritedCriticality);
+    const mtpd = parentProcess?.mtpdMinutes ?? parentProcess?.maximumTolerableDowntimeMinutes ?? null;
+    const owner = sub.ownerName || parentProcess?.ownerName || parentProcess?.owner || '-';
+    return {
+      targetType: 'SUBPROCESS',
+      targetId: Number(sub.id),
+      targetKey: getBIATargetKey('SUBPROCESS', sub.id),
+      code: sub.code || '-',
+      name: sub.name || '-',
+      businessCriticality: effectiveCriticality || 'MEDIUM',
+      targetRtoMinutes: parentProcess?.targetRtoMinutes ?? null,
+      targetRpoMinutes: parentProcess?.targetRpoMinutes ?? null,
+      mtpdMinutes: mtpd,
+      maximumTolerableDowntimeMinutes: mtpd,
+      mbcoPercent: parentProcess?.mbcoPercent ?? null,
+      ownerName: owner,
+      owner,
+      responsibleUnitId: parentProcess?.responsibleUnitId || null,
+      processCategory: 'Subproceso',
+      description: sub.description || 'Sin descripción registrada.',
+      parentProcessId: parentProcess ? Number(parentProcess.id) : null,
+      dependencyCount: parentProcess ? (dependencyCountByProcess[Number(parentProcess.id)] || 0) : 0,
+      createdAt: sub.createdAt,
+      updatedAt: sub.updatedAt,
+      createdBy: sub.createdBy,
+      updatedBy: sub.updatedBy
+    };
+  });
+
+  return [...macroTargets, ...processTargets, ...subprocessTargets]
+    .sort((a, b) => {
+      const rankDiff = (criticalityRank[String(a.businessCriticality || '').toUpperCase()] || 99)
+        - (criticalityRank[String(b.businessCriticality || '').toUpperCase()] || 99);
+      if (rankDiff !== 0) return rankDiff;
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+}
+
+function getBIAEntityFromTarget(targetType, targetId) {
+  const targetKey = getBIATargetKey(targetType, targetId);
+  return getBIAEntityCatalog().find(item => item.targetKey === targetKey) || null;
 }
 
 /**
- * Selecciona un proceso para ver su BIA
+ * Enlaza el buscador de procesos BIA
+ */
+function bindBIASearch() {
+  const searchInput = document.getElementById('bia-search');
+  if (!searchInput || searchInput.dataset.bound === '1') return;
+
+  searchInput.addEventListener('input', (event) => {
+    AppState.biaSearchTerm = event.target.value || '';
+    renderBIAProcessList();
+  });
+
+  searchInput.dataset.bound = '1';
+}
+
+function clearBIAProcessFilter() {
+  AppState.biaSearchTerm = '';
+  const searchInput = document.getElementById('bia-search');
+  if (searchInput) searchInput.value = '';
+  renderBIAProcessList();
+}
+
+/**
+ * Renderiza KPIs del módulo BIA
+ */
+function renderBIAKPIs() {
+  const container = document.getElementById('bia-kpis-container');
+  if (!container) return;
+
+  const targets = getBIAEntityCatalog();
+  const criticalTargets = targets.filter(t => String(t.businessCriticality || '').toUpperCase() === 'CRITICAL');
+  const highTargets = targets.filter(t => String(t.businessCriticality || '').toUpperCase() === 'HIGH');
+  const dependencies = BCMSDataStore.entities.biaDependencies || [];
+  const mtpdBreaches = targets.filter((target) => {
+    const rto = target.targetRtoMinutes ?? null;
+    const mtpd = target.mtpdMinutes ?? target.maximumTolerableDowntimeMinutes ?? null;
+    return rto !== null && mtpd !== null && rto > mtpd;
+  }).length;
+
+  const kpis = [
+    { label: 'Objetivos evaluables', value: targets.length, icon: 'bi-diagram-3', color: 'primary', subtitle: 'Macro + Proceso + Subproceso' },
+    { label: 'Objetivos críticos', value: criticalTargets.length, icon: 'bi-exclamation-octagon', color: 'danger', subtitle: 'Prioridad máxima BCMS' },
+    { label: 'Objetivos alto impacto', value: highTargets.length, icon: 'bi-flag', color: 'warning', subtitle: 'Seguimiento reforzado' },
+    { label: 'Dependencias registradas', value: dependencies.length, icon: 'bi-link-45deg', color: 'info', subtitle: 'Personas, activos, terceros' },
+    { label: 'Brechas RTO/MTPD', value: mtpdBreaches, icon: 'bi-activity', color: mtpdBreaches > 0 ? 'danger' : 'secondary', subtitle: mtpdBreaches > 0 ? 'Requiere ajuste inmediato' : 'Sin brechas críticas' }
+  ];
+
+  if (typeof renderKPIGrid === 'function') {
+    renderKPIGrid(container, kpis);
+    return;
+  }
+
+  // Fallback defensivo si el componente KPI no está disponible
+  container.innerHTML = kpis.map(kpi => `<div class="kpi-card"><div class="kpi-label">${kpi.label}</div><div class="kpi-value">${kpi.value}</div><div class="kpi-subtitle">${kpi.subtitle || ''}</div></div>`).join('');
+}
+
+/**
+ * Renderiza la tabla de procesos para selección BIA
+ */
+function renderBIAProcessList() {
+  const tbody = document.getElementById('bia-process-summary-body');
+  if (!tbody) return;
+
+  const search = (AppState.biaSearchTerm || '').trim().toLowerCase();
+  const targets = getBIAEntityCatalog().filter((target) => {
+    if (!search) return true;
+    const searchable = `${target.code || ''} ${target.name || ''} ${target.ownerName || ''} ${target.processCategory || ''} ${getBIAEntityTypeLabel(target.targetType)}`.toLowerCase();
+    return searchable.includes(search);
+  });
+
+  if (targets.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center color-muted">No se encontraron procesos para el filtro aplicado.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = targets.map((target) => {
+    const isSelected = AppState.selectedBIATargetKey === target.targetKey;
+    const rtoLabel = typeof target.targetRtoMinutes === 'number' ? formatMinutesToTime(target.targetRtoMinutes) : '-';
+    const dependenciesCount = Number(target.dependencyCount || 0);
+    const dependenciesBadgeClass = dependenciesCount > 0 ? 'badge-info' : 'badge-neutral';
+    const criticalityLabel = BCMSDataStore.api.getLookupLabel('businessCriticality', target.businessCriticality) || target.businessCriticality || 'N/A';
+    const status = getBIALevantamientoStatus(target.targetType, target.targetId);
+    AppState.biaLevantamientoByProcess[target.targetKey] = status.code;
+
+    return `
+      <tr class="${isSelected ? 'bia-row-selected' : ''}" data-target-key="${target.targetKey}">
+        <td class="fw-600">${target.code || '-'}</td>
+        <td>
+          <div class="fw-600">${target.name || '-'}</div>
+          <div class="sub-text-muted">${getBIAEntityTypeLabel(target.targetType)}</div>
+        </td>
+        <td><span class="badge badge-${(target.businessCriticality || 'medium').toLowerCase()}">${criticalityLabel}</span></td>
+        <td>${rtoLabel}</td>
+        <td>${target.ownerName || '-'}</td>
+        <td><span class="badge ${dependenciesBadgeClass} bia-dependency-total">${dependenciesCount}</span></td>
+        <td><span class="badge ${status.badgeClass}">${status.label}</span></td>
+        <td class="actions-cell bia-col-action">
+          <button type="button" class="btn btn-outline btn-sm" onclick="selectBIAEntity('${target.targetType}', ${Number(target.targetId)})">
+            <i class="bi bi-eye"></i> Ver detalle
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+/**
+ * Selecciona un proceso para ver su BIA (wrapper legacy)
  */
 function selectBIAProcess(processId) {
-  AppState.selectedProcess = processId;
-  
-  // Actualizar selección visual
-  document.querySelectorAll('.bia-process-item').forEach(item => {
-    item.classList.remove('selected');
+  selectBIAEntity('PROCESS', processId);
+}
+
+function selectBIAEntity(targetType, targetId) {
+  const normalized = resolveBIATargetRef(targetType, targetId);
+  if (!normalized || Number.isNaN(normalized.targetId)) return;
+
+  AppState.selectedBIATargetType = normalized.targetType;
+  AppState.selectedBIATargetId = normalized.targetId;
+  AppState.selectedBIATargetKey = normalized.targetKey;
+  AppState.selectedProcess = normalized.targetType === 'PROCESS' ? normalized.targetId : null;
+  AppState.biaMatrixSearchTerm = '';
+  AppState.biaMatrixPageByProcess[normalized.targetKey] = 1;
+
+  document.querySelectorAll('#bia-process-summary-body tr[data-target-key]').forEach((row) => {
+    row.classList.toggle('bia-row-selected', String(row.dataset.targetKey || '') === normalized.targetKey);
   });
-  event.currentTarget.classList.add('selected');
-  
-  const process = BCMSDataStore.api.getById('processes', processId);
-  if (!process) return;
-  
-  // Actualizar detalle
-  document.getElementById('bia-detail-title').textContent = process.name;
-  
+
+  const target = getBIAEntityFromTarget(normalized.targetType, normalized.targetId);
+  if (!target) return;
+
+  const detailTitle = document.getElementById('bia-detail-title');
+  if (detailTitle) {
+    detailTitle.innerHTML = `<i class="bi bi-clipboard-data"></i> ${target.name}`;
+  }
+
   const detailContent = document.getElementById('bia-detail-content');
-  detailContent.innerHTML = `
-    <div class="row g-3">
-      <div class="col-md-6">
+  if (!detailContent) return;
+
+  try {
+    const rtoLabel = typeof target.targetRtoMinutes === 'number'
+      ? formatMinutesToTime(target.targetRtoMinutes)
+      : '-';
+    const rpoLabel = typeof target.targetRpoMinutes === 'number'
+      ? formatMinutesToTime(target.targetRpoMinutes)
+      : '-';
+    const mtpdLabel = typeof target.mtpdMinutes === 'number'
+      ? formatMinutesToTime(target.mtpdMinutes)
+      : (typeof target.maximumTolerableDowntimeMinutes === 'number' ? formatMinutesToTime(target.maximumTolerableDowntimeMinutes) : '-');
+    const mbcoLabel = typeof target.mbcoPercent === 'number' ? `${target.mbcoPercent}%` : '-';
+    const interviewData = getBIAInterviewData(target);
+    const approvalData = getBIAApprovalData(target);
+    const status = getBIALevantamientoStatus(target.targetType, target.targetId);
+    const dependenciesMarkup = getBIADependenciesMarkup(target);
+    const xlsxSchema = renderBIAExcelProcessSchema(target);
+
+    detailContent.innerHTML = `
+    <div class="bia-detail-top">
+      <div class="bia-metric-grid">
+        <div class="bia-metric">
+          <span class="bia-metric-label">Tipo objetivo</span>
+          <span class="bia-metric-value">${getBIAEntityTypeLabel(target.targetType)}</span>
+        </div>
         <div class="bia-metric">
           <span class="bia-metric-label">Criticidad</span>
-          <span class="bia-metric-value"><span class="badge badge-${process.businessCriticality.toLowerCase()}">${BCMSDataStore.api.getLookupLabel('businessCriticality', process.businessCriticality)}</span></span>
+          <span class="bia-metric-value"><span class="badge badge-${(target.businessCriticality || 'medium').toLowerCase()}">${BCMSDataStore.api.getLookupLabel('businessCriticality', target.businessCriticality)}</span></span>
         </div>
         <div class="bia-metric">
           <span class="bia-metric-label">RTO (Objetivo)</span>
-          <span class="bia-metric-value">${formatMinutesToTime(process.targetRtoMinutes)}</span>
+          <span class="bia-metric-value">${rtoLabel}</span>
         </div>
         <div class="bia-metric">
           <span class="bia-metric-label">RPO (Objetivo)</span>
-          <span class="bia-metric-value">${formatMinutesToTime(process.targetRpoMinutes)}</span>
+          <span class="bia-metric-value">${rpoLabel}</span>
         </div>
-      </div>
-      <div class="col-md-6">
         <div class="bia-metric">
           <span class="bia-metric-label">MTPD</span>
-          <span class="bia-metric-value">${formatMinutesToTime(process.mtpdMinutes)}</span>
+          <span class="bia-metric-value">${mtpdLabel}</span>
         </div>
         <div class="bia-metric">
           <span class="bia-metric-label">MBCO</span>
-          <span class="bia-metric-value">${process.mbcoPercent}%</span>
+          <span class="bia-metric-value">${mbcoLabel}</span>
         </div>
         <div class="bia-metric">
           <span class="bia-metric-label">Responsable</span>
-          <span class="bia-metric-value">${process.owner}</span>
+          <span class="bia-metric-value">${target.ownerName || '-'}</span>
+        </div>
+        <div class="bia-metric">
+          <span class="bia-metric-label">Estado levantamiento</span>
+          <span class="bia-metric-value"><span class="badge ${status.badgeClass}">${status.label}</span></span>
         </div>
       </div>
+
+      <div class="bia-description">
+        <strong>Descripción:</strong> ${target.description || 'Sin descripción registrada.'}
+      </div>
+
+      <div class="bia-xlsx-grid mt-14">
+        <div class="bia-xlsx-card">
+          <h5><i class="bi bi-person-vcard"></i> Datos entrevistado</h5>
+          <div class="bia-xlsx-kv">
+            <div><span>Fecha de entrevista</span><strong>${interviewData.interviewDate}</strong></div>
+            <div><span>Nombre del entrevistado</span><strong>${interviewData.intervieweeName}</strong></div>
+            <div><span>Cargo del entrevistado</span><strong>${interviewData.intervieweeRole}</strong></div>
+            <div><span>Persona que realiza levantamiento</span><strong>${interviewData.surveyorName}</strong></div>
+            <div><span>Cargo de levantamiento</span><strong>${interviewData.surveyorRole}</strong></div>
+          </div>
+        </div>
+
+        <div class="bia-xlsx-card">
+          <h5><i class="bi bi-check2-square"></i> Validación del proceso</h5>
+          <div class="table-wrapper">
+            <table class="bia-approval-table">
+              <thead>
+                <tr>
+                  <th>Rol</th>
+                  <th>Nombre</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${approvalData.map((row) => `
+                  <tr>
+                    <td>${row.role}</td>
+                    <td>${row.name}</td>
+                    <td>${row.date}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="bia-inline-dependencies mt-14">
+        <h4><i class="bi bi-link-45deg"></i> Dependencias del proceso</h4>
+        ${dependenciesMarkup}
+      </div>
     </div>
-    <hr>
-    <p class="mb-0"><strong>Descripción:</strong> ${process.description}</p>
+
+    <hr class="bia-detail-separator">
+
+    <div class="bia-detail-matrix" id="bia-matrix-section">
+      ${xlsxSchema}
+    </div>
   `;
-  
-  // Renderizar dependencias
-  renderBIADependencies(processId);
+  } catch (error) {
+    console.error('[BIA] Error al renderizar detalle', error);
+    detailContent.innerHTML = `
+      <div class="bia-empty-state">
+        No fue posible renderizar el detalle del objetivo seleccionado.
+      </div>
+    `;
+    showToast('No se pudo mostrar el detalle BIA. Revise datos del levantamiento.', 'warning');
+  }
+
+  renderBIAKPIs();
+}
+
+function renderBIAExcelProcessSchema(target) {
+  const timeBuckets = getBIATimeBuckets();
+  const impactCategories = getBIAImpactCategories();
+  const matrixRows = getBIAMatrixRows(target);
+  const searchTerm = String(AppState.biaMatrixSearchTerm || '').toLowerCase().trim();
+  const filteredRows = matrixRows.filter((row) => searchTerm === '' || row.searchText.includes(searchTerm));
+  const pageInfo = paginateBIAMatrix(target.targetKey, filteredRows.length, AppState.biaMatrixPageSize || 10);
+  const pagedRows = filteredRows.slice(pageInfo.startIndex, pageInfo.endIndex);
+
+  const matrixColspan = (impactCategories.length * timeBuckets.length) + 7;
+  const hasData = pagedRows.length > 0;
+  const rowMarkup = hasData
+    ? pagedRows.map(row => row.html).join('')
+    : `<tr id="bia-matrix-empty-row"><td colspan="${matrixColspan}" class="text-center color-muted">${matrixRows.length === 0 ? 'Sin escenarios disponibles para este proceso.' : 'No se encontraron escenarios con ese criterio de búsqueda.'}</td></tr>`;
+
+  return `
+    <div class="bia-xlsx-section">
+      <div class="bia-xlsx-header">
+        <h4><i class="bi bi-file-earmark-spreadsheet"></i> Esquema BancoEstado - BIA (formato planilla)</h4>
+        <span class="badge badge-info">Datos desde datastore actual</span>
+      </div>
+
+      <div class="table-toolbar-unified bia-matrix-toolbar">
+        <div class="toolbar-search-integrated">
+          <i class="bi bi-search"></i>
+          <input
+            type="text"
+            id="bia-matrix-search"
+            value="${AppState.biaMatrixSearchTerm || ''}"
+            placeholder="Buscar escenario o tipo de impacto..."
+            oninput="filterBIAMatrix(this.value)"
+          >
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="clearBIAMatrixFilter()">
+          <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+        </button>
+        <button
+          id="btn-toggle-bia-sticky"
+          type="button"
+          class="btn btn-outline btn-sm"
+          aria-pressed="${AppState.biaStickyColumnsEnabled ? 'true' : 'false'}"
+          onclick="toggleBIAStickyColumns()"
+        >
+          <i class="bi ${AppState.biaStickyColumnsEnabled ? 'bi-lock' : 'bi-unlock'}"></i>
+          ${AppState.biaStickyColumnsEnabled ? 'Desactivar fijado' : 'Activar fijado'}
+        </button>
+      </div>
+
+      <div class="bia-xlsx-table-wrapper table-wrapper mt-12">
+        <table id="bia-matrix-table" class="bia-xlsx-table fs-11${AppState.biaStickyColumnsEnabled ? '' : ' bia-sticky-disabled'}">
+          <thead>
+            <tr>
+              <th rowspan="2" class="bia-sticky-name">Objetivo BCMS</th>
+              <th rowspan="2" class="bia-sticky-id">ID objetivo</th>
+              <th rowspan="2" class="bia-sticky-scenario">Escenario de Disrupción</th>
+              ${impactCategories.map((category) => `<th colspan="${timeBuckets.length}" class="bia-th-group">${category}</th>`).join('')}
+              <th colspan="4" class="bia-th-group">Impacto Final</th>
+            </tr>
+            <tr>
+              ${impactCategories.map(() => timeBuckets.map((bucket, bucketIndex) => `<th class="bia-th-sub ${bucketIndex === 0 ? 'group-start' : ''} ${bucketIndex === timeBuckets.length - 1 ? 'group-end' : ''}">${bucket}</th>`).join('')).join('')}
+              <th class="bia-th-sub final-start">Mayor impacto hasta 24h</th>
+              <th class="bia-th-sub">Tipo de impacto</th>
+              <th class="bia-th-sub">MTPD</th>
+              <th class="bia-th-sub">RTO</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowMarkup}
+          </tbody>
+        </table>
+      </div>
+      ${renderBIAMatrixPagination(target.targetKey, filteredRows.length, pageInfo.currentPage, pageInfo.pageSize)}
+    </div>
+  `;
+}
+
+function getBIAMatrixRows(target) {
+  const timeBuckets = getBIATimeBuckets();
+  const impactCategories = getBIAImpactCategories();
+  const scenarios = getBIAScenariosForTarget(target);
+
+  const mtpdLabel = typeof target.mtpdMinutes === 'number'
+    ? formatMinutesToTime(target.mtpdMinutes)
+    : (typeof target.maximumTolerableDowntimeMinutes === 'number' ? formatMinutesToTime(target.maximumTolerableDowntimeMinutes) : '-');
+  const rtoLabel = typeof target.targetRtoMinutes === 'number'
+    ? formatMinutesToTime(target.targetRtoMinutes)
+    : '-';
+
+  return scenarios.map((scenario, scenarioIndex) => {
+    const scenarioKey = getBIAScenarioKey(scenario, scenarioIndex);
+    const impactScores24h = [];
+    const impactTypePeak = {};
+
+    const matrixCells = impactCategories.map((category) => {
+      return timeBuckets.map((_, bucketIndex) => {
+        const score = getBIAImpactCellScore(target.targetKey, scenario, scenarioKey, category, bucketIndex);
+        if (bucketIndex <= 3) {
+          impactScores24h.push(score);
+          impactTypePeak[category] = Math.max(impactTypePeak[category] || 0, score);
+        }
+
+        const cellClasses = [
+          'bia-impact-cell',
+          bucketIndex === 0 ? 'bia-impact-group-start' : '',
+          bucketIndex === timeBuckets.length - 1 ? 'bia-impact-group-end' : ''
+        ].filter(Boolean).join(' ');
+
+        return `
+          <td class="${cellClasses}" data-impact-cell="1" data-category="${category}" data-bucket-index="${bucketIndex}">
+            <button
+              type="button"
+              class="bia-impact-pill bia-impact-editor level-${score}"
+              data-level="${score}"
+              data-target-key="${target.targetKey}"
+              data-scenario-key="${scenarioKey}"
+              data-category="${category}"
+              data-bucket-index="${bucketIndex}"
+              onclick="cycleBIAImpactLevel(this)"
+              title="Click para editar nivel de impacto"
+            >${getBIAImpactLabel(score)}</button>
+          </td>
+        `;
+      }).join('');
+    }).join('');
+
+    const maxImpact24hScore = impactScores24h.length > 0 ? Math.max(...impactScores24h) : 1;
+    const maxImpact24h = getBIAImpactLabel(maxImpact24hScore);
+    const majorType = resolveBiaMajorImpactType(impactTypePeak, impactCategories);
+    const scenarioText = scenario.scenario || scenario.title || '-';
+    const searchText = `${target.name || ''} ${scenarioText} ${majorType} ${getBIAEntityTypeLabel(target.targetType)}`.toLowerCase();
+    const targetIdLabel = `${getBIAEntityTypeLabel(target.targetType)} #${target.targetId}`;
+
+    return {
+      scenarioKey,
+      searchText,
+      html: `
+        <tr data-target-key="${target.targetKey}" data-scenario-key="${scenarioKey}">
+          <td class="fw-600 bia-sticky-name">${target.name}</td>
+          <td class="bia-sticky-id">${targetIdLabel}</td>
+          <td class="bia-scenario-cell bia-sticky-scenario" title="${scenarioText}">${scenarioText}</td>
+          ${matrixCells}
+          <td class="bia-final-start" data-bia-final-impact><span class="bia-impact-pill level-${maxImpact24hScore}" data-level="${maxImpact24hScore}">${maxImpact24h}</span></td>
+          <td class="bia-final-value" data-bia-final-type>${majorType}</td>
+          <td class="bia-final-value">${mtpdLabel}</td>
+          <td class="bia-final-value">${rtoLabel}</td>
+        </tr>
+      `
+    };
+  });
+}
+
+function paginateBIAMatrix(targetKey, totalRows, pageSize = 10) {
+  const normalizedTargetKey = String(targetKey || '');
+  const normalizedPageSize = Math.max(1, Number(pageSize) || 10);
+  const totalPages = Math.max(1, Math.ceil(totalRows / normalizedPageSize));
+  const currentFromState = Number(AppState.biaMatrixPageByProcess[normalizedTargetKey] || 1);
+  const currentPage = Math.max(1, Math.min(totalPages, currentFromState));
+  const startIndex = (currentPage - 1) * normalizedPageSize;
+  const endIndex = Math.min(startIndex + normalizedPageSize, totalRows);
+
+  AppState.biaMatrixPageByProcess[normalizedTargetKey] = currentPage;
+
+  return {
+    currentPage,
+    totalPages,
+    pageSize: normalizedPageSize,
+    startIndex,
+    endIndex
+  };
+}
+
+function renderBIAMatrixPagination(targetKey, totalRows, currentPage, pageSize) {
+  const normalizedPageSize = Math.max(1, Number(pageSize) || 10);
+  const totalPages = Math.max(1, Math.ceil(totalRows / normalizedPageSize));
+  const safePage = Math.max(1, Math.min(totalPages, Number(currentPage) || 1));
+  const from = totalRows === 0 ? 0 : ((safePage - 1) * normalizedPageSize) + 1;
+  const to = totalRows === 0 ? 0 : Math.min(totalRows, safePage * normalizedPageSize);
+  const pages = [];
+
+  for (let i = 1; i <= totalPages; i += 1) {
+    pages.push(`
+      <button type="button" class="${i === safePage ? 'active' : ''}" onclick="changeBIAMatrixPage('${targetKey}', ${i})">${i}</button>
+    `);
+  }
+
+  return `
+    <div class="dm-pagination bia-matrix-pagination">
+      <span class="page-info">Mostrando ${from} a ${to} de ${totalRows}</span>
+      <div class="d-flex gap-8 ai-center">
+        <button type="button" ${safePage <= 1 ? 'disabled' : ''} onclick="changeBIAMatrixPage('${targetKey}', ${safePage - 1})">Previo</button>
+        ${pages.join('')}
+        <button type="button" ${safePage >= totalPages ? 'disabled' : ''} onclick="changeBIAMatrixPage('${targetKey}', ${safePage + 1})">Siguiente</button>
+      </div>
+    </div>
+  `;
+}
+
+function changeBIAMatrixPage(targetKey, targetPage) {
+  const normalizedTargetKey = String(targetKey || '');
+  const nextPage = Math.max(1, Number(targetPage) || 1);
+  AppState.biaMatrixPageByProcess[normalizedTargetKey] = nextPage;
+  refreshBIASelectedProcessMatrix();
+}
+
+function refreshBIASelectedProcessMatrix() {
+  if (!AppState.selectedBIATargetKey) return;
+  const selected = parseBIATargetKey(AppState.selectedBIATargetKey);
+  if (!selected) return;
+  const target = getBIAEntityFromTarget(selected.targetType, selected.targetId);
+  const container = document.getElementById('bia-matrix-section');
+  if (!target || !container) return;
+  container.innerHTML = renderBIAExcelProcessSchema(target);
+}
+
+function toggleBIAStickyColumns() {
+  AppState.biaStickyColumnsEnabled = !AppState.biaStickyColumnsEnabled;
+  const enabled = AppState.biaStickyColumnsEnabled;
+
+  document.querySelectorAll('.bia-xlsx-table').forEach((tableEl) => {
+    tableEl.classList.toggle('bia-sticky-disabled', !enabled);
+  });
+
+  const buttonEl = document.getElementById('btn-toggle-bia-sticky');
+  if (buttonEl) {
+    buttonEl.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    buttonEl.innerHTML = `
+      <i class="bi ${enabled ? 'bi-lock' : 'bi-unlock'}"></i>
+      ${enabled ? 'Desactivar fijado' : 'Activar fijado'}
+    `;
+  }
+}
+
+function clearBIAMatrixFilter() {
+  AppState.biaMatrixSearchTerm = '';
+  if (AppState.selectedBIATargetKey) {
+    AppState.biaMatrixPageByProcess[AppState.selectedBIATargetKey] = 1;
+  }
+  const input = document.getElementById('bia-matrix-search');
+  if (input) input.value = '';
+  refreshBIASelectedProcessMatrix();
+}
+
+function filterBIAMatrix(query) {
+  const term = (query || '').toLowerCase().trim();
+  AppState.biaMatrixSearchTerm = term;
+  if (AppState.selectedBIATargetKey) {
+    AppState.biaMatrixPageByProcess[AppState.selectedBIATargetKey] = 1;
+  }
+  refreshBIASelectedProcessMatrix();
+}
+
+function getBIATimeBuckets() {
+  return getBIALookupLabels('biaTimeBuckets', ['< 1 HORA', 'ENTRE 1 Y 2 HORAS', 'ENTRE 2 Y 6 HORAS', 'ENTRE 6 Y 24 HORAS', 'ENTRE 24 Y 36 HORAS', '> 36 HORAS']);
+}
+
+function getBIAImpactCategories() {
+  return getBIALookupLabels('biaImpactCategories', ['Monetario', 'Procesos', 'Reputacional', 'Normativo', 'Clientes']);
+}
+
+function getBIAImpactLabel(score) {
+  const levels = getBIAImpactLevels();
+  const maxLevel = Math.max(1, levels.length || 5);
+  const normalized = Math.max(1, Math.min(maxLevel, Number(score) || 1));
+  return levels[normalized - 1];
+}
+
+function getBIAImpactScoreForCell(scenario, category, bucketIndex) {
+  const baseScore = Number(scenario.residualImpact || scenario.inherentImpact || 3);
+  const domainBoost = String(scenario.riskDomain || '').toUpperCase() === 'CYBER' ? 1 : 0;
+  const timeBoost = bucketIndex <= 1 ? 0 : (bucketIndex <= 3 ? 1 : 2);
+  const categoryBias = {
+    Monetario: 0,
+    Procesos: -1,
+    Reputacional: 0,
+    Normativo: -1,
+    Clientes: 1
+  };
+
+  const rawScore = baseScore + domainBoost + timeBoost + (categoryBias[category] || 0) - 1;
+  return Math.max(1, Math.min(5, rawScore));
+}
+
+function getBIAScenarioKey(scenario, scenarioIndex = 0) {
+  const raw = String(scenario.id || scenario.code || scenario.scenario || scenario.title || `scn-${scenarioIndex}`);
+  return raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 80) || `scn-${scenarioIndex}`;
+}
+
+function getBIAImpactOverrideKey(targetKey, scenarioKey, category, bucketIndex) {
+  return `${targetKey}::${scenarioKey}::${category}::${bucketIndex}`;
+}
+
+function normalizeBIAImpactMap(rawMap) {
+  if (!rawMap || typeof rawMap !== 'object') return null;
+  const timeBuckets = getBIATimeBuckets();
+  const categories = getBIAImpactCategories();
+  const normalized = {};
+
+  categories.forEach((category) => {
+    const row = rawMap[category];
+    const fallbackRow = rawMap[String(category).toLowerCase()];
+    const values = Array.isArray(row) ? row : (Array.isArray(fallbackRow) ? fallbackRow : []);
+    normalized[category] = timeBuckets.map((_, idx) => {
+      const score = Number(values[idx]);
+      return Number.isNaN(score) ? 3 : Math.max(1, Math.min(5, score));
+    });
+  });
+
+  return normalized;
+}
+
+function getBIAMatrixTemplateForTarget(targetRef) {
+  const target = resolveBIATargetRef(targetRef);
+  if (!target) return null;
+
+  const assessment = getLatestBIAAssessment(target);
+  if (!assessment) return null;
+
+  const explicitTemplate = normalizeBIAImpactMap(assessment.matrixTemplate || null);
+  if (explicitTemplate) return explicitTemplate;
+
+  const matrixSummary = assessment.matrixSummary || null;
+  if (!matrixSummary) return null;
+
+  const summaryByCategory = {
+    Monetario: Number(matrixSummary.monetarioLevel || 3),
+    Procesos: Number(matrixSummary.procesosLevel || 3),
+    Reputacional: Number(matrixSummary.reputacionalLevel || 3),
+    Normativo: Number(matrixSummary.normativoLevel || 3),
+    Clientes: Number(matrixSummary.clientesLevel || 3)
+  };
+
+  const fallbackTemplate = {};
+  getBIAImpactCategories().forEach((category) => {
+    const level = Math.max(1, Math.min(5, Number(summaryByCategory[category] || 3)));
+    fallbackTemplate[category] = getBIATimeBuckets().map(() => level);
+  });
+  return fallbackTemplate;
+}
+
+function getBIAMatrixByScenarioForTarget(targetRef) {
+  const target = resolveBIATargetRef(targetRef);
+  if (!target) return {};
+  const assessment = getLatestBIAAssessment(target);
+  if (!assessment || !assessment.matrixByScenario || typeof assessment.matrixByScenario !== 'object') return {};
+
+  const normalizedMap = {};
+  Object.entries(assessment.matrixByScenario).forEach(([scenarioKey, scenarioData]) => {
+    const normalizedKey = String(scenarioKey || '').trim();
+    if (!normalizedKey) return;
+    const rawTemplate = scenarioData?.matrixTemplate || scenarioData;
+    const normalizedTemplate = normalizeBIAImpactMap(rawTemplate || null);
+    if (!normalizedTemplate) return;
+    normalizedMap[normalizedKey] = normalizedTemplate;
+  });
+  return normalizedMap;
+}
+
+function getBIAScenarioTemplateScore(targetRef, scenarioKey, category, bucketIndex) {
+  const normalizedScenarioKey = String(scenarioKey || '').trim();
+  if (!normalizedScenarioKey) return null;
+  const scenarioMap = getBIAMatrixByScenarioForTarget(targetRef);
+  const template = scenarioMap[normalizedScenarioKey];
+  if (!template || !Array.isArray(template[category])) return null;
+  const score = Number(template[category][bucketIndex]);
+  if (Number.isNaN(score)) return null;
+  return Math.max(1, Math.min(5, score));
+}
+
+function getBIAImpactTemplateScore(targetRef, category, bucketIndex) {
+  const template = getBIAMatrixTemplateForTarget(targetRef);
+  if (!template || !Array.isArray(template[category])) return null;
+  const score = Number(template[category][bucketIndex]);
+  if (Number.isNaN(score)) return null;
+  return Math.max(1, Math.min(5, score));
+}
+
+function getBIAImpactCellScore(targetRef, scenario, scenarioKey, category, bucketIndex) {
+  const target = resolveBIATargetRef(targetRef);
+  const targetKey = target ? target.targetKey : getBIATargetKey('PROCESS', targetRef);
+  const overrideKey = getBIAImpactOverrideKey(targetKey, scenarioKey, category, bucketIndex);
+  const override = AppState.biaImpactOverrides[overrideKey];
+  if (typeof override === 'number') {
+    return override;
+  }
+
+  const scenarioTemplateScore = getBIAScenarioTemplateScore(target || targetRef, scenarioKey, category, bucketIndex);
+  if (typeof scenarioTemplateScore === 'number') return scenarioTemplateScore;
+
+  const templateScore = getBIAImpactTemplateScore(target || targetRef, category, bucketIndex);
+  if (typeof templateScore === 'number') return templateScore;
+
+  return getBIAImpactScoreForCell(scenario, category, bucketIndex);
+}
+
+function resolveBiaMajorImpactType(impactTypePeak, impactCategories) {
+  const entries = Object.entries(impactTypePeak);
+  if (entries.length === 0) return 'Procesos';
+  entries.sort((a, b) => {
+    if (b[1] !== a[1]) return b[1] - a[1];
+    return impactCategories.indexOf(a[0]) - impactCategories.indexOf(b[0]);
+  });
+  return entries[0][0];
+}
+
+function cycleBIAImpactLevel(buttonEl) {
+  if (!buttonEl) return;
+  const maxLevel = Math.max(1, getBIAImpactLevels().length || 5);
+  const current = Number(buttonEl.dataset.level) || 1;
+  const next = current >= maxLevel ? 1 : current + 1;
+  applyBIAImpactPillLevel(buttonEl, next);
+
+  const targetKey = buttonEl.dataset.targetKey || getBIATargetKey('PROCESS', buttonEl.dataset.processId);
+  const scenarioKey = buttonEl.dataset.scenarioKey;
+  const category = buttonEl.dataset.category;
+  const bucketIndex = buttonEl.dataset.bucketIndex;
+  const overrideKey = getBIAImpactOverrideKey(targetKey, scenarioKey, category, bucketIndex);
+  AppState.biaImpactOverrides[overrideKey] = next;
+
+  const row = buttonEl.closest('tr');
+  refreshBIAImpactRowSummary(row);
+}
+
+function applyBIAImpactPillLevel(buttonEl, level) {
+  const normalized = Math.max(1, Math.min(5, Number(level) || 1));
+  buttonEl.dataset.level = String(normalized);
+  buttonEl.classList.remove('level-1', 'level-2', 'level-3', 'level-4', 'level-5');
+  buttonEl.classList.add(`level-${normalized}`);
+  buttonEl.textContent = getBIAImpactLabel(normalized);
+}
+
+function refreshBIAImpactRowSummary(rowEl) {
+  if (!rowEl) return;
+  const impactCategories = getBIAImpactCategories();
+  const peakByCategory = {};
+  let max24hScore = 1;
+
+  rowEl.querySelectorAll('td[data-impact-cell="1"]').forEach((cell) => {
+    const bucketIndex = Number(cell.dataset.bucketIndex);
+    const category = cell.dataset.category;
+    const button = cell.querySelector('.bia-impact-pill');
+    if (!button) return;
+
+    const score = Number(button.dataset.level) || 1;
+    if (bucketIndex <= 3) {
+      peakByCategory[category] = Math.max(peakByCategory[category] || 0, score);
+      max24hScore = Math.max(max24hScore, score);
+    }
+  });
+
+  const finalImpactPill = rowEl.querySelector('[data-bia-final-impact] .bia-impact-pill');
+  if (finalImpactPill) {
+    applyBIAImpactPillLevel(finalImpactPill, max24hScore);
+  }
+
+  const finalTypeCell = rowEl.querySelector('[data-bia-final-type]');
+  if (finalTypeCell) {
+    finalTypeCell.textContent = resolveBiaMajorImpactType(peakByCategory, impactCategories);
+  }
+}
+
+function getBIAScenariosForProcessCore(process) {
+  const risks = (BCMSDataStore.entities.risks || []).filter(r => !r.isDeleted);
+  const processId = Number(process.id);
+  const direct = risks.filter(r => Number(r.targetProcessId) === processId);
+  const global = risks.filter(r => !r.targetProcessId && ['CONTINUITY', 'CYBER', 'OPERATIONAL'].includes(String(r.riskDomain || '').toUpperCase()));
+  const merged = [...direct];
+
+  global.forEach(r => {
+    if (!merged.find(item => item.id === r.id)) {
+      merged.push(r);
+    }
+  });
+
+  if (merged.length > 0) {
+    return merged;
+  }
+
+  const dependencies = BCMSDataStore.api.filter('biaDependencies', d => Number(d.processId) === processId);
+  if (dependencies.length > 0) {
+    const criticalityToImpact = { LOW: 2, MEDIUM: 3, HIGH: 4, CRITICAL: 5 };
+    return dependencies.map((dep) => ({
+      id: `dep-${dep.id}`,
+      scenario: `Indisponibilidad de ${dep.referenceName}`,
+      residualImpact: criticalityToImpact[String(dep.criticality || '').toUpperCase()] || 3,
+      riskDomain: dep.dependencyType === 'APPLICATION' ? 'CONTINUITY' : 'OPERATIONAL'
+    }));
+  }
+
+  return [{
+    id: `proc-${process.id}`,
+    scenario: process.description || 'Escenario no registrado',
+    residualImpact: process.businessCriticality === 'CRITICAL' ? 5 : process.businessCriticality === 'HIGH' ? 4 : 3,
+    riskDomain: 'CONTINUITY'
+  }];
+}
+
+function getBIAScenariosForTarget(targetRef) {
+  const resolved = resolveBIATargetRef(targetRef);
+  if (!resolved) return [];
+  const target = getBIAEntityFromTarget(resolved.targetType, resolved.targetId);
+  if (!target) return [];
+
+  const mergeWithAssessmentScenarios = (baseScenarios) => {
+    const scenarios = Array.isArray(baseScenarios) ? [...baseScenarios] : [];
+    const latestAssessment = getLatestBIAAssessment(resolved.targetType, resolved.targetId);
+    const customScenarios = Array.isArray(latestAssessment?.customScenarios)
+      ? latestAssessment.customScenarios
+      : [];
+
+    if (customScenarios.length === 0) return scenarios;
+
+    const existingKeys = new Set(scenarios.map((scenario, index) => getBIAScenarioKey(scenario, index)));
+    customScenarios.forEach((customScenario, index) => {
+      const scenarioTitle = String(customScenario?.scenario || customScenario?.title || '').trim();
+      if (!scenarioTitle) return;
+      const scenarioKey = String(customScenario?.scenarioKey || getBIAScenarioKey(scenarioTitle, index)).trim();
+      if (!scenarioKey || existingKeys.has(scenarioKey)) return;
+      existingKeys.add(scenarioKey);
+      scenarios.push({
+        id: scenarioKey,
+        scenario: scenarioTitle,
+        residualImpact: Number(customScenario?.residualImpact || 3),
+        riskDomain: 'CONTINUITY',
+        isCustom: true
+      });
+    });
+    return scenarios;
+  };
+
+  if (resolved.targetType === 'PROCESS') {
+    return mergeWithAssessmentScenarios(getBIAScenariosForProcessCore(target));
+  }
+
+  if (resolved.targetType === 'SUBPROCESS') {
+    const parent = target.parentProcessId ? BCMSDataStore.api.getById('processes', target.parentProcessId) : null;
+    if (parent) {
+      const derivedScenarios = getBIAScenariosForProcessCore(parent).map((scenario, index) => ({
+        ...scenario,
+        id: `${scenario.id || `sub-${index}`}-sub-${target.targetId}`,
+        scenario: `Subproceso ${target.name}: ${scenario.scenario || scenario.title || 'Escenario derivado'}`
+      }));
+      return mergeWithAssessmentScenarios(derivedScenarios);
+    }
+
+    return mergeWithAssessmentScenarios([{
+      id: `sub-${target.targetId}`,
+      scenario: target.description || `Interrupción de ${target.name}`,
+      residualImpact: String(target.businessCriticality || '').toUpperCase() === 'CRITICAL' ? 5 : 4,
+      riskDomain: 'CONTINUITY'
+    }]);
+  }
+
+  const childProcesses = (BCMSDataStore.entities.processes || [])
+    .filter(p => !p.isDeleted && Number(p.macroprocessId) === Number(target.targetId));
+  if (childProcesses.length === 0) {
+    return mergeWithAssessmentScenarios([{
+      id: `macro-${target.targetId}`,
+      scenario: target.description || `Interrupción de ${target.name}`,
+      residualImpact: String(target.businessCriticality || '').toUpperCase() === 'CRITICAL' ? 5 : 4,
+      riskDomain: 'CONTINUITY'
+    }]);
+  }
+
+  const processIds = childProcesses.map(p => Number(p.id));
+  const risks = (BCMSDataStore.entities.risks || []).filter(r => !r.isDeleted);
+  const directRisks = risks.filter(r => processIds.includes(Number(r.targetProcessId)));
+  const globalRisks = risks.filter(r => !r.targetProcessId && ['CONTINUITY', 'CYBER', 'OPERATIONAL'].includes(String(r.riskDomain || '').toUpperCase()));
+  const merged = [...directRisks];
+
+  globalRisks.forEach((risk) => {
+    if (!merged.find(item => item.id === risk.id)) merged.push(risk);
+  });
+
+  if (merged.length > 0) return mergeWithAssessmentScenarios(merged);
+
+  return mergeWithAssessmentScenarios([{
+    id: `macro-${target.targetId}`,
+    scenario: target.description || `Interrupción de ${target.name}`,
+    residualImpact: String(target.businessCriticality || '').toUpperCase() === 'CRITICAL' ? 5 : 4,
+    riskDomain: 'CONTINUITY'
+  }]);
+}
+
+function getBIAScenariosForProcess(process) {
+  return getBIAScenariosForTarget({
+    targetType: 'PROCESS',
+    targetId: process.id
+  });
+}
+
+function getBIAInterviewData(targetRef) {
+  const target = resolveBIATargetRef(targetRef);
+  if (!target) {
+    return {
+      interviewDate: '-',
+      intervieweeName: '-',
+      intervieweeRole: '-',
+      surveyorName: '-',
+      surveyorRole: '-',
+      participants: []
+    };
+  }
+
+  const targetEntity = getBIAEntityFromTarget(target.targetType, target.targetId);
+  if (!targetEntity) {
+    return {
+      interviewDate: '-',
+      intervieweeName: '-',
+      intervieweeRole: '-',
+      surveyorName: '-',
+      surveyorRole: '-',
+      participants: []
+    };
+  }
+
+  const latestAssessment = getLatestBIAAssessment(target);
+  if (latestAssessment) {
+    const participants = Array.isArray(latestAssessment.interviewParticipants)
+      ? latestAssessment.interviewParticipants.filter(Boolean)
+      : [];
+    const firstParticipant = participants[0] || {};
+    return {
+      interviewDate: formatDate(latestAssessment.interviewDate),
+      intervieweeName: latestAssessment.intervieweeName || firstParticipant.name || '-',
+      intervieweeRole: latestAssessment.intervieweeRole || firstParticipant.role || '-',
+      surveyorName: latestAssessment.surveyorName || '-',
+      surveyorRole: latestAssessment.surveyorRole || '-',
+      participants
+    };
+  }
+
+  const surveyorUser = findUserByFullName(getActiveSessionUserName()) || null;
+  return {
+    interviewDate: '-',
+    intervieweeName: '-',
+    intervieweeRole: '-',
+    surveyorName: getActiveSessionUserName(),
+    surveyorRole: surveyorUser?.role || '-',
+    participants: []
+  };
+}
+
+function getBIAApprovalData(targetRef) {
+  const target = resolveBIATargetRef(targetRef);
+  if (!target) return [];
+  const targetEntity = getBIAEntityFromTarget(target.targetType, target.targetId);
+  if (!targetEntity) return [];
+
+  const latestAssessment = getLatestBIAAssessment(target);
+  if (latestAssessment) {
+    const approvals = (BCMSDataStore.entities.biaAssessmentApprovals || [])
+      .filter(row => !row.isDeleted && Number(row.assessmentId) === Number(latestAssessment.id));
+    if (approvals.length > 0) {
+      return approvals.map(row => ({
+        role: row.role,
+        name: row.name || '-',
+        date: formatDate(row.date)
+      }));
+    }
+  }
+
+  const users = BCMSDataStore.entities.users || [];
+  const continuityLead = users.find(u => String(u.role || '').toLowerCase().includes('continuidad'));
+  const riskLead = users.find(u => String(u.role || '').toLowerCase().includes('riesgo'));
+  const owner = target.targetType === 'PROCESS' ? getUserByProcess(targetEntity) : null;
+  const processDate = formatDate(targetEntity.updatedAt || targetEntity.createdAt);
+  const processOwnerName = targetEntity.ownerName || targetEntity.owner || (owner ? `${owner.firstName} ${owner.lastName}` : '-');
+
+  return [
+    { role: 'Responsable de Proceso', name: processOwnerName, date: processDate },
+    { role: 'Jefe de Continuidad de Negocio', name: continuityLead ? `${continuityLead.firstName} ${continuityLead.lastName}` : '-', date: processDate },
+    { role: 'Jefe de Departamento de Riesgo Operacional', name: riskLead ? `${riskLead.firstName} ${riskLead.lastName}` : '-', date: processDate }
+  ];
+}
+
+function resolveBIAAssessmentTarget(assessment) {
+  if (!assessment) return null;
+  if (assessment.targetProcessType && assessment.targetProcessId !== undefined && assessment.targetProcessId !== null) {
+    return {
+      targetType: String(assessment.targetProcessType).toUpperCase(),
+      targetId: Number(assessment.targetProcessId),
+      targetKey: getBIATargetKey(assessment.targetProcessType, assessment.targetProcessId)
+    };
+  }
+
+  if (assessment.processId !== undefined && assessment.processId !== null) {
+    return {
+      targetType: 'PROCESS',
+      targetId: Number(assessment.processId),
+      targetKey: getBIATargetKey('PROCESS', assessment.processId)
+    };
+  }
+
+  return null;
+}
+
+function getLatestBIAAssessment(targetType = 'PROCESS', targetId = null) {
+  const target = resolveBIATargetRef(targetType, targetId);
+  if (!target) return null;
+
+  const assessments = (BCMSDataStore.entities.biaAssessments || [])
+    .filter(a => !a.isDeleted)
+    .filter((assessment) => {
+      const assessmentTarget = resolveBIAAssessmentTarget(assessment);
+      return assessmentTarget && assessmentTarget.targetKey === target.targetKey;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+  return assessments[0] || null;
+}
+
+function getBIALevantamientoStatus(targetType = 'PROCESS', targetId = null) {
+  const assessment = getLatestBIAAssessment(targetType, targetId);
+  if (!assessment) {
+    return { code: 'SIN_INICIAR', label: 'Sin iniciar', badgeClass: 'badge-neutral' };
+  }
+
+  const status = String(assessment.status || '').toUpperCase();
+  if (['COMPLETADO', 'COMPLETED', 'CERRADO', 'CLOSED'].includes(status)) {
+    return { code: 'COMPLETADO', label: 'Completado', badgeClass: 'badge-success' };
+  }
+
+  return { code: 'EN_CURSO', label: 'En curso', badgeClass: 'badge-warning' };
+}
+
+function getUserByProcess(process) {
+  return findUserByFullName(process.ownerName || process.owner);
+}
+
+function findUserByFullName(fullName) {
+  if (!fullName) return null;
+  const target = String(fullName).toLowerCase().trim();
+  const users = BCMSDataStore.entities.users || [];
+  return users.find(u => `${u.firstName} ${u.lastName}`.toLowerCase().trim() === target) || null;
+}
+
+function getBIADependenciesForTarget(targetRef) {
+  const target = resolveBIATargetRef(targetRef);
+  if (!target) return [];
+
+  let processIds = [];
+  if (target.targetType === 'PROCESS') {
+    processIds = [Number(target.targetId)];
+  } else if (target.targetType === 'SUBPROCESS') {
+    const sub = BCMSDataStore.api.getById('subprocesses', Number(target.targetId));
+    if (sub?.processId) processIds = [Number(sub.processId)];
+  } else if (target.targetType === 'MACROPROCESS') {
+    processIds = (BCMSDataStore.entities.processes || [])
+      .filter(p => !p.isDeleted && Number(p.macroprocessId) === Number(target.targetId))
+      .map(p => Number(p.id));
+  }
+
+  if (processIds.length === 0) return [];
+  return BCMSDataStore.api.filter('biaDependencies', d => processIds.includes(Number(d.processId)));
+}
+
+function getBIADependenciesMarkup(targetRef) {
+  const dependencies = getBIADependenciesForTarget(targetRef);
+
+  if (dependencies.length === 0) {
+    return '<p class="color-muted fs-13">No hay dependencias registradas para este proceso.</p>';
+  }
+
+  const grouped = {};
+  dependencies.forEach((dep) => {
+    if (!grouped[dep.dependencyType]) grouped[dep.dependencyType] = [];
+    grouped[dep.dependencyType].push(dep);
+  });
+
+  return Object.entries(grouped).map(([type, deps]) => `
+    <div class="bia-dependency-group">
+      <div class="bia-dependency-group-header">
+        <span>${BCMSDataStore.api.getLookupLabel('dependencyType', type)}</span>
+        <span class="badge badge-info">${deps.length}</span>
+      </div>
+      <div class="bia-dependency-list">
+        ${deps.map(d => `<div class="bia-dependency-row"><span>${d.referenceName}</span><span class="badge badge-${(d.criticality || 'medium').toLowerCase()}">${d.criticality || 'N/A'}</span></div>`).join('')}
+      </div>
+    </div>
+  `).join('');
 }
 
 /**
  * Renderiza las dependencias de un proceso
  */
-function renderBIADependencies(processId) {
+function renderBIADependencies(targetRef) {
   const content = document.getElementById('bia-dependencies-content');
-  const dependencies = BCMSDataStore.api.filter('biaDependencies', d => d.processId === processId);
-  
-  if (dependencies.length === 0) {
-    content.innerHTML = '<p class="text-muted">No hay dependencias registradas para este proceso.</p>';
-    return;
-  }
-  
-  const grouped = {};
-  dependencies.forEach(d => {
-    if (!grouped[d.dependencyType]) grouped[d.dependencyType] = [];
-    grouped[d.dependencyType].push(d);
-  });
-  
-  content.innerHTML = Object.entries(grouped).map(([type, deps]) => `
-    <div class="mb-3">
-      <strong>${BCMSDataStore.api.getLookupLabel('dependencyType', type)}</strong>
-      <ul class="list-unstyled mb-0 mt-1">
-        ${deps.map(d => `
-          <li class="d-flex justify-content-between align-items-center py-1">
-            <span>${d.referenceName}</span>
-            <span class="badge badge-${d.criticality.toLowerCase()}">${d.criticality}</span>
-          </li>
-        `).join('')}
-      </ul>
-    </div>
-  `).join('');
+  if (!content) return;
+  content.innerHTML = getBIADependenciesMarkup(targetRef);
 }
 
 /**
@@ -1309,21 +2550,31 @@ function renderBIADependencies(processId) {
 function renderPlansList() {
   const list = document.getElementById('plans-list');
   if (!list) return;
-  
-  const plans = BCMSDataStore.api.getAll('continuityPlans');
-  
+
+  const plans = BCMSDataStore.api
+    .filter('continuityPlans', p => p.planType === 'BCP')
+    .sort((a, b) => {
+      if (a.status === 'ACTIVE' && b.status !== 'ACTIVE') return -1;
+      if (a.status !== 'ACTIVE' && b.status === 'ACTIVE') return 1;
+      return String(a.code || '').localeCompare(String(b.code || ''));
+    });
+
+  if (plans.length === 0) {
+    list.innerHTML = '<div class="bia-empty-state">No hay planes BCP registrados.</div>';
+    return;
+  }
+
   list.innerHTML = plans.map(p => `
-    <li class="list-group-item list-group-item-action ${AppState.selectedPlan === p.id ? 'active-item' : ''}" 
-        onclick="selectPlan(${p.id})">
-      <div class="d-flex justify-content-between align-items-center">
+    <div class="plan-item ${AppState.selectedPlan === p.id ? 'active-item' : ''}" data-plan-id="${p.id}" onclick="selectPlan(${p.id})">
+      <div class="plan-item-header">
         <div>
-          <span class="badge ${p.planType === 'BCP' ? 'bg-primary' : p.planType === 'DRP' ? 'bg-info' : 'bg-secondary'} me-1">${p.planType}</span>
-          <strong>${p.code}</strong>
-          <br><small class="text-muted">${p.title}</small>
+          <div class="plan-item-title"><span class="badge badge-info">${p.planType}</span> ${p.code}</div>
+          <div class="plan-item-subtitle">${p.title}</div>
+          <div class="plan-item-meta">${p.nextReviewDate ? `Próx. revisión: ${p.nextReviewDate}` : 'Sin próxima revisión definida'}</div>
         </div>
-        <span class="badge ${p.status === 'ACTIVE' ? 'bg-success' : 'bg-secondary'}">${p.status}</span>
+        <span class="badge ${p.status === 'ACTIVE' ? 'badge-success' : 'badge-neutral'}">${BCMSDataStore.api.getLookupLabel('planStatus', p.status) || p.status}</span>
       </div>
-    </li>
+    </div>
   `).join('');
 }
 
@@ -1332,16 +2583,15 @@ function renderPlansList() {
  */
 function selectPlan(planId) {
   AppState.selectedPlan = planId;
-  
+
   const plan = BCMSDataStore.api.getById('continuityPlans', planId);
   if (!plan) return;
-  
+
   // Actualizar lista visual
-  document.querySelectorAll('#plans-list .list-group-item').forEach(item => {
-    item.classList.remove('active-item');
+  document.querySelectorAll('#plans-list .plan-item').forEach(item => {
+    item.classList.toggle('active-item', Number(item.dataset.planId) === planId);
   });
-  event.currentTarget.classList.add('active-item');
-  
+
   // Actualizar detalle
   document.getElementById('plan-detail-title').textContent = `${plan.code} - ${plan.title}`;
   
@@ -1350,20 +2600,20 @@ function selectPlan(planId) {
   
   const detailContent = document.getElementById('plan-detail-content');
   detailContent.innerHTML = `
-    <div class="row g-3 mb-3">
-      <div class="col-md-6">
-        <p><strong>Tipo:</strong> ${BCMSDataStore.api.getLookupLabel('planType', plan.planType)}</p>
-        <p><strong>Versión:</strong> ${plan.version}</p>
-        <p><strong>Estado:</strong> <span class="badge ${plan.status === 'ACTIVE' ? 'bg-success' : 'bg-secondary'}">${plan.status}</span></p>
+    <div class="plan-detail-grid">
+      <div class="plan-detail-col">
+        <div class="plan-detail-item"><span class="plan-detail-label">Tipo</span><span class="plan-detail-value">${BCMSDataStore.api.getLookupLabel('planType', plan.planType) || plan.planType}</span></div>
+        <div class="plan-detail-item"><span class="plan-detail-label">Versión</span><span class="plan-detail-value">${plan.version || '-'}</span></div>
+        <div class="plan-detail-item"><span class="plan-detail-label">Estado</span><span class="badge ${plan.status === 'ACTIVE' ? 'badge-success' : 'badge-neutral'}">${BCMSDataStore.api.getLookupLabel('planStatus', plan.status) || plan.status}</span></div>
       </div>
-      <div class="col-md-6">
-        <p><strong>Responsable:</strong> ${owner ? `${owner.firstName} ${owner.lastName}` : '-'}</p>
-        <p><strong>Proceso:</strong> ${process ? process.name : 'Alcance global'}</p>
-        <p><strong>Próxima revisión:</strong> ${plan.nextReviewDate || '-'}</p>
+      <div class="plan-detail-col">
+        <div class="plan-detail-item"><span class="plan-detail-label">Responsable</span><span class="plan-detail-value">${owner ? `${owner.firstName} ${owner.lastName}` : '-'}</span></div>
+        <div class="plan-detail-item"><span class="plan-detail-label">Proceso</span><span class="plan-detail-value">${process ? process.name : 'Alcance global'}</span></div>
+        <div class="plan-detail-item"><span class="plan-detail-label">Próxima revisión</span><span class="plan-detail-value">${plan.nextReviewDate || '-'}</span></div>
       </div>
     </div>
-    <p><strong>Descripción:</strong> ${plan.description}</p>
-    ${plan.rtoTarget ? `<p><strong>RTO Objetivo:</strong> ${plan.rtoTarget} horas | <strong>RPO Objetivo:</strong> ${plan.rpoTarget} horas</p>` : ''}
+    <div class="plan-detail-description">${plan.description || 'Sin descripción registrada.'}</div>
+    ${plan.rtoTarget ? `<div class="plan-detail-metrics"><span class="badge badge-info">RTO: ${plan.rtoTarget}h</span><span class="badge badge-warning">RPO: ${plan.rpoTarget || '-'}h</span></div>` : ''}
   `;
   
   // Mostrar y renderizar estrategias
@@ -1371,20 +2621,20 @@ function selectPlan(planId) {
   const strategies = BCMSDataStore.api.filter('recoveryStrategies', s => s.planId === planId);
   
   if (strategies.length > 0) {
-    strategiesCard.style.display = 'block';
+    strategiesCard.classList.remove('d-none');
     document.getElementById('strategies-content').innerHTML = strategies.map(s => `
       <div class="strategy-card">
         <div class="strategy-card-title">${s.name}</div>
-        <p class="mb-2">${s.description}</p>
+        <p class="strategy-card-description">${s.description || 'Sin descripción'}</p>
         <div class="strategy-card-meta">
-          <span class="me-3"><i class="bi bi-clock"></i> RTO: ${s.rtoHours}h</span>
-          <span class="me-3"><i class="bi bi-database"></i> RPO: ${s.rpoHours}h</span>
-          <span><i class="bi bi-currency-dollar"></i> Costo est.: $${(s.estimatedCost / 1000000).toFixed(1)}M</span>
+          <span><i class="bi bi-clock"></i> RTO: ${s.rtoHours || '-'}h</span>
+          <span><i class="bi bi-database"></i> RPO: ${s.rpoHours || '-'}h</span>
+          <span><i class="bi bi-currency-dollar"></i> Costo est.: $${s.estimatedCost ? (s.estimatedCost / 1000000).toFixed(1) : '0.0'}M</span>
         </div>
       </div>
     `).join('');
   } else {
-    strategiesCard.style.display = 'none';
+    strategiesCard.classList.add('d-none');
   }
   
   // Mostrar y renderizar criterios de activación
@@ -1392,11 +2642,11 @@ function selectPlan(planId) {
   const criteria = BCMSDataStore.api.filter('activationCriteria', c => c.planId === planId);
   
   if (criteria.length > 0) {
-    criteriaCard.style.display = 'block';
+    criteriaCard.classList.remove('d-none');
     document.getElementById('criteria-content').innerHTML = `
-      <div>
+      <div class="criteria-badges-wrap">
         ${criteria.map(c => `
-          <span class="criterion-badge ${c.severity.toLowerCase()}">
+          <span class="criterion-badge ${(c.severity || 'MEDIUM').toLowerCase()}">
             <i class="bi bi-${c.isAutoActivate ? 'lightning' : 'hand-index'}"></i>
             ${c.description}
           </span>
@@ -1404,7 +2654,7 @@ function selectPlan(planId) {
       </div>
     `;
   } else {
-    criteriaCard.style.display = 'none';
+    criteriaCard.classList.add('d-none');
   }
 }
 
@@ -1855,7 +3105,14 @@ function getChangeStatusBadgeClass(status) {
  * @param {string} type - Tipo: success, danger, warning, info
  */
 function showToast(message, type = 'info') {
-  const container = document.getElementById('toast-container');
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.className = 'toast-container position-fixed top-0 end-0 p-3';
+    container.style.zIndex = '1200';
+    document.body.appendChild(container);
+  }
   
   const toastId = `toast-${Date.now()}`;
   const bgClass = {
@@ -1877,8 +3134,12 @@ function showToast(message, type = 'info') {
   container.insertAdjacentHTML('beforeend', toastHtml);
   
   const toastEl = document.getElementById(toastId);
-  const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
-  toast.show();
+  if (window.bootstrap && bootstrap.Toast) {
+    const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+    toast.show();
+  } else {
+    setTimeout(() => toastEl.remove(), 3000);
+  }
   
   toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
 }
@@ -1922,7 +3183,883 @@ function viewAudit(id) { showToast(`Ver auditoría ${id}`, 'info'); }
 function viewLesson(id) { showToast(`Ver lección ${id}`, 'info'); }
 function viewChange(id) { showToast(`Ver cambio ${id}`, 'info'); }
 function editUser(id) { openModal('usuario', id); }
-function editBIA() { showToast('Editar BIA', 'info'); }
+function editBIA() { openBIALevantamientoModal(); }
+
+function setBIALevSaveButtonsState(isEnabled) {
+  ['bia-lev-save-draft-btn', 'bia-lev-save-close-btn'].forEach((id) => {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = !isEnabled;
+  });
+}
+
+function getBIALevTargetOptions(targetType) {
+  return getBIAEntityCatalog()
+    .filter(item => item.targetType === String(targetType || 'PROCESS').toUpperCase())
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+    .map((item) => ({
+      id: item.targetId,
+      label: `${item.code || '-'} - ${item.name || '-'}`,
+      targetType: item.targetType
+    }));
+}
+
+function renderBIALevTargetSelect(targetType, selectedId = null) {
+  const select = document.getElementById('bia-lev-target-id');
+  if (!select) return;
+  const selected = Number(selectedId || 0);
+  const options = getBIALevTargetOptions(targetType);
+  select.innerHTML = `
+    <option value="">-- Seleccionar objetivo --</option>
+    ${options.map(opt => `<option value="${opt.id}" ${selected === Number(opt.id) ? 'selected' : ''}>${opt.label}</option>`).join('')}
+  `;
+}
+
+function getBIAEligiblePeople() {
+  const lookupPeople = Array.isArray(BCMSDataStore?.lookups?.biaInterviewPeople)
+    ? BCMSDataStore.lookups.biaInterviewPeople
+    : [];
+  const users = Array.isArray(BCMSDataStore?.entities?.users)
+    ? BCMSDataStore.entities.users.filter(user => !user.isDeleted)
+    : [];
+  const uniqueByName = new Map();
+
+  lookupPeople.forEach((person, index) => {
+    const name = String(person?.name || '').trim();
+    if (!name) return;
+    uniqueByName.set(name.toLowerCase(), {
+      id: person.id || `lookup-${index + 1}`,
+      name,
+      role: String(person?.role || '').trim() || '-',
+      source: person?.source || 'BIA'
+    });
+  });
+
+  users.forEach((user) => {
+    const name = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    if (!name) return;
+    const key = name.toLowerCase();
+    if (!uniqueByName.has(key)) {
+      uniqueByName.set(key, {
+        id: user.id,
+        name,
+        role: String(user.role || '').trim() || '-',
+        source: 'Usuarios'
+      });
+    }
+  });
+
+  return [...uniqueByName.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function getBIAEligiblePeopleOptionsMarkup(selectedName = '') {
+  const selected = String(selectedName || '').trim();
+  return `
+    <option value="">-- Seleccionar persona --</option>
+    ${getBIAEligiblePeople().map((person) => `
+      <option value="${person.name}" data-role="${person.role}" ${person.name === selected ? 'selected' : ''}>
+        ${person.name}
+      </option>
+    `).join('')}
+  `;
+}
+
+function getDefaultBIAInterviewParticipants() {
+  return [{ name: '', role: '' }];
+}
+
+function renderBIAParticipantRows(participants = null) {
+  const tbody = document.getElementById('bia-lev-participants-body');
+  if (!tbody) return;
+
+  const sourceParticipants = Array.isArray(participants)
+    ? participants.filter(item => item && (item.name || item.role))
+    : [];
+  const rows = sourceParticipants.length > 0 ? sourceParticipants : getDefaultBIAInterviewParticipants();
+  tbody.innerHTML = rows.map((participant, index) => `
+    <tr data-participant-index="${index}">
+      <td>
+        <select class="bia-lev-participant-name" onchange="onBIAParticipantPersonChange(this)">
+          ${getBIAEligiblePeopleOptionsMarkup(participant.name)}
+        </select>
+      </td>
+      <td>
+        <input type="text" class="bia-lev-participant-role" value="${participant.role || ''}" placeholder="Cargo">
+      </td>
+      <td class="actions-cell">
+        <button type="button" class="btn btn-outline btn-sm" onclick="removeBIAParticipantRow(${index})">
+          <i class="bi bi-trash"></i> Quitar
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function addBIAParticipantRow() {
+  const participants = collectBIAInterviewParticipants();
+  participants.push({ name: '', role: '' });
+  renderBIAParticipantRows(participants);
+}
+
+function removeBIAParticipantRow(index) {
+  const participants = collectBIAInterviewParticipants();
+  const next = participants.filter((_, rowIndex) => rowIndex !== Number(index));
+  renderBIAParticipantRows(next.length > 0 ? next : [{ name: '', role: '' }]);
+}
+
+function onBIAParticipantPersonChange(selectEl) {
+  if (!selectEl) return;
+  const selectedOption = selectEl.options?.[selectEl.selectedIndex];
+  if (!selectedOption) return;
+  const inferredRole = String(selectedOption.getAttribute('data-role') || '').trim();
+  if (!inferredRole) return;
+  const row = selectEl.closest('tr');
+  const roleInput = row ? row.querySelector('.bia-lev-participant-role') : null;
+  if (roleInput && !String(roleInput.value || '').trim()) {
+    roleInput.value = inferredRole;
+  }
+}
+
+function collectBIAInterviewParticipants() {
+  const rows = document.querySelectorAll('#bia-lev-participants-body tr');
+  const participants = [];
+  rows.forEach((row) => {
+    const name = String(row.querySelector('.bia-lev-participant-name')?.value || '').trim();
+    const role = String(row.querySelector('.bia-lev-participant-role')?.value || '').trim();
+    if (!name && !role) return;
+    participants.push({ name, role });
+  });
+  return participants;
+}
+
+function getBIAEmptyMatrixTemplate(defaultScore = 3) {
+  const normalizedDefault = Math.max(1, Math.min(5, Number(defaultScore) || 3));
+  const template = {};
+  getBIAImpactCategories().forEach((category) => {
+    template[category] = getBIATimeBuckets().map(() => normalizedDefault);
+  });
+  return template;
+}
+
+function renderBIALevMatrixTable() {
+  const table = document.querySelector('.bia-lev-matrix-table');
+  const thead = table ? table.querySelector('thead') : null;
+  const tbody = document.getElementById('bia-lev-matrix-tbody');
+  if (!tbody) return;
+  const timeBuckets = getBIATimeBuckets();
+  const impactCategories = getBIAImpactCategories();
+  const impactLevels = getBIAImpactLevels();
+  const getImpactClass = (category) => {
+    const key = String(category || '').toLowerCase();
+    if (key === 'monetario') return 'bia-lev-impact-monetario';
+    if (key === 'procesos') return 'bia-lev-impact-procesos';
+    if (key === 'reputacional') return 'bia-lev-impact-reputacional';
+    if (key === 'normativo') return 'bia-lev-impact-normativo';
+    if (key === 'clientes') return 'bia-lev-impact-clientes';
+    return '';
+  };
+
+  if (thead) {
+    thead.innerHTML = `
+      <tr>
+        <th class="bia-lev-time-header">Rango de tiempo</th>
+        ${impactCategories.map((category) => `<th class="bia-lev-impact-header ${getImpactClass(category)}">${category}</th>`).join('')}
+      </tr>
+    `;
+  }
+
+  tbody.innerHTML = timeBuckets.map((bucketLabel, bucketIndex) => {
+    return `
+      <tr>
+        <td class="fw-600">${bucketLabel}</td>
+        ${impactCategories.map((category) => {
+          const categoryKey = String(category).toLowerCase();
+          return `
+          <td>
+            <select id="bia-lev-matrix-${categoryKey}-${bucketIndex}" class="bia-lev-cell-select" onchange="onBIALevMatrixCellChange(this)">
+              ${impactLevels.map((label, idx) => `<option value="${idx + 1}">${label}</option>`).join('')}
+            </select>
+          </td>
+          `;
+        }).join('')}
+      </tr>
+    `;
+  }).join('');
+
+  tbody.querySelectorAll('.bia-lev-cell-select').forEach((selectEl) => {
+    setBIALevMatrixCellLevelClass(selectEl);
+  });
+}
+
+function setBIALevMatrixCellLevelClass(selectEl) {
+  if (!selectEl) return;
+  const level = Math.max(1, Math.min(5, Number(selectEl.value) || 1));
+  selectEl.classList.remove('level-1', 'level-2', 'level-3', 'level-4', 'level-5');
+  selectEl.classList.add(`level-${level}`);
+}
+
+function onBIALevMatrixCellChange(selectEl) {
+  setBIALevMatrixCellLevelClass(selectEl);
+}
+
+function initializeBIALevScenarioDraft(target, latestAssessment = null) {
+  const baseScenarioRows = getBIAScenariosForTarget(target);
+  const baseScenarios = baseScenarioRows.map((scenario, index) => {
+    const scenarioTitle = String(scenario.scenario || scenario.title || `Escenario ${index + 1}`).trim();
+    const scenarioKey = getBIAScenarioKey(scenario, index);
+    return {
+      scenarioKey,
+      scenario: scenarioTitle,
+      matrixTemplate: null
+    };
+  });
+
+  const mapByKey = new Map(baseScenarios.map(item => [item.scenarioKey, item]));
+  const assessmentScenarioMap = latestAssessment?.matrixByScenario && typeof latestAssessment.matrixByScenario === 'object'
+    ? latestAssessment.matrixByScenario
+    : {};
+
+  const customScenarios = Array.isArray(latestAssessment?.customScenarios)
+    ? latestAssessment.customScenarios
+    : [];
+
+  Object.keys(assessmentScenarioMap).forEach((scenarioKey, index) => {
+    const normalizedKey = String(scenarioKey || '').trim();
+    if (!normalizedKey || mapByKey.has(normalizedKey)) return;
+    const scenarioRecord = assessmentScenarioMap[scenarioKey];
+    const inferredName = String(scenarioRecord?.scenario || scenarioRecord?.title || '').trim();
+    mapByKey.set(normalizedKey, {
+      scenarioKey: normalizedKey,
+      scenario: inferredName || `Escenario ${index + 1}`,
+      matrixTemplate: null
+    });
+  });
+
+  customScenarios.forEach((customScenario, index) => {
+    const scenarioTitle = String(customScenario?.scenario || customScenario?.title || '').trim();
+    if (!scenarioTitle) return;
+    const scenarioKey = String(customScenario?.scenarioKey || getBIAScenarioKey(scenarioTitle, index)).trim();
+    if (!scenarioKey) return;
+    if (!mapByKey.has(scenarioKey)) {
+      mapByKey.set(scenarioKey, {
+        scenarioKey,
+        scenario: scenarioTitle,
+        matrixTemplate: null
+      });
+    }
+  });
+
+  let scenarios = [...mapByKey.values()].map((scenarioItem) => {
+    const rawScenarioMap = assessmentScenarioMap[scenarioItem.scenarioKey];
+    const matrixTemplate = normalizeBIAImpactMap(rawScenarioMap?.matrixTemplate || rawScenarioMap || null)
+      || normalizeBIAImpactMap(latestAssessment?.matrixTemplate || null)
+      || getBIAEmptyMatrixTemplate();
+
+    return {
+      scenarioKey: scenarioItem.scenarioKey,
+      scenario: scenarioItem.scenario,
+      matrixTemplate
+    };
+  });
+
+  if (scenarios.length === 0) {
+    const fallbackTemplate = normalizeBIAImpactMap(latestAssessment?.matrixTemplate || null) || getBIAEmptyMatrixTemplate();
+    scenarios = [{
+      scenarioKey: 'escenario-1',
+      scenario: 'Escenario 1',
+      matrixTemplate: fallbackTemplate
+    }];
+  }
+
+  AppState.biaLevantamientoScenarioDraft = {
+    activeScenarioKey: scenarios[0].scenarioKey,
+    scenarios
+  };
+}
+
+function getBIALevScenarioDraft() {
+  return AppState.biaLevantamientoScenarioDraft && Array.isArray(AppState.biaLevantamientoScenarioDraft.scenarios)
+    ? AppState.biaLevantamientoScenarioDraft
+    : null;
+}
+
+function captureBIALevActiveScenarioMatrix() {
+  const draft = getBIALevScenarioDraft();
+  if (!draft) return;
+  const activeScenario = draft.scenarios.find(item => item.scenarioKey === draft.activeScenarioKey);
+  if (!activeScenario) return;
+
+  const capturedTemplate = {};
+  getBIAImpactCategories().forEach((category) => {
+    const categoryKey = String(category).toLowerCase();
+    capturedTemplate[category] = getBIATimeBuckets().map((_, bucketIndex) => {
+      const cell = document.getElementById(`bia-lev-matrix-${categoryKey}-${bucketIndex}`);
+      const score = Number(cell?.value || 3);
+      return Number.isNaN(score) ? 3 : Math.max(1, Math.min(5, score));
+    });
+  });
+  activeScenario.matrixTemplate = capturedTemplate;
+}
+
+function applyBIALevActiveScenarioMatrix() {
+  const draft = getBIALevScenarioDraft();
+  if (!draft) return;
+  const activeScenario = draft.scenarios.find(item => item.scenarioKey === draft.activeScenarioKey);
+  const normalizedTemplate = normalizeBIAImpactMap(activeScenario?.matrixTemplate || null) || getBIAEmptyMatrixTemplate();
+
+  getBIAImpactCategories().forEach((category) => {
+    const categoryKey = String(category).toLowerCase();
+    const rowValues = normalizedTemplate[category] || getBIATimeBuckets().map(() => 3);
+    rowValues.forEach((score, bucketIndex) => {
+      const cell = document.getElementById(`bia-lev-matrix-${categoryKey}-${bucketIndex}`);
+      if (cell) {
+        cell.value = String(Math.max(1, Math.min(5, Number(score) || 3)));
+        setBIALevMatrixCellLevelClass(cell);
+      }
+    });
+  });
+}
+
+function renderBIALevScenarioSelect() {
+  const select = document.getElementById('bia-lev-scenario-select');
+  if (!select) return;
+  const draft = getBIALevScenarioDraft();
+  if (!draft || draft.scenarios.length === 0) {
+    select.innerHTML = '<option value="">-- Sin escenarios --</option>';
+    return;
+  }
+
+  select.innerHTML = draft.scenarios.map((scenario) => `
+    <option value="${scenario.scenarioKey}" ${scenario.scenarioKey === draft.activeScenarioKey ? 'selected' : ''}>
+      ${scenario.scenario}
+    </option>
+  `).join('');
+}
+
+function onBIALevScenarioChange() {
+  const draft = getBIALevScenarioDraft();
+  const select = document.getElementById('bia-lev-scenario-select');
+  if (!draft || !select) return;
+  captureBIALevActiveScenarioMatrix();
+  const nextKey = String(select.value || '').trim();
+  if (!nextKey) return;
+  draft.activeScenarioKey = nextKey;
+  applyBIALevActiveScenarioMatrix();
+}
+
+function addBIALevScenario() {
+  const draft = getBIALevScenarioDraft();
+  if (!draft) return;
+  const nameInput = document.getElementById('bia-lev-scenario-name');
+  const scenarioName = String(nameInput?.value || '').trim();
+  if (!scenarioName) {
+    showToast('Debe ingresar un nombre para el nuevo escenario', 'warning');
+    return;
+  }
+
+  captureBIALevActiveScenarioMatrix();
+  let scenarioKey = getBIAScenarioKey(scenarioName, draft.scenarios.length + 1);
+  let suffix = 2;
+  while (draft.scenarios.some(item => item.scenarioKey === scenarioKey)) {
+    scenarioKey = `${getBIAScenarioKey(scenarioName, draft.scenarios.length + 1)}-${suffix}`;
+    suffix += 1;
+  }
+
+  draft.scenarios.push({
+    scenarioKey,
+    scenario: scenarioName,
+    matrixTemplate: getBIAEmptyMatrixTemplate()
+  });
+  draft.activeScenarioKey = scenarioKey;
+
+  if (nameInput) nameInput.value = '';
+  renderBIALevScenarioSelect();
+  applyBIALevActiveScenarioMatrix();
+}
+
+function removeBIALevScenario() {
+  const draft = getBIALevScenarioDraft();
+  if (!draft || draft.scenarios.length === 0) return;
+  if (draft.scenarios.length === 1) {
+    showToast('Debe existir al menos un escenario en el levantamiento', 'warning');
+    return;
+  }
+
+  captureBIALevActiveScenarioMatrix();
+  const currentIndex = draft.scenarios.findIndex(item => item.scenarioKey === draft.activeScenarioKey);
+  if (currentIndex < 0) return;
+
+  draft.scenarios.splice(currentIndex, 1);
+  draft.activeScenarioKey = draft.scenarios[Math.max(0, currentIndex - 1)].scenarioKey;
+  renderBIALevScenarioSelect();
+  applyBIALevActiveScenarioMatrix();
+}
+
+function getBIAFormScenarioMap() {
+  const draft = getBIALevScenarioDraft();
+  if (!draft || draft.scenarios.length === 0) {
+    return { matrixByScenario: {}, customScenarios: [] };
+  }
+  captureBIALevActiveScenarioMatrix();
+
+  const matrixByScenario = {};
+  const customScenarios = [];
+  draft.scenarios.forEach((scenario) => {
+    matrixByScenario[scenario.scenarioKey] = {
+      scenarioKey: scenario.scenarioKey,
+      scenario: scenario.scenario,
+      matrixTemplate: normalizeBIAImpactMap(scenario.matrixTemplate) || getBIAEmptyMatrixTemplate()
+    };
+    customScenarios.push({
+      scenarioKey: scenario.scenarioKey,
+      scenario: scenario.scenario
+    });
+  });
+
+  return { matrixByScenario, customScenarios };
+}
+
+function buildBIAAggregateMatrixTemplate(matrixByScenario) {
+  const normalizedByScenario = (matrixByScenario && typeof matrixByScenario === 'object') ? matrixByScenario : {};
+  const scenarioRows = Object.values(normalizedByScenario);
+  if (scenarioRows.length === 0) return getBIAEmptyMatrixTemplate();
+
+  const aggregate = {};
+  getBIAImpactCategories().forEach((category) => {
+    aggregate[category] = getBIATimeBuckets().map((_, bucketIndex) => {
+      const scores = scenarioRows.map((scenario) => {
+        const template = normalizeBIAImpactMap(scenario?.matrixTemplate || scenario || null);
+        const score = Number(template?.[category]?.[bucketIndex] || 3);
+        return Number.isNaN(score) ? 3 : Math.max(1, Math.min(5, score));
+      });
+      return scores.length > 0 ? Math.max(...scores) : 3;
+    });
+  });
+  return aggregate;
+}
+
+function getBIAFormMatrixTemplate() {
+  return buildBIAAggregateMatrixTemplate(getBIAFormScenarioMap().matrixByScenario);
+}
+
+function applyBIAFormMatrixTemplate(matrixTemplate = null) {
+  const draft = getBIALevScenarioDraft();
+  if (!draft || draft.scenarios.length === 0) return;
+  const normalizedTemplate = normalizeBIAImpactMap(matrixTemplate || null) || getBIAEmptyMatrixTemplate();
+  draft.scenarios.forEach((scenario) => {
+    scenario.matrixTemplate = normalizeBIAImpactMap(scenario.matrixTemplate || null) || normalizedTemplate;
+  });
+  applyBIALevActiveScenarioMatrix();
+}
+
+function onBIALevTargetTypeChange() {
+  const typeInput = document.getElementById('bia-lev-target-type');
+  const targetType = String(typeInput?.value || 'PROCESS').toUpperCase();
+  renderBIALevTargetSelect(targetType, null);
+
+  const hiddenType = document.getElementById('bia-lev-target-type-hidden');
+  const hiddenId = document.getElementById('bia-lev-target-id-hidden');
+  if (hiddenType) hiddenType.value = targetType;
+  if (hiddenId) hiddenId.value = '';
+
+  const ficha = document.getElementById('bia-lev-ficha');
+  if (ficha) ficha.innerHTML = '<p class="color-muted fs-12 m-0">Seleccione un objetivo para cargar la ficha.</p>';
+  renderBIAParticipantRows([{ name: '', role: '' }]);
+  AppState.biaLevantamientoScenarioDraft = {
+    activeScenarioKey: 'escenario-1',
+    scenarios: [{
+      scenarioKey: 'escenario-1',
+      scenario: 'Escenario 1',
+      matrixTemplate: getBIAEmptyMatrixTemplate()
+    }]
+  };
+  const scenarioNameInput = document.getElementById('bia-lev-scenario-name');
+  if (scenarioNameInput) scenarioNameInput.value = '';
+  renderBIALevScenarioSelect();
+  applyBIALevActiveScenarioMatrix();
+  setBIALevSaveButtonsState(false);
+}
+
+function onBIALevTargetEntityChange() {
+  const targetType = String(document.getElementById('bia-lev-target-type')?.value || 'PROCESS').toUpperCase();
+  const targetId = Number(document.getElementById('bia-lev-target-id')?.value || 0);
+  const hiddenType = document.getElementById('bia-lev-target-type-hidden');
+  const hiddenId = document.getElementById('bia-lev-target-id-hidden');
+  const assessmentId = document.getElementById('bia-lev-assessment-id');
+  if (!targetId) {
+    if (hiddenType) hiddenType.value = targetType;
+    if (hiddenId) hiddenId.value = '';
+    if (assessmentId) assessmentId.value = '';
+    setBIALevSaveButtonsState(false);
+    return;
+  }
+  const target = getBIAEntityFromTarget(targetType, targetId);
+  if (!target) {
+    if (hiddenType) hiddenType.value = targetType;
+    if (hiddenId) hiddenId.value = '';
+    if (assessmentId) assessmentId.value = '';
+    setBIALevSaveButtonsState(false);
+    return;
+  }
+  prefillBIAFromTarget(target);
+  setBIALevSaveButtonsState(true);
+}
+
+function openBIALevantamientoModal(targetType = null, targetId = null) {
+  let resolvedTarget = null;
+  if (typeof targetType === 'number' && (targetId === null || targetId === undefined)) {
+    resolvedTarget = resolveBIATargetRef('PROCESS', targetType);
+  } else if (targetType && targetId !== null && targetId !== undefined) {
+    resolvedTarget = resolveBIATargetRef(targetType, targetId);
+  } else if (AppState.selectedBIATargetKey) {
+    resolvedTarget = parseBIATargetKey(AppState.selectedBIATargetKey);
+  } else if (AppState.selectedProcess) {
+    resolvedTarget = resolveBIATargetRef('PROCESS', AppState.selectedProcess);
+  }
+
+  const modal = document.getElementById('modal-bia-levantamiento');
+  if (!modal) return;
+
+  const typeInput = document.getElementById('bia-lev-target-type');
+  if (typeInput) typeInput.value = resolvedTarget?.targetType || 'PROCESS';
+
+  renderBIALevTargetSelect(typeInput?.value || 'PROCESS', resolvedTarget?.targetId || null);
+  renderBIALevMatrixTable();
+
+  if (resolvedTarget?.targetId) {
+    const targetIdInput = document.getElementById('bia-lev-target-id');
+    if (targetIdInput) targetIdInput.value = String(resolvedTarget.targetId);
+    const target = getBIAEntityFromTarget(resolvedTarget.targetType, resolvedTarget.targetId);
+    if (target) prefillBIAFromTarget(target);
+    setBIALevSaveButtonsState(Boolean(target));
+  } else {
+    onBIALevTargetTypeChange();
+  }
+
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeBIALevantamientoModal() {
+  const modal = document.getElementById('modal-bia-levantamiento');
+  if (!modal) return;
+  modal.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function prefillBIAFromTarget(target) {
+  const latestAssessment = getLatestBIAAssessment(target.targetType, target.targetId);
+  const interviewDefaults = getBIAInterviewData(target);
+  const approvalDefaults = getBIAApprovalData(target);
+  const dependenciesCount = Number(target.dependencyCount || 0);
+  const detailTitle = document.getElementById('bia-lev-title');
+  const fichaContainer = document.getElementById('bia-lev-ficha');
+  const targetTypeInput = document.getElementById('bia-lev-target-type-hidden');
+  const targetIdInput = document.getElementById('bia-lev-target-id-hidden');
+  const assessmentIdInput = document.getElementById('bia-lev-assessment-id');
+  const importedFileLabel = document.getElementById('bia-lev-imported-file');
+
+  if (detailTitle) {
+    detailTitle.innerHTML = `<i class="bi bi-journal-check"></i> Levantamiento BIA - ${target.name}`;
+  }
+
+  if (fichaContainer) {
+    fichaContainer.innerHTML = `
+      <div><span>Tipo objetivo</span><strong>${getBIAEntityTypeLabel(target.targetType)}</strong></div>
+      <div><span>Código</span><strong>${target.code || '-'}</strong></div>
+      <div><span>ID objetivo</span><strong>${target.targetId}</strong></div>
+      <div><span>Nombre</span><strong>${target.name || '-'}</strong></div>
+      <div><span>Responsable</span><strong>${target.ownerName || '-'}</strong></div>
+      <div><span>Categoría</span><strong>${target.processCategory || '-'}</strong></div>
+      <div><span>Criticidad</span><strong>${BCMSDataStore.api.getLookupLabel('businessCriticality', target.businessCriticality) || target.businessCriticality || '-'}</strong></div>
+      <div><span>RTO objetivo</span><strong>${typeof target.targetRtoMinutes === 'number' ? formatMinutesToTime(target.targetRtoMinutes) : '-'}</strong></div>
+      <div><span>RPO objetivo</span><strong>${typeof target.targetRpoMinutes === 'number' ? formatMinutesToTime(target.targetRpoMinutes) : '-'}</strong></div>
+      <div><span>MTPD</span><strong>${typeof target.mtpdMinutes === 'number' ? formatMinutesToTime(target.mtpdMinutes) : '-'}</strong></div>
+      <div><span>Dependencias</span><strong>${dependenciesCount}</strong></div>
+    `;
+  }
+
+  if (targetTypeInput) targetTypeInput.value = target.targetType;
+  if (targetIdInput) targetIdInput.value = String(target.targetId);
+  if (assessmentIdInput) assessmentIdInput.value = latestAssessment ? String(latestAssessment.id) : '';
+  if (importedFileLabel) importedFileLabel.textContent = AppState.biaLevantamientoImportFileName || 'Sin archivo importado';
+
+  const interviewDateValue = latestAssessment?.interviewDate
+    ? String(latestAssessment.interviewDate).slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
+
+  setInputValue('bia-lev-interview-date', interviewDateValue);
+  setInputValue('bia-lev-surveyor-name', latestAssessment?.surveyorName || interviewDefaults.surveyorName || getActiveSessionUserName());
+  setInputValue('bia-lev-surveyor-role', latestAssessment?.surveyorRole || interviewDefaults.surveyorRole || '');
+
+  const interviewParticipants = Array.isArray(latestAssessment?.interviewParticipants)
+    ? latestAssessment.interviewParticipants
+    : [
+      {
+        name: latestAssessment?.intervieweeName || '',
+        role: latestAssessment?.intervieweeRole || ''
+      }
+    ];
+  renderBIAParticipantRows(interviewParticipants);
+
+  const approvalMap = {};
+  approvalDefaults.forEach((item) => {
+    approvalMap[item.role] = item;
+  });
+  if (latestAssessment) {
+    (BCMSDataStore.entities.biaAssessmentApprovals || [])
+      .filter(row => !row.isDeleted && Number(row.assessmentId) === Number(latestAssessment.id))
+      .forEach((row) => {
+        approvalMap[row.role] = { role: row.role, name: row.name || '-', date: row.date || '' };
+      });
+  }
+
+  setInputValue('bia-approval-owner-name', approvalMap['Responsable de Proceso']?.name || '');
+  setInputValue('bia-approval-owner-date', normalizeDateInput(approvalMap['Responsable de Proceso']?.date) || interviewDateValue);
+  setInputValue('bia-approval-cont-name', approvalMap['Jefe de Continuidad de Negocio']?.name || '');
+  setInputValue('bia-approval-cont-date', normalizeDateInput(approvalMap['Jefe de Continuidad de Negocio']?.date) || interviewDateValue);
+  setInputValue('bia-approval-risk-name', approvalMap['Jefe de Departamento de Riesgo Operacional']?.name || '');
+  setInputValue('bia-approval-risk-date', normalizeDateInput(approvalMap['Jefe de Departamento de Riesgo Operacional']?.date) || interviewDateValue);
+
+  initializeBIALevScenarioDraft(target, latestAssessment);
+  renderBIALevScenarioSelect();
+  applyBIALevActiveScenarioMatrix();
+  const scenarioNameInput = document.getElementById('bia-lev-scenario-name');
+  if (scenarioNameInput) scenarioNameInput.value = '';
+}
+
+function saveBIALevantamiento(markCompleted = false) {
+  const selectedType = String(document.getElementById('bia-lev-target-type')?.value || '').toUpperCase();
+  const selectedId = Number(document.getElementById('bia-lev-target-id')?.value || 0);
+  const hiddenType = String(document.getElementById('bia-lev-target-type-hidden')?.value || '').toUpperCase();
+  const hiddenId = Number(document.getElementById('bia-lev-target-id-hidden')?.value || 0);
+  const targetType = selectedType || hiddenType;
+  const targetId = selectedId || hiddenId;
+  if (!targetType || !targetId) {
+    showToast('Debe seleccionar un objetivo BIA antes de guardar', 'warning');
+    return;
+  }
+
+  if (!BCMSDataStore.entities.biaAssessments) BCMSDataStore.entities.biaAssessments = [];
+  if (!BCMSDataStore.entities.biaAssessmentApprovals) BCMSDataStore.entities.biaAssessmentApprovals = [];
+
+  const currentUser = getActiveSessionUserName();
+  const nowIso = new Date().toISOString();
+  const status = markCompleted ? 'COMPLETADO' : 'BORRADOR';
+  const assessmentIdField = document.getElementById('bia-lev-assessment-id');
+  const existingId = Number(assessmentIdField?.value || 0);
+  const participants = collectBIAInterviewParticipants();
+  if (participants.length === 0) {
+    showToast('Debe agregar al menos una persona entrevistada', 'warning');
+    return;
+  }
+  const firstParticipant = participants[0] || {};
+  const { matrixByScenario, customScenarios } = getBIAFormScenarioMap();
+  const matrixTemplate = getBIAFormMatrixTemplate();
+  const matrixSummary = {
+    monetarioLevel: Math.max(...(matrixTemplate.Monetario || [3])),
+    monetarioNotes: '',
+    procesosLevel: Math.max(...(matrixTemplate.Procesos || [3])),
+    procesosNotes: '',
+    reputacionalLevel: Math.max(...(matrixTemplate.Reputacional || [3])),
+    reputacionalNotes: '',
+    normativoLevel: Math.max(...(matrixTemplate.Normativo || [3])),
+    normativoNotes: '',
+    clientesLevel: Math.max(...(matrixTemplate.Clientes || [3])),
+    clientesNotes: ''
+  };
+
+  const assessmentData = {
+    processId: targetType === 'PROCESS' ? targetId : null,
+    targetProcessType: targetType,
+    targetProcessId: targetId,
+    interviewDate: getInputValue('bia-lev-interview-date'),
+    intervieweeName: firstParticipant.name || '',
+    intervieweeRole: firstParticipant.role || '',
+    interviewParticipants: participants,
+    surveyorName: getInputValue('bia-lev-surveyor-name'),
+    surveyorRole: getInputValue('bia-lev-surveyor-role'),
+    status,
+    customScenarios,
+    matrixByScenario,
+    matrixTemplate,
+    matrixSummary,
+    updatedBy: currentUser,
+    deletedAt: null,
+    deletedBy: null,
+    isDeleted: false
+  };
+
+  let savedAssessment;
+  if (existingId > 0) {
+    savedAssessment = BCMSDataStore.api.update('biaAssessments', existingId, assessmentData);
+  } else {
+    savedAssessment = BCMSDataStore.api.create('biaAssessments', {
+      ...assessmentData,
+      createdBy: currentUser,
+      createdAt: nowIso
+    });
+  }
+
+  if (!savedAssessment) {
+    showToast('No fue posible guardar el levantamiento BIA', 'danger');
+    return;
+  }
+
+  if (assessmentIdField) assessmentIdField.value = String(savedAssessment.id);
+  upsertBIAApprovalRows(savedAssessment.id, currentUser);
+
+  const targetKey = getBIATargetKey(targetType, targetId);
+  Object.keys(AppState.biaImpactOverrides || {}).forEach((overrideKey) => {
+    if (String(overrideKey).startsWith(`${targetKey}::`)) {
+      delete AppState.biaImpactOverrides[overrideKey];
+    }
+  });
+  AppState.biaLevantamientoByProcess[targetKey] = markCompleted ? 'COMPLETADO' : 'EN_CURSO';
+  BCMSDataStore.meta.lastUpdated = nowIso;
+
+  renderBIAProcessList();
+  selectBIAEntity(targetType, targetId);
+  showToast(markCompleted ? 'Levantamiento BIA guardado y cerrado' : 'Borrador de levantamiento BIA guardado', 'success');
+
+  if (markCompleted) closeBIALevantamientoModal();
+}
+
+function upsertBIAApprovalRows(assessmentId, currentUser) {
+  const nowIso = new Date().toISOString();
+  const approvalRows = BCMSDataStore.entities.biaAssessmentApprovals || [];
+
+  approvalRows
+    .filter(row => !row.isDeleted && Number(row.assessmentId) === Number(assessmentId))
+    .forEach(row => {
+      row.isDeleted = true;
+      row.deletedAt = nowIso;
+      row.deletedBy = currentUser;
+      row.updatedAt = nowIso;
+      row.updatedBy = currentUser;
+    });
+
+  const rowsToSave = [
+    {
+      role: 'Responsable de Proceso',
+      name: getInputValue('bia-approval-owner-name'),
+      date: getInputValue('bia-approval-owner-date')
+    },
+    {
+      role: 'Jefe de Continuidad de Negocio',
+      name: getInputValue('bia-approval-cont-name'),
+      date: getInputValue('bia-approval-cont-date')
+    },
+    {
+      role: 'Jefe de Departamento de Riesgo Operacional',
+      name: getInputValue('bia-approval-risk-name'),
+      date: getInputValue('bia-approval-risk-date')
+    }
+  ];
+
+  let maxId = Math.max(0, ...approvalRows.map(row => Number(row.id) || 0));
+  rowsToSave.forEach((row) => {
+    maxId += 1;
+    approvalRows.push({
+      id: maxId,
+      assessmentId: Number(assessmentId),
+      role: row.role,
+      name: row.name || '-',
+      date: row.date || nowIso.slice(0, 10),
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      deletedAt: null,
+      createdBy: currentUser,
+      updatedBy: currentUser,
+      deletedBy: null,
+      isDeleted: false
+    });
+  });
+}
+
+function goToDMEntityFromBIA() {
+  const selectedType = String(document.getElementById('bia-lev-target-type')?.value || '').toUpperCase();
+  const selectedId = Number(document.getElementById('bia-lev-target-id')?.value || 0);
+  const hiddenType = String(document.getElementById('bia-lev-target-type-hidden')?.value || '').toUpperCase();
+  const hiddenId = Number(document.getElementById('bia-lev-target-id-hidden')?.value || 0);
+  const targetType = selectedType || hiddenType;
+  const targetId = selectedId || hiddenId;
+  if (!targetType || !targetId) {
+    showToast('Seleccione un objetivo antes de ir a Datos Maestros', 'warning');
+    return;
+  }
+
+  const mappingByType = {
+    MACROPROCESS: { subtab: 'macroprocesses', entity: 'macroprocesses', rowPrefix: 'macro' },
+    PROCESS: { subtab: 'processes', entity: 'processes', rowPrefix: 'proc' },
+    SUBPROCESS: { subtab: 'subprocesses', entity: 'subprocesses', rowPrefix: 'subproc' }
+  };
+  const mapping = mappingByType[targetType];
+  if (!mapping) return;
+
+  closeBIALevantamientoModal();
+  showView('datos-maestros');
+  if (typeof showDMGroup === 'function') showDMGroup('orgproc');
+  if (typeof showDMSubtab === 'function') showDMSubtab('orgproc', mapping.subtab);
+  if (typeof toggleEditForm === 'function') toggleEditForm(mapping.entity, `${mapping.rowPrefix}-${targetId}`);
+}
+
+function handleImportBIAPlanilla() {
+  const fileInput = document.getElementById('bia-lev-file-input');
+  if (!fileInput) return;
+  fileInput.click();
+}
+
+function onBIAPlanillaSelected(event) {
+  const file = event?.target?.files?.[0];
+  if (!file) return;
+  AppState.biaLevantamientoImportFileName = file.name;
+
+  const importedFileLabel = document.getElementById('bia-lev-imported-file');
+  if (importedFileLabel) {
+    importedFileLabel.textContent = file.name;
+  }
+
+  // Precarga demo: completar fecha y levantador si faltan
+  if (!getInputValue('bia-lev-interview-date')) {
+    setInputValue('bia-lev-interview-date', new Date().toISOString().slice(0, 10));
+  }
+  if (!getInputValue('bia-lev-surveyor-name')) {
+    setInputValue('bia-lev-surveyor-name', getActiveSessionUserName());
+  }
+  if (!getInputValue('bia-lev-surveyor-role')) {
+    const surveyorName = getInputValue('bia-lev-surveyor-name');
+    const match = getBIAEligiblePeople().find((person) => person.name === surveyorName);
+    if (match) setInputValue('bia-lev-surveyor-role', match.role);
+  }
+
+  showToast(`Planilla "${file.name}" importada para precarga de levantamiento`, 'success');
+}
+
+function getActiveSessionUserName() {
+  const userEl = document.querySelector('.session-user span');
+  const name = userEl ? String(userEl.textContent || '').trim() : '';
+  return name || 'María González';
+}
+
+function getInputValue(inputId) {
+  const input = document.getElementById(inputId);
+  return input ? String(input.value || '').trim() : '';
+}
+
+function setInputValue(inputId, value) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.value = value ?? '';
+}
+
+function normalizeDateInput(value) {
+  if (!value) return '';
+  const candidate = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(candidate)) return candidate;
+  const parsed = new Date(candidate);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toISOString().slice(0, 10);
+}
 
 /* ============================================================================
    MODAL CONFIGURACIÓN MATRIZ DE RIESGO
@@ -3372,81 +5509,63 @@ function mostrarCategoriasDominio(dominioId) {
 function renderRiesgosCiberKPIs() {
   const container = document.getElementById('riesgos-ciber-kpis-container');
   if (!container) return;
-  
-  container.innerHTML = '';
-  
+
   // Obtener riesgos ciber del datastore
   const riesgosCiber = BCMSDataStore.api.filter('risks', r => r.riskDomain === 'CYBER');
   const riesgosActivos = riesgosCiber.filter(r => r.status !== 'CLOSED');
   const riesgosCriticos = riesgosActivos.filter(r => r.cvssScore >= 9.0);
   const riesgosAltos = riesgosActivos.filter(r => r.cvssScore >= 7.0 && r.cvssScore < 9.0);
-  const avgScore = riesgosActivos.length > 0 
+  const avgScore = riesgosActivos.length > 0
     ? (riesgosActivos.reduce((sum, r) => sum + (r.cvssScore || 0), 0) / riesgosActivos.length).toFixed(1)
     : '0.0';
-  
+
   // Contar controles activos relacionados con ciber
-  const controlesCiber = BCMSDataStore.api.filter('controls', c => c.type && c.status === 'IMPLEMENTED');
+  const controlesCiber = BCMSDataStore.api.filter('controls', control => control.type && control.status === 'IMPLEMENTED');
   const efectividad = controlesCiber.length > 0
-    ? Math.round((controlesCiber.filter(c => c.effectiveness === 'STRONG').length / controlesCiber.length) * 100)
+    ? Math.round((controlesCiber.filter(control => control.effectiveness === 'STRONG').length / controlesCiber.length) * 100)
     : 0;
-  
+
   // Contar vulnerabilidades
   const vulnerabilidadesAltas = riesgosActivos.filter(r => r.cvssScore >= 7.0).length;
   const vulnerabilidadesMedias = riesgosActivos.filter(r => r.cvssScore >= 4.0 && r.cvssScore < 7.0).length;
-  
-  const kpis = [
+
+  renderKPIGrid(container, [
     {
-      title: 'Riesgos Ciber Activos',
-      value: riesgosActivos.length.toString(),
-      trend: `${riesgosCriticos.length + riesgosAltos.length} críticos/altos`,
-      subtitle: `Total identificados: ${riesgosCiber.length}`,
+      label: 'Riesgos Ciber Activos',
+      value: riesgosActivos.length,
+      subtitle: `${riesgosCriticos.length + riesgosAltos.length} críticos/altos`,
       icon: 'bi-bug',
-      variant: riesgosCriticos.length > 0 ? 'danger' : 'warning'
+      color: riesgosCriticos.length > 0 ? 'danger' : 'warning'
     },
     {
-      title: 'Críticos/Muy Altos',
-      value: riesgosCriticos.length.toString(),
-      trend: riesgosCriticos.length > 0 ? 'Requieren atención' : 'Sin críticos',
+      label: 'Críticos / Muy Altos',
+      value: riesgosCriticos.length,
       subtitle: `${riesgosAltos.length} altos adicionales`,
       icon: 'bi-exclamation-triangle-fill',
-      variant: riesgosCriticos.length > 0 ? 'danger' : 'success'
+      color: riesgosCriticos.length > 0 ? 'danger' : 'secondary'
     },
     {
-      title: 'Puntaje Promedio CVSS',
-      value: avgScore + '/10',
+      label: 'Puntaje Promedio CVSS',
+      value: `${avgScore}/10`,
       subtitle: 'Score promedio de riesgos activos',
       icon: 'bi-speedometer2',
-      variant: avgScore >= 7.0 ? 'danger' : (avgScore >= 4.0 ? 'warning' : 'success')
+      color: Number(avgScore) >= 7 ? 'danger' : (Number(avgScore) >= 4 ? 'warning' : 'secondary')
     },
     {
-      title: 'Controles Activos',
-      value: controlesCiber.length.toString(),
-      trend: `${efectividad}% efectividad`,
-      subtitle: 'Controles implementados',
+      label: 'Controles Activos',
+      value: controlesCiber.length,
+      subtitle: `${efectividad}% efectividad`,
       icon: 'bi-shield-shaded',
-      variant: 'primary'
+      color: 'info'
     },
     {
-      title: 'Vulnerabilidades',
-      value: (vulnerabilidadesAltas + vulnerabilidadesMedias).toString(),
-      trend: `${vulnerabilidadesAltas} altas, ${vulnerabilidadesMedias} medias`,
-      subtitle: 'Requieren remediación',
+      label: 'Vulnerabilidades',
+      value: vulnerabilidadesAltas + vulnerabilidadesMedias,
+      subtitle: `${vulnerabilidadesAltas} altas, ${vulnerabilidadesMedias} medias`,
       icon: 'bi-exclamation-triangle',
-      variant: vulnerabilidadesAltas > 0 ? 'warning' : 'neutral'
+      color: vulnerabilidadesAltas > 0 ? 'warning' : 'secondary'
     }
-  ];
-  
-  kpis.forEach(kpi => {
-    const kpiCard = new KPICard({
-      container: container,
-      title: kpi.title,
-      value: kpi.value,
-      trend: kpi.trend,
-      subtitle: kpi.subtitle,
-      icon: kpi.icon,
-      variant: kpi.variant
-    });
-  });
+  ]);
 }
 
 /**
@@ -3485,24 +5604,24 @@ function renderRiesgosCiberHeatmap() {
   };
   
   // Renderizar heatmap
-  let html = '<div style="display: grid; grid-template-columns: 60px repeat(5, 1fr); gap: 3px; font-size: 10px;">';
+  let html = '<div class="ciber-heatmap-grid">';
   
   // Headers columnas
   html += '<div></div>';
   ['Muy Baja', 'Baja', 'Media', 'Alta', 'Muy Alta'].forEach(label => {
-    html += `<div style="text-align: center; padding: 4px; font-weight: 600;">${label}</div>`;
+    html += `<div class="ciber-heatmap-col-header">${label}</div>`;
   });
   
   // Filas del heatmap
   const impactos = ['Crítico', 'Alto', 'Medio', 'Bajo', 'Muy Bajo'];
   matrix.forEach((row, i) => {
     const impacto = 5 - i;
-    html += `<div style="font-weight: 600; padding: 4px; display: flex; align-items: center;">${impactos[i]}</div>`;
+    html += `<div class="ciber-heatmap-row-header">${impactos[i]}</div>`;
     row.forEach((count, j) => {
       const probabilidad = j + 1;
       const bgColor = getColorForCell(impacto, probabilidad, count);
       const textColor = getTextColor(impacto, probabilidad);
-      html += `<div style="background: ${bgColor}; color: ${textColor}; padding: 12px; text-align: center; border-radius: 3px; font-weight: ${count > 0 ? '600' : '400'};">${count}</div>`;
+      html += `<div class="ciber-heatmap-cell" style="background: ${bgColor}; color: ${textColor}; font-weight: ${count > 0 ? '600' : '400'};">${count}</div>`;
     });
   });
   
@@ -3525,7 +5644,7 @@ function renderRiesgosCiberChart() {
   const medios = riesgosCiber.filter(r => r.cvssScore >= 4.0 && r.cvssScore < 7.0).length;
   const bajos = riesgosCiber.filter(r => r.cvssScore < 4.0).length;
   
-  new Chart(ctx, {
+  createManagedChart(ctx, {
     type: 'doughnut',
     data: {
       labels: ['Críticos (9.0-10)', 'Altos (7.0-8.9)', 'Medios (4.0-6.9)', 'Bajos (0-3.9)'],
@@ -3588,7 +5707,7 @@ function renderRiesgosCiberTable() {
   const riesgosCiber = BCMSDataStore.api.filter('risks', r => r.riskDomain === 'CYBER');
   
   if (riesgosCiber.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted);">No hay riesgos ciber registrados</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No hay riesgos ciber registrados</td></tr>';
     return;
   }
   
@@ -3603,7 +5722,7 @@ function renderRiesgosCiberTable() {
                             : riesgo.treatmentType === 'ACCEPT' ? 'badge-success'
                             : 'badge-neutral';
     
-    const tratamientoLabel = BCMSDataStore.api.getLookupLabel('riskTreatment', riesgo.treatmentType) || riesgo.treatmentType;
+    const tratamientoLabel = BCMSDataStore.api.getLookupLabel('treatmentType', riesgo.treatmentType) || riesgo.treatmentType;
     
     const statusClass = riesgo.status === 'TREATING' ? 'badge-active'
                        : riesgo.status === 'MONITORED' ? 'badge-neutral'
@@ -3650,59 +5769,63 @@ function showDetalleRiesgoCiber(riesgoCode) {
                     : riesgo.cvssScore >= 7.0 ? 'badge-warning'
                     : 'badge-info';
   
-  const tratamientoLabel = BCMSDataStore.api.getLookupLabel('riskTreatment', riesgo.treatmentType) || riesgo.treatmentType;
+  const tratamientoLabel = BCMSDataStore.api.getLookupLabel('treatmentType', riesgo.treatmentType) || riesgo.treatmentType;
   const statusLabel = BCMSDataStore.api.getLookupLabel('riskStatus', riesgo.status) || riesgo.status;
-  
+
+  const controlsHtml = riesgo.controls && riesgo.controls.length > 0
+    ? riesgo.controls.map(control => `<span class="badge badge-info ciber-control-badge">${control}</span>`).join(' ')
+    : '<span class="color-muted">Sin controles asignados</span>';
+
   contentEl.innerHTML = `
-    <div>
-      <div style="margin-bottom: 16px;">
-        <div style="font-weight: 600; font-size: 12px; margin-bottom: 4px;">Activo/Sistema afectado:</div>
-        <div style="font-size: 13px; color: #374151;">${riesgo.targetAsset || 'N/A'}</div>
+    <div class="ciber-detail-column">
+      <div class="ciber-detail-block">
+        <div class="ciber-detail-label">Activo/Sistema afectado:</div>
+        <div class="ciber-detail-value">${riesgo.targetAsset || 'N/A'}</div>
       </div>
-      <div style="margin-bottom: 16px;">
-        <div style="font-weight: 600; font-size: 12px; margin-bottom: 4px;">Amenaza / Vector de ataque:</div>
-        <div style="font-size: 13px; color: #374151;">${riesgo.threat || 'N/A'}</div>
+      <div class="ciber-detail-block">
+        <div class="ciber-detail-label">Amenaza / Vector de ataque:</div>
+        <div class="ciber-detail-value">${riesgo.threat || 'N/A'}</div>
       </div>
-      <div style="margin-bottom: 16px;">
-        <div style="font-weight: 600; font-size: 12px; margin-bottom: 4px;">Vulnerabilidad identificada:</div>
-        <div style="font-size: 13px; color: #374151;">${riesgo.vulnerability || 'N/A'}</div>
+      <div class="ciber-detail-block">
+        <div class="ciber-detail-label">Vulnerabilidad identificada:</div>
+        <div class="ciber-detail-value">${riesgo.vulnerability || 'N/A'}</div>
       </div>
-      <div style="margin-bottom: 16px;">
-        <div style="font-weight: 600; font-size: 12px; margin-bottom: 4px;">Descripción:</div>
-        <div style="font-size: 13px; color: #374151;">${riesgo.description || 'N/A'}</div>
+      <div class="ciber-detail-block">
+        <div class="ciber-detail-label">Descripción:</div>
+        <div class="ciber-detail-value">${riesgo.description || 'N/A'}</div>
       </div>
     </div>
-    <div>
-      <div style="margin-bottom: 16px;">
-        <div style="font-weight: 600; font-size: 12px; margin-bottom: 4px;">Puntaje CVSS:</div>
-        <div><span class="badge ${scoreClass}" style="font-size: 16px; padding: 6px 12px;">${riesgo.cvssScore ? riesgo.cvssScore.toFixed(1) : 'N/A'} / 10</span></div>
+    <div class="ciber-detail-column">
+      <div class="ciber-detail-block">
+        <div class="ciber-detail-label">Puntaje CVSS:</div>
+        <div><span class="badge ${scoreClass} ciber-cvss-badge">${riesgo.cvssScore ? riesgo.cvssScore.toFixed(1) : 'N/A'} / 10</span></div>
       </div>
-      <div style="margin-bottom: 16px;">
-        <div style="font-weight: 600; font-size: 12px; margin-bottom: 4px;">Tratamiento:</div>
+      <div class="ciber-detail-block">
+        <div class="ciber-detail-label">Tratamiento:</div>
         <div><span class="badge badge-warning">${tratamientoLabel}</span></div>
       </div>
-      <div style="margin-bottom: 16px;">
-        <div style="font-weight: 600; font-size: 12px; margin-bottom: 4px;">Controles relacionados:</div>
-        <div style="font-size: 13px; color: #374151;">
-          ${riesgo.controls && riesgo.controls.length > 0 
-            ? riesgo.controls.map(c => `<span class="badge badge-info" style="margin-right: 4px;">${c}</span>`).join(' ')
-            : 'Sin controles asignados'
-          }
-        </div>
+      <div class="ciber-detail-block">
+        <div class="ciber-detail-label">Controles relacionados:</div>
+        <div class="ciber-detail-value">${controlsHtml}</div>
       </div>
-      <div style="margin-bottom: 16px;">
-        <div style="font-weight: 600; font-size: 12px; margin-bottom: 4px;">Responsable:</div>
-        <div style="font-size: 13px; color: #374151;">${riesgo.ownerName || 'N/A'}</div>
+      <div class="ciber-detail-block">
+        <div class="ciber-detail-label">Responsable:</div>
+        <div class="ciber-detail-value">${riesgo.ownerName || 'N/A'}</div>
       </div>
-      <div>
-        <div style="font-weight: 600; font-size: 12px; margin-bottom: 4px;">Estado:</div>
+      <div class="ciber-detail-block">
+        <div class="ciber-detail-label">Estado:</div>
         <div><span class="badge badge-active">${statusLabel}</span> Última actualización: ${riesgo.updatedAt ? new Date(riesgo.updatedAt).toLocaleDateString('es-CL') : 'N/A'}</div>
       </div>
     </div>
   `;
   
-  panel.style.display = 'block';
+  panel.classList.remove('d-none');
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeRiesgoCiberDetalle() {
+  const panel = document.getElementById('detalle-riesgo-ciber');
+  if (panel) panel.classList.add('d-none');
 }
 
 /**
@@ -3717,79 +5840,36 @@ function showDetalleRiesgoCiber(riesgoCode) {
 function renderDRPKPIs() {
   const container = document.getElementById('drp-kpis-container');
   if (!container) return;
-  
-  container.innerHTML = '';
-  
+
   // Obtener planes DRP del datastore
   const planesDRP = BCMSDataStore.api.filter('continuityPlans', p => p.planType === 'DRP');
   const planesActivos = planesDRP.filter(p => p.status === 'ACTIVE');
-  
+
   // Calcular RTO promedio
   const rtoPromedio = planesActivos.length > 0
     ? (planesActivos.reduce((sum, p) => sum + (p.rtoTarget || 0), 0) / planesActivos.length).toFixed(1)
     : '0.0';
-  
+
   // Contar sites alternos únicos
   const sitesAlternos = new Set(planesActivos.map(p => p.alternateSite).filter(s => s)).size;
-  
+
   // Contar replicaciones sincrónicas
   const replicacionSincronica = planesActivos.filter(p => 
     p.replicationType === 'SYNCHRONOUS' || p.replicationType === 'REALTIME'
   ).length;
-  
+
   // Contar activaciones (planes con última prueba exitosa en 2025)
   const activaciones2025 = planesActivos.filter(p => 
     p.lastTest && p.lastTest.includes('2025') && p.testResult === 'SUCCESS'
   ).length;
-  
-  const kpis = [
-    {
-      title: 'Planes DRP Activos',
-      value: planesActivos.length.toString(),
-      subtitle: 'Sistemas críticos cubiertos',
-      icon: 'bi-shield-shaded',
-      variant: 'primary'
-    },
-    {
-      title: 'RTO Promedio',
-      value: rtoPromedio + 'h',
-      subtitle: 'Objetivo: 2h',
-      icon: 'bi-clock',
-      variant: parseFloat(rtoPromedio) <= 2 ? 'success' : 'warning'
-    },
-    {
-      title: 'Sites Alternos',
-      value: sitesAlternos.toString(),
-      subtitle: 'Cloud + On-premise',
-      icon: 'bi-hdd-rack',
-      variant: 'secondary'
-    },
-    {
-      title: 'Replicación Sincrónica',
-      value: replicacionSincronica.toString(),
-      subtitle: 'RPO = 0 minutos',
-      icon: 'bi-arrow-clockwise',
-      variant: 'secondary'
-    },
-    {
-      title: 'Activaciones 2025',
-      value: activaciones2025.toString(),
-      subtitle: 'Todas exitosas',
-      icon: 'bi-check-circle',
-      variant: 'neutral'
-    }
-  ];
-  
-  kpis.forEach(kpi => {
-    const kpiCard = new KPICard({
-      container: container,
-      title: kpi.title,
-      value: kpi.value,
-      subtitle: kpi.subtitle,
-      icon: kpi.icon,
-      variant: kpi.variant
-    });
-  });
+
+  renderKPIGrid(container, [
+    { label: 'Planes DRP activos', value: planesActivos.length, subtitle: 'Sistemas críticos cubiertos', icon: 'bi-shield-shaded', color: 'primary' },
+    { label: 'RTO promedio', value: `${rtoPromedio}h`, subtitle: 'Objetivo: 2h', icon: 'bi-clock', color: parseFloat(rtoPromedio) <= 2 ? 'secondary' : 'warning' },
+    { label: 'Sites alternos', value: sitesAlternos, subtitle: 'Cloud + On-premise', icon: 'bi-hdd-rack', color: 'info' },
+    { label: 'Replicación sincrónica', value: replicacionSincronica, subtitle: 'RPO objetivo mínimo', icon: 'bi-arrow-clockwise', color: 'secondary' },
+    { label: 'Activaciones 2025', value: activaciones2025, subtitle: 'Resultado satisfactorio', icon: 'bi-check-circle', color: 'secondary' }
+  ]);
 }
 
 /**
@@ -3813,7 +5893,7 @@ function renderDRPChart() {
   const realtime = planesDRP.filter(p => p.replicationType === 'REALTIME').length;
   const cloudNative = planesDRP.filter(p => p.replicationType === 'CLOUD_NATIVE').length;
   
-  new Chart(ctx, {
+  createManagedChart(ctx, {
     type: 'bar',
     data: {
       labels: ['Crítico', 'Alto', 'Medio', 'Bajo', 'Sincrónica', 'Asincrónica', 'Tiempo Real', 'Cloud Native'],
@@ -3896,43 +5976,42 @@ function renderDRPProveedoresTable() {
   if (!tbody) return;
   
   tbody.innerHTML = '';
-  
-  // Datos de ejemplo de proveedores críticos (estos deberían venir del datastore de proveedores)
-  const proveedoresCriticos = [
-    {
-      nombre: 'AWS Cloud Services',
-      servicio: 'Cloud/Hosting',
-      sistemas: 'Core Banking, Portal Web (8 sistemas)',
-      evaluacion: 'Aprobado (8.7/10)',
-      evaluacionClass: 'badge-success',
-      planContingencia: 'CONT-PROV-001'
-    },
-    {
-      nombre: 'Entel Telecomunicaciones',
-      servicio: 'Red WAN/Internet',
-      sistemas: 'Todos los sistemas (15 sistemas)',
-      evaluacion: 'Aprobado (9.1/10)',
-      evaluacionClass: 'badge-success',
-      planContingencia: 'CONT-PROV-002'
-    },
-    {
-      nombre: 'Sonda IT Services',
-      servicio: 'Soporte TI N3',
-      sistemas: 'Mesa de Ayuda, Infraestructura (2 sistemas)',
-      evaluacion: 'En revisión (7.3/10)',
-      evaluacionClass: 'badge-warning',
-      planContingencia: 'CONT-PROV-003'
-    }
-  ];
-  
-  proveedoresCriticos.forEach(prov => {
+  const suppliers = BCMSDataStore.api.getAll('suppliers').filter(s => !s.isDeleted);
+  const assessments = BCMSDataStore.api.getAll('supplierAssessments');
+  const contracts = BCMSDataStore.api.getAll('supplierContracts');
+  const drpPlans = BCMSDataStore.api
+    .getAll('continuityPlans')
+    .filter(plan => plan.planType === 'DRP' && plan.status === 'ACTIVE');
+
+  if (!suppliers.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hay proveedores críticos disponibles</td></tr>';
+    return;
+  }
+
+  suppliers.forEach(supplier => {
+    const latestAssessment = getLatestSupplierAssessment(assessments, supplier.id);
+    const latestContract = getLatestSupplierContract(contracts, supplier.id);
+    const serviceType = supplier.supplierType || supplier.type || '-';
+    const relatedPlans = drpPlans.slice(0, 2).map(plan => plan.title || plan.code).filter(Boolean);
+    const systemsText = relatedPlans.length
+      ? `${relatedPlans.join(', ')}${drpPlans.length > 2 ? ` +${drpPlans.length - 2}` : ''}`
+      : 'Sin sistemas DRP vinculados';
+
+    const assessmentLabel = latestAssessment
+      ? `${getAssessmentStatusLabel(latestAssessment.status)} (${latestAssessment.overallScore || 0}/100)`
+      : 'Sin evaluación';
+    const assessmentClass = latestAssessment
+      ? getAssessmentStatusBadge(latestAssessment.status)
+      : 'badge-warning';
+    const contingencyCode = latestContract?.contractCode || 'N/D';
+
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td><strong>${prov.nombre}</strong></td>
-      <td>${prov.servicio}</td>
-      <td>${prov.sistemas}</td>
-      <td><span class="badge ${prov.evaluacionClass}">${prov.evaluacion}</span></td>
-      <td><button class="badge badge-info" onclick="showView('proveedores')" style="cursor: pointer; border: none;">${prov.planContingencia}</button></td>
+      <td><strong>${supplier.name}</strong></td>
+      <td>${serviceType}</td>
+      <td>${systemsText}</td>
+      <td><span class="badge ${assessmentClass}">${assessmentLabel}</span></td>
+      <td><button class="badge badge-info badge-link-button" onclick="showView('proveedores')">${contingencyCode}</button></td>
       <td>
         <button class="btn btn-outline btn-sm" onclick="showView('proveedores')">
           <i class="bi bi-eye"></i> Ver Plan
@@ -3955,7 +6034,7 @@ function renderDRPPlanesTable() {
   const planesDRP = BCMSDataStore.api.filter('continuityPlans', p => p.planType === 'DRP' && p.status === 'ACTIVE');
   
   if (planesDRP.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted);">No hay planes DRP registrados</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No hay planes DRP registrados</td></tr>';
     return;
   }
   
@@ -3986,6 +6065,15 @@ function renderDRPPlanesTable() {
     const testStatus = plan.testResult === 'SUCCESS' ? '✓' : plan.testResult === 'PENDING' ? '-' : '✗';
     const lastTest = plan.lastTest ? plan.lastTest + ' ' + testStatus : '-';
     
+    const statusClass = plan.status === 'ACTIVE'
+      ? 'badge-success'
+      : plan.status === 'DRAFT'
+        ? 'badge-draft'
+        : plan.status === 'IN_REVIEW'
+          ? 'badge-review'
+          : 'badge-neutral';
+    const statusLabel = BCMSDataStore.api.getLookupLabel('planStatus', plan.status) || plan.status || 'N/D';
+
     const row = document.createElement('tr');
     row.innerHTML = `
       <td><strong>${plan.code}</strong></td>
@@ -3996,7 +6084,7 @@ function renderDRPPlanesTable() {
       <td>${plan.alternateSite || 'N/A'}</td>
       <td><span class="badge ${replicationClass}">${replicationLabel}</span></td>
       <td>${lastTest}</td>
-      <td><span class="badge badge-success">Vigente</span></td>
+      <td><span class="badge ${statusClass}">${statusLabel}</span></td>
     `;
     tbody.appendChild(row);
   });
@@ -4015,9 +6103,20 @@ function renderCrisisSemaforo() {
   const container = document.getElementById('crisis-estado-semaforo');
   if (!container) return;
   
-  // Por ahora, estado verde (sin crisis activas)
-  // En producción, esto vendría del datastore
-  const estadoActual = 'VERDE';
+  const incidents = BCMSDataStore.api
+    .getAll('incidents')
+    .filter(incident => !incident.isDeleted);
+
+  const activeStatuses = ['OPEN', 'IN_PROGRESS', 'ESCALATED'];
+  const activeCritical = incidents.filter(incident =>
+    incident.severity === 'CRITICAL' && activeStatuses.includes(incident.status)
+  ).length;
+  const activeHigh = incidents.filter(incident =>
+    incident.severity === 'HIGH' && activeStatuses.includes(incident.status)
+  ).length;
+
+  const computedLevel = activeCritical > 0 ? 'ROJO' : activeHigh > 0 ? 'AMARILLO' : 'VERDE';
+  const estadoActual = AppState.crisisManualLevel || computedLevel;
   
   const config = {
     'VERDE': {
@@ -4036,7 +6135,7 @@ function renderCrisisSemaforo() {
       icon: 'bi-exclamation-triangle-fill',
       label: 'ALERTA ACTIVADA',
       estado: 'AMARILLO - Alerta',
-      desc: 'Situación monitoreada · Comité en alerta · Revisión continua'
+      desc: 'Incidentes de alta severidad en seguimiento · Comité en alerta'
     },
     'ROJO': {
       bgStart: '#dc2626',
@@ -4045,7 +6144,7 @@ function renderCrisisSemaforo() {
       icon: 'bi-exclamation-circle-fill',
       label: 'CRISIS ACTIVA',
       estado: 'ROJO - Crisis Total',
-      desc: 'Protocolo activado · Comité reunido · Gestión en curso'
+      desc: 'Incidente crítico activo · Protocolo de crisis habilitado'
     }
   };
   
@@ -4072,14 +6171,31 @@ function renderCrisisSemaforo() {
  * Renderiza KPIs de crisis
  */
 function renderCrisisKPIs() {
+  const incidents = BCMSDataStore.api
+    .getAll('incidents')
+    .filter(incident => !incident.isDeleted && incident.severity === 'CRITICAL');
+  const currentYear = new Date().getFullYear();
+  const closedThisYear = incidents.filter(incident =>
+    incident.status === 'CLOSED' &&
+    incident.resolvedAt &&
+    new Date(incident.resolvedAt).getFullYear() === currentYear
+  ).length;
+  const resolvedWithDates = incidents.filter(incident =>
+    incident.resolvedAt && incident.reportedAt && incident.status === 'CLOSED'
+  );
+  const avgResolutionHours = resolvedWithDates.length > 0
+    ? resolvedWithDates.reduce((sum, incident) => {
+        return sum + ((new Date(incident.resolvedAt) - new Date(incident.reportedAt)) / 3600000);
+      }, 0) / resolvedWithDates.length
+    : 0;
+
   // KPI Historial
   const kpiHistorial = document.getElementById('crisis-kpi-historial');
   if (kpiHistorial) {
-    const crisisResueltas = BCMSDataStore.api.filter('incidents', i => i.severity === 'CRITICAL' && i.status === 'CLOSED').length;
     kpiHistorial.innerHTML = `
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Crisis Históricas 2025</div>
-      <div style="font-size: 28px; font-weight: 700; color: var(--accent-primary);">${crisisResueltas}</div>
-      <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">Todas resueltas exitosamente</div>
+      <div class="crisis-kpi-label">Crisis resueltas ${currentYear}</div>
+      <div class="crisis-kpi-value">${closedThisYear}</div>
+      <div class="crisis-kpi-subtext">Total histórico crítico: ${incidents.length}</div>
     `;
   }
   
@@ -4087,9 +6203,9 @@ function renderCrisisKPIs() {
   const kpiTiempo = document.getElementById('crisis-kpi-tiempo');
   if (kpiTiempo) {
     kpiTiempo.innerHTML = `
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Tiempo Promedio Resolución</div>
-      <div style="font-size: 28px; font-weight: 700; color: var(--accent-secondary);">9.6h</div>
-      <div style="font-size: 10px; color: var(--accent-secondary); margin-top: 4px;">-2.4h vs 2024</div>
+      <div class="crisis-kpi-label">Tiempo promedio resolución</div>
+      <div class="crisis-kpi-value crisis-kpi-value-secondary">${avgResolutionHours > 0 ? `${avgResolutionHours.toFixed(1)}h` : 'N/D'}</div>
+      <div class="crisis-kpi-subtext">Basado en incidentes críticos cerrados</div>
     `;
   }
 }
@@ -4102,7 +6218,7 @@ function renderCrisisChart() {
   if (!ctx) return;
   
   // Datos de ejemplo
-  new Chart(ctx, {
+  createManagedChart(ctx, {
     type: 'doughnut',
     data: {
       labels: ['Ciberseguridad', 'Infraestructura', 'Servicios', 'Desastre Natural', 'Reputacional'],
@@ -4144,23 +6260,68 @@ function renderCrisisHistorial() {
   const crisisHistoricas = BCMSDataStore.api.filter('incidents', i => i.severity === 'CRITICAL');
   
   if (crisisHistoricas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No hay crisis registradas</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No hay crisis registradas</td></tr>';
     return;
   }
   
-  crisisHistoricas.forEach(crisis => {
+  const sorted = [...crisisHistoricas].sort((a, b) => new Date(b.reportedAt) - new Date(a.reportedAt));
+
+  sorted.forEach(crisis => {
+    const reportedAt = crisis.reportedAt ? new Date(crisis.reportedAt) : null;
+    const resolvedAt = crisis.resolvedAt ? new Date(crisis.resolvedAt) : null;
+    const durationHours = reportedAt && resolvedAt ? ((resolvedAt - reportedAt) / 3600000) : null;
+    const durationLabel = durationHours === null ? 'En curso' : `${durationHours.toFixed(1)}h`;
+    const statusLabel = crisis.status === 'CLOSED' ? 'Resuelta' : crisis.status === 'ESCALATED' ? 'Escalada' : 'Activa';
+    const statusClass = crisis.status === 'CLOSED' ? 'badge-success' : crisis.status === 'ESCALATED' ? 'badge-danger' : 'badge-active';
+    const crisisTypeLabel = BCMSDataStore.api.getLookupLabel('incidentType', crisis.type) || crisis.type || 'N/A';
+
     const row = document.createElement('tr');
     row.innerHTML = `
       <td><strong>${crisis.code}</strong></td>
-      <td>${crisis.type || 'N/A'}</td>
-      <td>${new Date(crisis.reportedAt).toLocaleDateString('es-CL')}</td>
-      <td>${crisis.resolvedAt ? 'Calculado' : 'En curso'}</td>
+      <td>${crisisTypeLabel}</td>
+      <td>${reportedAt ? reportedAt.toLocaleDateString('es-CL') : 'N/A'}</td>
+      <td><span class="crisis-duration ${durationHours !== null && durationHours > 24 ? 'crisis-duration-critical' : ''}">${durationLabel}</span></td>
       <td><span class="badge badge-danger">Crítico</span></td>
-      <td><span class="badge ${crisis.status === 'CLOSED' ? 'badge-success' : 'badge-active'}">${crisis.status === 'CLOSED' ? 'Resuelta' : 'Activa'}</span></td>
-      <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Detalle</button></td>
+      <td><span class="badge ${statusClass}">${statusLabel}</span></td>
+      <td><button class="btn btn-outline btn-sm" onclick="showToast('Detalle de crisis en siguiente iteración', 'info')"><i class="bi bi-eye"></i> Detalle</button></td>
     `;
     tbody.appendChild(row);
   });
+}
+
+function initCrisisActivationForm() {
+  const form = document.getElementById('crisis-activation-form');
+  if (!form || form.dataset.bound === '1') return;
+
+  const severityButtons = form.querySelectorAll('.crisis-severity-btn');
+  severityButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      severityButtons.forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+      form.dataset.selectedSeverity = button.dataset.level || '';
+    });
+  });
+
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+
+    const tipoEl = document.getElementById('crisis-tipo');
+    const selectedType = tipoEl ? tipoEl.value : '';
+    const selectedSeverity = form.dataset.selectedSeverity || '';
+    const description = form.querySelector('textarea')?.value?.trim() || '';
+
+    if (!selectedType || !selectedSeverity || !description) {
+      showToast('Completa tipo, severidad y descripción para activar el protocolo', 'warning');
+      return;
+    }
+
+    const severityMap = { GREEN: 'VERDE', YELLOW: 'AMARILLO', RED: 'ROJO' };
+    AppState.crisisManualLevel = severityMap[selectedSeverity] || null;
+    renderCrisisSemaforo();
+    showToast('Protocolo de crisis activado (demo)', 'success');
+  });
+
+  form.dataset.bound = '1';
 }
 
 /**
@@ -4170,33 +6331,28 @@ function renderCrisisHistorial() {
  */
 
 function showIntegradaTab(tabName) {
-  // Ocultar todos los contenidos de tabs
-  const allContents = document.querySelectorAll('.integrada-tab-content');
-  allContents.forEach(content => {
-    content.style.display = 'none';
+  const view = document.getElementById('view-vista-integrada');
+  if (!view) return;
+
+  view.querySelectorAll('.integrada-tab-content').forEach(content => {
+    content.classList.add('d-none');
   });
-  
-  // Desactivar todos los botones de tabs
-  const allButtons = document.querySelectorAll('.tab-button[data-tab]');
-  allButtons.forEach(button => {
-    button.classList.remove('active');
-    button.style.borderBottom = '3px solid transparent';
-    button.style.color = 'var(--text-muted)';
-  });
-  
-  // Mostrar el contenido del tab seleccionado
-  const selectedContent = document.getElementById(`integrada-${tabName}`);
+
+  const selectedContent = view.querySelector(`#integrada-${tabName}`);
   if (selectedContent) {
-    selectedContent.style.display = 'block';
+    selectedContent.classList.remove('d-none');
   }
-  
-  // Activar el botón del tab seleccionado
-  const selectedButton = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+
+  view.querySelectorAll('.integrada-tab-btn').forEach(button => {
+    button.classList.remove('active');
+  });
+
+  const selectedButton = view.querySelector(`.integrada-tab-btn[data-integrada-tab="${tabName}"]`);
   if (selectedButton) {
     selectedButton.classList.add('active');
-    selectedButton.style.borderBottom = '3px solid var(--accent-primary)';
-    selectedButton.style.color = 'var(--accent-primary)';
   }
+
+  AppState.integradaTab = tabName;
 }
 
 /**
@@ -4209,66 +6365,53 @@ function renderComunicacionesKPIs() {
   const container = document.getElementById('comunicaciones-kpis-container');
   if (!container) return;
   
-  container.innerHTML = '';
-  
   const comunicacionesTemplates = BCMSDataStore.api.getAll('communicationTemplates') || [];
   const comunicacionesLogs = BCMSDataStore.api.getAll('communicationLogs') || [];
   
-  const kpis = [
+  renderKPIGrid(container, [
     {
-      title: 'Comunicados Emitidos',
-      value: comunicacionesLogs.length.toString(),
+      label: 'Comunicados Emitidos',
+      value: comunicacionesLogs.length,
       subtitle: 'Total en 2025',
       icon: 'bi-send',
-      variant: 'primary'
+      color: 'primary'
     },
     {
-      title: 'Borradores Pendientes',
+      label: 'Borradores Pendientes',
       value: '5',
       subtitle: 'Requieren aprobación',
       icon: 'bi-file-earmark-text',
-      variant: 'warning'
+      color: 'warning'
     },
     {
-      title: 'Stakeholders Activos',
+      label: 'Stakeholders Activos',
       value: '87',
       subtitle: '12 grupos definidos',
       icon: 'bi-persons',
-      variant: 'secondary'
+      color: 'secondary'
     },
     {
-      title: 'Canales Operativos',
+      label: 'Canales Operativos',
       value: '7/7',
       subtitle: '100% disponibilidad',
       icon: 'bi-broadcast',
-      variant: 'success'
+      color: 'success'
     },
     {
-      title: 'Tasa Entrega',
+      label: 'Tasa Entrega',
       value: '98%',
       subtitle: 'Apertura: 94%',
       icon: 'bi-graph-up',
-      variant: 'success'
+      color: 'success'
     }
-  ];
-  
-  kpis.forEach(kpi => {
-    new KPICard({
-      container: container,
-      title: kpi.title,
-      value: kpi.value,
-      subtitle: kpi.subtitle,
-      icon: kpi.icon,
-      variant: kpi.variant
-    });
-  });
+  ]);
 }
 
 function renderComunicacionesChart() {
   const ctx = document.getElementById('comunicaciones-chart');
   if (!ctx) return;
   
-  new Chart(ctx, {
+  createManagedChart(ctx, {
     type: 'line',
     data: {
       labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
@@ -4360,22 +6503,16 @@ function renderAuditoriaKPIs() {
   const container = document.getElementById('auditoria-kpis-container');
   if (!container) return;
   
-  container.innerHTML = '';
-  
   const auditorias = BCMSDataStore.api.getAll('audits') || [];
   const hallazgos = BCMSDataStore.api.getAll('findings') || [];
   
-  const kpis = [
-    { title: 'Auditorías 2025', value: auditorias.length.toString(), subtitle: 'Completadas y programadas', icon: 'bi-clipboard-check', variant: 'primary' },
-    { title: 'Hallazgos Totales', value: hallazgos.length.toString(), subtitle: 'NC Mayor + NC Menor', icon: 'bi-exclamation-triangle-fill', variant: 'warning' },
-    { title: 'Hallazgos Abiertos', value: hallazgos.filter(h => h.status !== 'CLOSED').length.toString(), subtitle: 'Requieren atención', icon: 'bi-exclamation-circle', variant: 'danger' },
-    { title: 'Acciones Correctivas', value: '34', subtitle: '26 cerradas | 8 activas', icon: 'bi-list-task', variant: 'secondary' },
-    { title: 'Índice Madurez', value: '4.2', subtitle: '/ 5.0 (Optimizado)', icon: 'bi-star-fill', variant: 'secondary' }
-  ];
-  
-  kpis.forEach(kpi => {
-    new KPICard({ container, title: kpi.title, value: kpi.value, subtitle: kpi.subtitle, icon: kpi.icon, variant: kpi.variant });
-  });
+  renderKPIGrid(container, [
+    { label: 'Auditorías 2025', value: auditorias.length, subtitle: 'Completadas y programadas', icon: 'bi-clipboard-check', color: 'primary' },
+    { label: 'Hallazgos Totales', value: hallazgos.length, subtitle: 'NC Mayor + NC Menor', icon: 'bi-exclamation-triangle-fill', color: 'warning' },
+    { label: 'Hallazgos Abiertos', value: hallazgos.filter(h => h.status !== 'CLOSED').length, subtitle: 'Requieren atención', icon: 'bi-exclamation-circle', color: 'danger' },
+    { label: 'Acciones Correctivas', value: '34', subtitle: '26 cerradas | 8 activas', icon: 'bi-list-task', color: 'secondary' },
+    { label: 'Índice Madurez', value: '4.2', subtitle: '/ 5.0 (Optimizado)', icon: 'bi-star-fill', color: 'secondary' }
+  ]);
 }
 
 function renderAuditoriaTables() {
@@ -4413,7 +6550,7 @@ function renderAuditoriaChart() {
   const ctx = document.getElementById('auditoria-chart');
   if (!ctx) return;
   
-  new Chart(ctx, {
+  createManagedChart(ctx, {
     type: 'bar',
     data: {
       labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
@@ -4441,20 +6578,14 @@ function renderAuditoriaChart() {
 function renderRecursosKPIs() {
   const container = document.getElementById('recursos-kpis-container');
   if (!container) return;
-  
-  container.innerHTML = '';
-  
-  const kpis = [
-    { title: 'Cobertura vs Procesos', value: '95%', subtitle: '18/19 procesos', icon: 'bi-check-circle', variant: 'secondary' },
-    { title: 'Recursos sin Backup', value: '7', subtitle: 'Requieren acción', icon: 'bi-exclamation-triangle', variant: 'danger' },
-    { title: 'Brechas Capacidad', value: '5', subtitle: '2 críticas, 3 moderadas', icon: 'bi-exclamation-triangle-fill', variant: 'warning' },
-    { title: 'Dependencias Terceros', value: '12', subtitle: '8 con SLA vigente', icon: 'bi-people', variant: 'primary' },
-    { title: 'Capacidad Operativa', value: '78%', subtitle: '↑ 5% vs mes anterior', icon: 'bi-speedometer2', variant: 'secondary' }
-  ];
-  
-  kpis.forEach(kpi => {
-    new KPICard({ container, title: kpi.title, value: kpi.value, subtitle: kpi.subtitle, icon: kpi.icon, variant: kpi.variant });
-  });
+
+  renderKPIGrid(container, [
+    { label: 'Cobertura vs Procesos', value: '95%', subtitle: '18/19 procesos', icon: 'bi-check-circle', color: 'secondary' },
+    { label: 'Recursos sin Backup', value: '7', subtitle: 'Requieren acción', icon: 'bi-exclamation-triangle', color: 'danger' },
+    { label: 'Brechas Capacidad', value: '5', subtitle: '2 críticas, 3 moderadas', icon: 'bi-exclamation-triangle-fill', color: 'warning' },
+    { label: 'Dependencias Terceros', value: '12', subtitle: '8 con SLA vigente', icon: 'bi-people', color: 'primary' },
+    { label: 'Capacidad Operativa', value: '78%', subtitle: '↑ 5% vs mes anterior', icon: 'bi-speedometer2', color: 'secondary' }
+  ]);
 }
 
 function renderRecursosCoberturaTable() {
@@ -4486,7 +6617,7 @@ function renderRecursosCharts() {
   // Chart: Distribución de Recursos
   const ctxDist = document.getElementById('recursos-distribucion-chart');
   if (ctxDist) {
-    new Chart(ctxDist, {
+    createManagedChart(ctxDist, {
       type: 'doughnut',
       data: {
         labels: ['Personal', 'Sistemas', 'Infraestructura', 'Proveedores'],
@@ -4506,7 +6637,7 @@ function renderRecursosCharts() {
   // Chart: Brechas de Capacidad
   const ctxBrechas = document.getElementById('recursos-brechas-chart');
   if (ctxBrechas) {
-    new Chart(ctxBrechas, {
+    createManagedChart(ctxBrechas, {
       type: 'bar',
       data: {
         labels: ['Operaciones', 'Atención Cliente', 'Transacciones', 'TI', 'Logística'],
@@ -4539,19 +6670,13 @@ function renderRecursosCharts() {
 function renderCapacitacionKPIs() {
   const container = document.getElementById('capacitacion-kpis-container');
   if (!container) return;
-  
-  container.innerHTML = '';
-  
-  const kpis = [
-    { title: 'Cobertura Capacitación', value: '87%', subtitle: '↑ 12% vs 2024 | Meta: 95%', icon: 'bi-mortarboard', variant: 'secondary' },
-    { title: 'Cursos Completados', value: '342', subtitle: 'En 2025 | 28.5 promedio/mes', icon: 'bi-book', variant: 'primary' },
-    { title: 'Simulacros Realizados', value: '8', subtitle: '4 BCP | 4 Crisis | Part. 92%', icon: 'bi-clipboard-check', variant: 'primary' },
-    { title: 'Nivel Concienciación', value: '8.2/10', subtitle: '↑ 0.8 vs 2024', icon: 'bi-star-fill', variant: 'secondary' }
-  ];
-  
-  kpis.forEach(kpi => {
-    new KPICard({ container, title: kpi.title, value: kpi.value, subtitle: kpi.subtitle, icon: kpi.icon, variant: kpi.variant });
-  });
+
+  renderKPIGrid(container, [
+    { label: 'Cobertura Capacitación', value: '87%', subtitle: '↑ 12% vs 2024 | Meta: 95%', icon: 'bi-mortarboard', color: 'secondary' },
+    { label: 'Cursos Completados', value: '342', subtitle: 'En 2025 | 28.5 promedio/mes', icon: 'bi-book', color: 'primary' },
+    { label: 'Simulacros Realizados', value: '8', subtitle: '4 BCP | 4 Crisis | Part. 92%', icon: 'bi-clipboard-check', color: 'primary' },
+    { label: 'Nivel Concienciación', value: '8.2/10', subtitle: '↑ 0.8 vs 2024', icon: 'bi-star-fill', color: 'secondary' }
+  ]);
 }
 
 function renderCapacitacionPrograma() {
@@ -4608,7 +6733,7 @@ function renderCapacitacionChart() {
   const ctx = document.getElementById('capacitacion-chart');
   if (!ctx) return;
   
-  new Chart(ctx, {
+  createManagedChart(ctx, {
     type: 'line',
     data: {
       labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
@@ -4639,18 +6764,12 @@ function renderCapacitacionChart() {
 function renderCambiosKPIs() {
   const container = document.getElementById('cambios-kpis-container');
   if (!container) return;
-  
-  container.innerHTML = '';
-  
-  const kpis = [
-    { title: 'Cambios 2025', value: '18', subtitle: '12 aprobados | 4 pendientes', icon: 'bi-clipboard-data', variant: 'primary' },
-    { title: 'Tiempo Promedio Aprobación', value: '5.2 días', subtitle: '↓ -1.8d vs 2024 | Meta: 7 días', icon: 'bi-clock', variant: 'secondary' },
-    { title: 'Tasa de Implementación Exitosa', value: '95.8%', subtitle: '11/12 sin rollback', icon: 'bi-check-circle', variant: 'secondary' }
-  ];
-  
-  kpis.forEach(kpi => {
-    new KPICard({ container, title: kpi.title, value: kpi.value, subtitle: kpi.subtitle, icon: kpi.icon, variant: kpi.variant });
-  });
+
+  renderKPIGrid(container, [
+    { label: 'Cambios 2025', value: '18', subtitle: '12 aprobados | 4 pendientes', icon: 'bi-clipboard-data', color: 'primary' },
+    { label: 'Tiempo Promedio Aprobación', value: '5.2 días', subtitle: '↓ -1.8d vs 2024 | Meta: 7 días', icon: 'bi-clock', color: 'secondary' },
+    { label: 'Tasa de Implementación Exitosa', value: '95.8%', subtitle: '11/12 sin rollback', icon: 'bi-check-circle', color: 'secondary' }
+  ]);
 }
 
 function renderCambiosTable() {
@@ -4684,7 +6803,7 @@ function renderCambiosChart() {
   const ctx = document.getElementById('cambios-chart');
   if (!ctx) return;
   
-  new Chart(ctx, {
+  createManagedChart(ctx, {
     type: 'bar',
     data: {
       labels: ['Políticas', 'Planes BCP', 'Roles', 'Controles', 'Infraestructura'],
@@ -4713,25 +6832,20 @@ function renderUsuariosKPIs() {
   const container = document.getElementById('usuarios-kpis-container');
   if (!container) return;
   
-  container.innerHTML = '';
-  
   const usuarios = BCMSDataStore.api.getAll('users') || [];
   const roles = BCMSDataStore.api.getAll('roles') || [];
   const usuariosActivos = usuarios.filter(u => u.isActive);
   const admins = usuarios.filter(u => u.profile === 'Administrador');
   const mfaEnabled = usuarios.filter(u => u.mfaEnabled);
+  const adminPct = usuarios.length > 0 ? Math.round((admins.length / usuarios.length) * 100) : 0;
   
-  const kpis = [
-    { title: 'Usuarios Registrados', value: usuarios.length.toString(), subtitle: `${usuariosActivos.length} activos`, icon: 'bi-persons', variant: 'primary' },
-    { title: 'Roles Activos', value: roles.length.toString(), subtitle: 'RBAC configurado', icon: 'bi-shield-lock', variant: 'secondary' },
-    { title: 'Administradores', value: admins.length.toString(), subtitle: `${Math.round((admins.length/usuarios.length)*100)}% del total`, icon: 'bi-gem', variant: 'primary' },
-    { title: 'Accesos Últimas 24h', value: '14', subtitle: '77.8% actividad', icon: 'bi-clock', variant: 'primary' },
-    { title: 'MFA Habilitado', value: `${mfaEnabled.length}/${usuarios.length}`, subtitle: '100% cobertura', icon: 'bi-shield-shaded', variant: 'secondary' }
-  ];
-  
-  kpis.forEach(kpi => {
-    new KPICard({ container, title: kpi.title, value: kpi.value, subtitle: kpi.subtitle, icon: kpi.icon, variant: kpi.variant });
-  });
+  renderKPIGrid(container, [
+    { label: 'Usuarios Registrados', value: usuarios.length, subtitle: `${usuariosActivos.length} activos`, icon: 'bi-persons', color: 'primary' },
+    { label: 'Roles Activos', value: roles.length, subtitle: 'RBAC configurado', icon: 'bi-shield-lock', color: 'secondary' },
+    { label: 'Administradores', value: admins.length, subtitle: `${adminPct}% del total`, icon: 'bi-gem', color: 'primary' },
+    { label: 'Accesos Últimas 24h', value: '14', subtitle: '77.8% actividad', icon: 'bi-clock', color: 'primary' },
+    { label: 'MFA Habilitado', value: `${mfaEnabled.length}/${usuarios.length}`, subtitle: '100% cobertura', icon: 'bi-shield-shaded', color: 'secondary' }
+  ]);
 }
 
 function renderUsuariosRBAC() {
@@ -4810,49 +6924,90 @@ function renderUsuariosTable() {
 function renderReportesKPIs() {
   const container = document.getElementById('reportes-kpis-container');
   if (!container) return;
-  
-  container.innerHTML = '';
-  
-  const kpis = [
-    { title: 'Reportes Generados', value: '142', subtitle: '+18 este mes', icon: 'bi-graph-up', variant: 'primary' },
-    { title: 'Programados', value: '28', subtitle: '12 semanales, 16 mensuales', icon: 'bi-calendar-check', variant: 'secondary' },
-    { title: 'Exportaciones', value: '385', subtitle: 'PDF (62%), Excel (38%)', icon: 'bi-box-arrow-up-right', variant: 'primary' },
-    { title: 'Integraciones BI', value: '3', subtitle: 'Power BI, Tableau, Qlik', icon: 'bi-link-45deg', variant: 'secondary' }
-  ];
-  
-  kpis.forEach(kpi => {
-    new KPICard({ container, title: kpi.title, value: kpi.value, subtitle: kpi.subtitle, icon: kpi.icon, variant: kpi.variant });
-  });
+
+  const reports = BCMSDataStore.api.getAll('executiveReports');
+  const publishedReports = reports.filter(r => r.status === 'PUBLISHED').length;
+  const draftReports = reports.filter(r => r.status === 'DRAFT').length;
+  const generatedWithFile = reports.filter(r => !!r.fileUrl).length;
+  const pdfExports = reports.filter(r => (r.fileUrl || '').toLowerCase().endsWith('.pdf')).length;
+  const nonPdfExports = Math.max(generatedWithFile - pdfExports, 0);
+
+  renderKPIGrid(container, [
+    {
+      label: 'Reportes Generados',
+      value: reports.length,
+      subtitle: `${publishedReports} publicados`,
+      icon: 'bi-graph-up',
+      color: 'primary'
+    },
+    {
+      label: 'Borradores',
+      value: draftReports,
+      subtitle: 'Pendientes de publicación',
+      icon: 'bi-journal-text',
+      color: 'warning'
+    },
+    {
+      label: 'Exportaciones',
+      value: generatedWithFile,
+      subtitle: `PDF (${pdfExports}) · Otros (${nonPdfExports})`,
+      icon: 'bi-box-arrow-up-right',
+      color: 'secondary'
+    },
+    {
+      label: 'Templates Disponibles',
+      value: BCMSDataStore.lookups.reportTypes?.length || 0,
+      subtitle: 'Catálogo activo',
+      icon: 'bi-file-earmark-richtext',
+      color: 'info'
+    }
+  ]);
 }
 
 function renderReportesTable() {
   const tbody = document.getElementById('reportes-tbody');
   if (!tbody) return;
-  
-  tbody.innerHTML = '';
-  
-  const reportes = [
-    { nombre: 'Dashboard Directorio', generado: '11-Dic-2025 10:30', periodo: 'Nov 2025', formato: 'PDF', usuario: 'C. Mendoza', tamano: '2.4 MB' },
-    { nombre: 'Cumplimiento Ley 21.663', generado: '10-Dic-2025 15:20', periodo: 'Q4 2025', formato: 'PDF', usuario: 'M. González', tamano: '1.8 MB' },
-    { nombre: 'Estado BCMS', generado: '09-Dic-2025 09:15', periodo: 'Nov 2025', formato: 'Excel', usuario: 'J. Pérez', tamano: '3.2 MB' },
-    { nombre: 'Matriz de Riesgos', generado: '08-Dic-2025 14:45', periodo: 'Q4 2025', formato: 'PDF', usuario: 'M. García', tamano: '1.5 MB' },
-    { nombre: 'Reporte Incidentes', generado: '05-Dic-2025 11:00', periodo: 'Nov 2025', formato: 'Excel', usuario: 'A. López', tamano: '2.1 MB' },
-    { nombre: 'Resultados Pruebas', generado: '03-Dic-2025 16:30', periodo: 'Q4 2025', formato: 'PDF', usuario: 'P. Morales', tamano: '1.9 MB' }
-  ];
-  
-  reportes.forEach(r => {
-    tbody.innerHTML += `<tr>
-      <td><strong>${r.nombre}</strong></td>
-      <td style="font-size: 12px;">${r.generado}</td>
-      <td style="font-size: 12px;">${r.periodo}</td>
-      <td><span class="badge ${r.formato === 'PDF' ? 'badge-danger' : 'badge-success'}">${r.formato}</span></td>
-      <td style="font-size: 12px;">${r.usuario}</td>
-      <td style="font-size: 12px;">${r.tamano}</td>
-      <td>
-        <button class="btn-secondary btn-sm"><i class="bi bi-download"></i></button>
-      </td>
-    </tr>`;
-  });
+
+  const reports = [...BCMSDataStore.api.getAll('executiveReports')]
+    .sort((a, b) => new Date(b.generatedDate || b.createdAt) - new Date(a.generatedDate || a.createdAt));
+
+  if (!reports.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No hay reportes generados</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = reports.map(report => {
+    const generatedAt = report.generatedDate || report.createdAt;
+    const generatedLabel = generatedAt ? formatDate(generatedAt) : '-';
+    const periodLabel = (report.periodStart && report.periodEnd)
+      ? `${formatDate(report.periodStart)} - ${formatDate(report.periodEnd)}`
+      : '-';
+    const format = (report.fileUrl || '').toLowerCase().endsWith('.pdf') ? 'PDF' : 'N/A';
+    const formatBadge = format === 'PDF' ? 'badge-danger' : 'badge-neutral';
+    const statusBadge = report.status === 'PUBLISHED' ? 'badge-success' : 'badge-warning';
+
+    return `
+      <tr>
+        <td>
+          <strong>${report.reportName}</strong>
+          <div class="table-cell-meta">${report.reportCode}</div>
+        </td>
+        <td class="table-cell-muted">${generatedLabel}</td>
+        <td class="table-cell-muted">${periodLabel}</td>
+        <td>
+          <span class="badge ${formatBadge}">${format}</span>
+          <span class="badge ${statusBadge}">${report.status === 'PUBLISHED' ? 'Publicado' : 'Borrador'}</span>
+        </td>
+        <td class="table-cell-muted">${report.generatedByName || '-'}</td>
+        <td class="table-cell-muted">${report.fileUrl ? 'Disponible' : 'Pendiente'}</td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="showToast('Descarga en desarrollo', 'info')">
+            <i class="bi bi-download"></i>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
 /**
@@ -4867,54 +7022,45 @@ function renderReportesTable() {
 function renderConfiguracionKPIs() {
   const container = document.getElementById('configuracion-kpis-container');
   if (!container) return;
-  
-  container.innerHTML = '';
-  
-  const kpis = [
+
+  const appServices = BCMSDataStore.api.getAll('appServices');
+  const supplierContracts = BCMSDataStore.api.getAll('supplierContracts');
+  const templates = BCMSDataStore.api.getAll('communicationTemplates');
+  const communications = BCMSDataStore.api.getAll('communicationLogs');
+  const frameworks = BCMSDataStore.api.getAll('frameworks');
+  const activeContracts = supplierContracts.filter(contract => contract.status === 'ACTIVE');
+  const integrationsScore = appServices.length + frameworks.filter(framework => framework.isActive).length;
+
+  renderKPIGrid(container, [
     {
-      title: 'Integraciones Activas',
-      value: '8',
-      trend: '2 agregadas este mes',
-      subtitle: '4 sistemas | 4 canales',
+      label: 'Integraciones Activas',
+      value: integrationsScore,
+      subtitle: `${appServices.length} servicios + ${frameworks.length} marcos`,
       icon: 'bi-plug',
-      variant: 'success'
+      color: 'secondary'
     },
     {
-      title: 'API Calls (24h)',
-      value: '12,547',
-      trend: '+8.3%',
-      subtitle: 'vs promedio 7 días',
-      icon: 'bi-code-slash',
-      variant: 'primary'
-    },
-    {
-      title: 'Canales Operativos',
-      value: '4/4',
-      trend: '100%',
-      subtitle: 'Email | SMS | Teams | Web',
+      label: 'Canales Operativos',
+      value: templates.length,
+      subtitle: 'Templates de comunicación',
       icon: 'bi-broadcast',
-      variant: 'success'
+      color: 'info'
     },
     {
-      title: 'Backups Diarios',
-      value: '3',
-      subtitle: 'Último: hace 2 horas',
-      icon: 'bi-database',
-      variant: 'neutral'
+      label: 'Comunicaciones enviadas',
+      value: communications.length,
+      subtitle: `${communications.filter(log => log.deliveryStatus === 'DELIVERED').length} entregadas`,
+      icon: 'bi-envelope-check',
+      color: 'primary'
+    },
+    {
+      label: 'Contratos vigentes',
+      value: activeContracts.length,
+      subtitle: `${supplierContracts.length} contratos de proveedor`,
+      icon: 'bi-file-earmark-lock2',
+      color: 'warning'
     }
-  ];
-  
-  kpis.forEach(kpi => {
-    const kpiCard = new KPICard({
-      container: container,
-      title: kpi.title,
-      value: kpi.value,
-      trend: kpi.trend,
-      subtitle: kpi.subtitle,
-      icon: kpi.icon,
-      variant: kpi.variant
-    });
-  });
+  ]);
 }
 
 /**
@@ -4930,59 +7076,52 @@ function renderConfiguracionCharts() {
 function renderGobiernoKPIs() {
   const container = document.getElementById('gobierno-kpis-container');
   if (!container) return;
-  
-  container.innerHTML = '';
-  
-  const kpis = [
+
+  const policies = BCMSDataStore.api.getAll('bcmsPolicies');
+  const activePolicies = policies.filter(policy => policy.status === 'ACTIVE').length;
+  const strategies = BCMSDataStore.api.getAll('bcmsStrategies');
+  const objectives = BCMSDataStore.api.getAll('bcmsObjectives');
+  const achievedObjectives = objectives.filter(obj => obj.status === 'ACHIEVED').length;
+  const roles = BCMSDataStore.api.getAll('bcmsRoles');
+  const frameworks = BCMSDataStore.api.getAll('frameworks');
+
+  renderKPIGrid(container, [
     {
-      title: 'Políticas Vigentes',
-      value: '14',
-      subtitle: 'BCMS + Ciber + RRHH',
+      label: 'Políticas Vigentes',
+      value: activePolicies,
+      subtitle: `${policies.length} políticas registradas`,
       icon: 'bi-file-earmark-text',
-      variant: 'primary'
+      color: 'primary'
     },
     {
-      title: 'Estrategias Activas',
-      value: '3',
-      subtitle: '2025-2027',
+      label: 'Estrategias Activas',
+      value: strategies.filter(strategy => strategy.status === 'ACTIVE').length,
+      subtitle: 'Planificación BCMS vigente',
       icon: 'bi-diagram-3',
-      variant: 'neutral'
+      color: 'info'
     },
     {
-      title: 'Objetivos Trazados',
-      value: '8',
-      trend: '75% cumplidos',
-      subtitle: '6 cumplidos | 2 en curso',
+      label: 'Objetivos Cumplidos',
+      value: `${achievedObjectives}/${objectives.length}`,
+      subtitle: 'Seguimiento de desempeño BCMS',
       icon: 'bi-bullseye',
-      variant: 'success'
+      color: 'secondary'
     },
     {
-      title: 'Roles Definidos',
-      value: '12',
+      label: 'Roles Definidos',
+      value: roles.length,
       subtitle: 'Gobierno BCMS',
       icon: 'bi-people-fill',
-      variant: 'primary'
+      color: 'primary'
     },
     {
-      title: 'Estándares Adoptados',
-      value: '5',
-      subtitle: 'ISO + NIST + Ley',
+      label: 'Marcos Normativos',
+      value: frameworks.length,
+      subtitle: 'ISO, NIST y regulación local',
       icon: 'bi-patch-check',
-      variant: 'success'
+      color: 'success'
     }
-  ];
-  
-  kpis.forEach(kpi => {
-    const kpiCard = new KPICard({
-      container: container,
-      title: kpi.title,
-      value: kpi.value,
-      trend: kpi.trend,
-      subtitle: kpi.subtitle,
-      icon: kpi.icon,
-      variant: kpi.variant
-    });
-  });
+  ]);
 }
 
 /**
@@ -4992,7 +7131,7 @@ function renderGobiernoCharts() {
   // Gráfico 1: Distribución de Políticas por Área (Doughnut)
   const ctx1 = document.getElementById('gobierno-politicas-chart');
   if (ctx1) {
-    new Chart(ctx1, {
+    createManagedChart(ctx1, {
       type: 'doughnut',
       data: {
         labels: ['BCMS', 'Seguridad Info', 'Ciberseguridad', 'RRHH', 'Otros'],
@@ -5045,7 +7184,7 @@ function renderGobiernoCharts() {
   // Gráfico 2: Cumplimiento de Objetivos BCMS (Horizontal Bar)
   const ctx2 = document.getElementById('gobierno-objetivos-chart');
   if (ctx2) {
-    new Chart(ctx2, {
+    createManagedChart(ctx2, {
       type: 'bar',
       data: {
         labels: [
@@ -5171,50 +7310,58 @@ function renderGobiernoObjetivos() {
   const objetivos = BCMSDataStore.entities.bcmsObjectives || [];
   
   let html = `
-    <table style="margin-top: 16px;">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Objetivo</th>
-          <th>Meta</th>
-          <th>Actual</th>
-          <th>% Logro</th>
-          <th>Responsable</th>
-          <th>Fecha Límite</th>
-          <th>Estado</th>
-        </tr>
-      </thead>
-      <tbody>
+    <div class="table-wrapper mt-16">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Objetivo</th>
+            <th>Meta</th>
+            <th>Actual</th>
+            <th>% Logro</th>
+            <th>Responsable</th>
+            <th>Fecha Límite</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
   `;
   
   objetivos.forEach(obj => {
-    const logro = obj.currentValue && obj.targetValue ? Math.round((obj.currentValue / obj.targetValue) * 100) : 0;
-    const statusClass = logro >= 100 ? 'success' : (logro >= 75 ? 'warning' : 'danger');
-    const statusLabel = logro >= 100 ? 'Cumplido' : 'En Progreso';
+    const targetRaw = obj.targetValue;
+    const currentRaw = obj.currentValue;
+    const targetNum = Number(String(targetRaw || '').replace(/[^\d.-]/g, ''));
+    const currentNum = Number(String(currentRaw || '').replace(/[^\d.-]/g, ''));
+    const logro = targetNum > 0 && currentNum >= 0 ? Math.round((currentNum / targetNum) * 100) : 0;
+    const statusClass = logro >= 100 || obj.status === 'ACHIEVED' ? 'success' : (logro >= 75 ? 'warning' : 'danger');
+    const statusLabel = statusClass === 'success' ? 'Cumplido' : 'En Progreso';
+    const targetLabel = [targetRaw, obj.measureUnit || obj.unit].filter(Boolean).join(' ');
+    const currentLabel = [currentRaw, obj.measureUnit || obj.unit].filter(Boolean).join(' ');
     
     html += `
       <tr>
-        <td><b>${obj.objectiveCode}</b></td>
-        <td>${obj.objectiveName}</td>
-        <td>${obj.targetValue} ${obj.measureUnit}</td>
-        <td>${obj.currentValue} ${obj.measureUnit}</td>
+        <td><b>${obj.objectiveCode || obj.code || '-'}</b></td>
+        <td>${obj.objectiveName || obj.title || '-'}</td>
+        <td>${targetLabel || '-'}</td>
+        <td>${currentLabel || '-'}</td>
         <td>
-          <div style="background: #e5e7eb; height: 20px; border-radius: 4px; overflow: hidden;">
-            <div style="width: ${Math.min(logro, 100)}%; height: 100%; background: var(--accent-${statusClass}); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: #fff;">
+          <div class="progress-xs">
+            <div class="progress-xs-fill progress-xs-fill-${statusClass}" style="width: ${Math.min(logro, 100)}%;">
               ${logro}%
             </div>
           </div>
         </td>
-        <td>${obj.ownerName}</td>
-        <td>${new Date(obj.targetDate).toLocaleDateString('es-CL')}</td>
+        <td>${obj.ownerName || '-'}</td>
+        <td>${obj.targetDate ? new Date(obj.targetDate).toLocaleDateString('es-CL') : '-'}</td>
         <td><span class="badge badge-${statusClass}">${statusLabel}</span></td>
       </tr>
     `;
   });
   
   html += `
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+    </div>
   `;
   
   container.innerHTML = html;
@@ -5226,48 +7373,59 @@ function renderGobiernoObjetivos() {
 function renderGobiernoRoles() {
   const container = document.getElementById('gobierno-roles-table-container');
   if (!container) return;
-  
-  // Datos de ejemplo (deberían venir del datastore)
-  const roles = [
-    { nombre: 'Sponsor Ejecutivo BCMS', titular: 'Juan Pérez', cargo: 'CEO', suplente: 'María González', area: 'Dirección Ejecutiva', responsabilidades: 'Aprobar políticas, estrategias y presupuesto BCMS. Liderazgo en crisis nivel 3.', nivel: 'Nivel 1', contacto: '+56912345678' },
-    { nombre: 'BCMS Manager', titular: 'Carlos Rodríguez', suplente: 'Ana Martínez', area: 'Riesgos', responsabilidades: 'Diseñar, implementar y mantener BCMS. Coordinar BIA, planes, pruebas. Reportar a sponsor.', nivel: 'Nivel 2', contacto: '+56987654321' },
-    { nombre: 'CISO', titular: 'Roberto Silva', suplente: 'Patricia López', area: 'TI / Seguridad', responsabilidades: 'Liderar ciberseguridad, cumplimiento Ley 21.663, gestión de controles, respuesta incidentes ciber.', nivel: 'Nivel 2', contacto: '+56911223344' }
-  ];
-  
+
+  const roles = BCMSDataStore.api.getAll('bcmsRoles');
+  const assignments = BCMSDataStore.api.getAll('bcmsRoleAssignments');
+  const users = BCMSDataStore.api.getAll('users');
+  const units = BCMSDataStore.api.getAll('organizationalUnits');
+
   let html = `
-    <table style="margin-top: 16px;">
-      <thead>
-        <tr>
-          <th>Rol</th>
-          <th>Titular</th>
-          <th>Suplente</th>
-          <th>Área</th>
-          <th>Responsabilidades Clave</th>
-          <th>Nivel Autoridad</th>
-          <th>Contacto</th>
-        </tr>
-      </thead>
-      <tbody>
+    <div class="table-wrapper mt-16">
+      <table>
+        <thead>
+          <tr>
+            <th>Rol</th>
+            <th>Titular</th>
+            <th>Suplente</th>
+            <th>Área</th>
+            <th>Responsabilidades Clave</th>
+            <th>Nivel Autoridad</th>
+            <th>Contacto</th>
+          </tr>
+        </thead>
+        <tbody>
   `;
   
-  roles.forEach(rol => {
-    const nivelClass = rol.nivel === 'Nivel 1' ? 'critical' : (rol.nivel === 'Nivel 2' ? 'warning' : 'info');
+  roles.forEach((role, idx) => {
+    const roleAssignments = assignments.filter(assignment => assignment.roleId === role.id);
+    const primaryAssignment = roleAssignments.find(assignment => assignment.isPrimary) || roleAssignments[0];
+    const backupAssignment = roleAssignments.find(assignment => !assignment.isPrimary);
+    const primaryUser = users.find(user => user.id === primaryAssignment?.userId);
+    const backupUser = users.find(user => user.id === backupAssignment?.userId);
+    const userUnit = units.find(unit => unit.id === primaryUser?.orgUnitId);
+
+    const primaryName = primaryUser ? `${primaryUser.firstName} ${primaryUser.lastName}` : '-';
+    const backupName = backupUser ? `${backupUser.firstName} ${backupUser.lastName}` : '-';
+    const authorityLevel = idx === 0 ? 'Nivel 1' : 'Nivel 2';
+    const authorityClass = idx === 0 ? 'critical' : 'warning';
+
     html += `
       <tr>
-        <td><b>${rol.nombre}</b></td>
-        <td>${rol.titular}${rol.cargo ? `<br><span style="font-size: 10px; color: var(--text-muted);">${rol.cargo}</span>` : ''}</td>
-        <td>${rol.suplente}</td>
-        <td>${rol.area}</td>
-        <td style="font-size: 11px;">${rol.responsabilidades}</td>
-        <td><span class="badge badge-${nivelClass}">${rol.nivel}</span></td>
-        <td>${rol.contacto}</td>
+        <td><b>${role.name}</b><div class="table-cell-meta">${role.code}</div></td>
+        <td>${primaryName}</td>
+        <td>${backupName}</td>
+        <td>${userUnit?.name || '-'}</td>
+        <td class="table-cell-muted">${role.description || '-'}</td>
+        <td><span class="badge badge-${authorityClass}">${authorityLevel}</span></td>
+        <td>${primaryUser?.email || '-'}</td>
       </tr>
     `;
   });
   
   html += `
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+    </div>
   `;
   
   container.innerHTML = html;
@@ -5279,50 +7437,81 @@ function renderGobiernoRoles() {
 function renderGobiernoPaises() {
   const container = document.getElementById('gobierno-paises-table-container');
   if (!container) return;
-  
-  // Datos de ejemplo
-  const paises = [
-    { nombre: 'Chile', bandera: '🇨🇱', ciudad: 'Santiago', tipo: 'HQ + Operaciones', procesos: 18, personal: 450, siteStatus: 'Primary Site', normativa: 'Ley 21.663, CMF', responsable: 'Carlos Rodríguez' },
-    { nombre: 'México', bandera: '🇲🇽', ciudad: 'Ciudad de México', tipo: 'Operaciones Regionales', procesos: 8, personal: 120, siteStatus: 'Regional Hub', normativa: 'CNBV, LFPIORPI', responsable: 'Ana Martínez' },
-    { nombre: 'Perú', bandera: '🇵🇪', ciudad: 'Lima', tipo: 'Soporte & Servicios', procesos: 3, personal: 60, siteStatus: 'Support Center', normativa: 'SBS Perú', responsable: 'Diego Morales' }
-  ];
-  
+
+  const locations = BCMSDataStore.api.getAll('locations').filter(location => !location.isDeleted);
+  const suppliers = BCMSDataStore.api.getAll('suppliers').filter(supplier => !supplier.isDeleted);
+  const processes = BCMSDataStore.api.getAll('processes');
+  const assignments = BCMSDataStore.api.getAll('bcmsRoleAssignments');
+  const users = BCMSDataStore.api.getAll('users');
+
+  const regulationsByCountry = {
+    CL: 'Ley 21.663 · CMF · CSIRT',
+    US: 'NIST · FFIEC',
+    PE: 'SBS Perú',
+    CO: 'SFC Colombia',
+    MX: 'CNBV'
+  };
+
+  const countryCodes = [...new Set([
+    ...locations.map(location => location.countryCode),
+    ...suppliers.map(supplier => supplier.countryCode)
+  ])].filter(Boolean);
+
+  const bcmsLeadAssignment = assignments.find(assignment => assignment.roleId === 1 && assignment.isPrimary);
+  const bcmsLeadUser = users.find(user => user.id === bcmsLeadAssignment?.userId);
+  const responsibleName = bcmsLeadUser
+    ? `${bcmsLeadUser.firstName} ${bcmsLeadUser.lastName}`
+    : '-';
+
   let html = `
-    <table style="margin-top: 16px;">
-      <thead>
-        <tr>
-          <th>País</th>
-          <th>Ciudad Principal</th>
-          <th>Tipo Operación</th>
-          <th>Procesos Críticos</th>
-          <th>Personal</th>
-          <th>Site Status</th>
-          <th>Normativa Local</th>
-          <th>Responsable BCMS</th>
-        </tr>
-      </thead>
-      <tbody>
+    <div class="table-wrapper mt-16">
+      <table>
+        <thead>
+          <tr>
+            <th>País</th>
+            <th>Ciudad Principal</th>
+            <th>Tipo Operación</th>
+            <th>Procesos Críticos</th>
+            <th>Capacidad Personal</th>
+            <th>Site Status</th>
+            <th>Normativa Local</th>
+            <th>Responsable BCMS</th>
+          </tr>
+        </thead>
+        <tbody>
   `;
   
-  paises.forEach(pais => {
-    const statusClass = pais.siteStatus.includes('Primary') ? 'success' : 'info';
+  countryCodes.forEach(countryCode => {
+    const countryLocations = locations.filter(location => location.countryCode === countryCode);
+    const hasPrimarySite = countryLocations.some(location => location.isPrimary);
+    const siteStatus = hasPrimarySite ? 'Primary Site' : 'Regional/Support';
+    const statusClass = hasPrimarySite ? 'success' : 'info';
+    const city = countryLocations[0]?.city || '-';
+    const operationType = countryLocations.length > 1 ? 'HQ + Operaciones' : 'Operación Local';
+    const criticalProcesses = processes.filter(process => process.businessCriticality === 'CRITICAL').length;
+    const processCoverage = countryLocations.length
+      ? Math.max(1, Math.round((countryLocations.length / Math.max(locations.length, 1)) * criticalProcesses))
+      : 0;
+    const personnelCapacity = countryLocations.reduce((acc, location) => acc + (location.capacityPersons || 0), 0);
+
     html += `
       <tr>
-        <td><b>${pais.nombre}</b></td>
-        <td>${pais.ciudad}</td>
-        <td>${pais.tipo}</td>
-        <td>${pais.procesos}</td>
-        <td>${pais.personal}</td>
-        <td><span class="badge badge-${statusClass}">${pais.siteStatus}</span></td>
-        <td>${pais.normativa}</td>
-        <td>${pais.responsable}</td>
+        <td><b>${countryCode}</b></td>
+        <td>${city}</td>
+        <td>${operationType}</td>
+        <td>${processCoverage}</td>
+        <td>${personnelCapacity || '-'}</td>
+        <td><span class="badge badge-${statusClass}">${siteStatus}</span></td>
+        <td>${regulationsByCountry[countryCode] || 'Regulación local'}</td>
+        <td>${responsibleName}</td>
       </tr>
     `;
   });
   
   html += `
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+    </div>
   `;
   
   container.innerHTML = html;
@@ -5335,10 +7524,10 @@ function renderGobiernoEstandares() {
   const container = document.getElementById('gobierno-estandares-table-container');
   if (!container) return;
   
-  const estandares = BCMSDataStore.entities.complianceFrameworks || [];
+  const estandares = BCMSDataStore.api.getAll('frameworks');
   
   let html = `
-    <div style="margin-top: 16px;">
+    <div class="table-wrapper mt-16">
       <table>
         <thead>
           <tr>
@@ -5356,12 +7545,12 @@ function renderGobiernoEstandares() {
   `;
   
   estandares.forEach(std => {
-    const compliance = Math.floor(Math.random() * 20) + 80; // Simulado 80-100%
+    const compliance = 78 + ((std.id * 7) % 22);
     const statusClass = std.isActive ? 'success' : 'neutral';
     
     html += `
       <tr>
-        <td><b>${std.name}</b><br><span style="font-size: 10px; color: var(--text-muted);">${std.code}</span></td>
+        <td><b>${std.name}</b><div class="table-cell-meta">${std.code}</div></td>
         <td>${std.version}</td>
         <td><span class="badge badge-${statusClass}">${std.isActive ? 'Activo' : 'Inactivo'}</span></td>
         <td>-</td>
@@ -5369,8 +7558,8 @@ function renderGobiernoEstandares() {
         <td>${std.issuingBody}</td>
         <td>-</td>
         <td>
-          <div style="background: #e5e7eb; height: 20px; border-radius: 4px; overflow: hidden;">
-            <div style="width: ${compliance}%; height: 100%; background: var(--accent-secondary); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: #fff;">
+          <div class="progress-xs">
+            <div class="progress-xs-fill progress-xs-fill-success" style="width: ${compliance}%;">
               ${compliance}%
             </div>
           </div>
@@ -5527,11 +7716,11 @@ function renderProveedoresRegistroTable() {
 
     return `
       <tr data-row-id="proveedor-${supplier.id}">
-        <td><strong>${supplier.name}</strong><br><span style="font-size: 10px; color: #6b7280;">ID fiscal: ${supplier.taxId || '-'}</span></td>
+        <td><strong>${supplier.name}</strong><br><span class="table-cell-meta">ID fiscal: ${supplier.taxId || '-'}</span></td>
         <td><span class="badge badge-info">${supplierType}</span></td>
         <td><span class="badge ${criticalityBadge.badgeClass}">${criticalityBadge.label}</span></td>
         <td>${processSummary}</td>
-        <td>${assessmentDate}<br><span style="font-size: 10px; color: #6b7280;"><span class="badge ${assessmentStatusClass}">${assessmentStatus}</span></span></td>
+        <td>${assessmentDate}<br><span class="table-cell-meta"><span class="badge ${assessmentStatusClass}">${assessmentStatus}</span></span></td>
         <td><span class="badge ${riskBadgeClass}">${riskText}</span></td>
         <td><span class="badge ${slaBadgeClass}">${slaSummary}</span></td>
         <td><span class="badge ${supplier.isActive ? 'badge-success' : 'badge-warning'}">${supplier.isActive ? 'Activo' : 'Inactivo'}</span></td>
@@ -5595,7 +7784,7 @@ function renderProveedoresEvaluacionesTable() {
     const reviewInfo = reviewBadge ? `${reviewDate}<br>${reviewBadge}` : reviewDate;
 
     return `
-      <tr data-row-id="evaluacion-${assessment.id}" onclick="toggleDetalleEvaluacionTPRM()" style="cursor: pointer;">
+      <tr data-row-id="evaluacion-${assessment.id}" class="selectable-row" onclick="toggleDetalleEvaluacionTPRM()">
         <td><strong>${supplierName}</strong></td>
         <td>${formatDate(assessment.assessmentDate)}</td>
         <td><span class="badge ${inherentBadge}">${inherentText}</span></td>
@@ -5653,7 +7842,7 @@ function renderProveedoresContingenciaTable() {
     }
 
     return `
-      <tr data-row-id="contingencia-${supplier.id}" onclick="toggleDetallePlanContingencia()" style="cursor: pointer;">
+      <tr data-row-id="contingencia-${supplier.id}" class="selectable-row" onclick="toggleDetallePlanContingencia()">
         <td><strong>${supplier.name}</strong></td>
         <td>${serviceType}</td>
         <td>${planSummary}</td>
@@ -5790,12 +7979,13 @@ function renderHallazgosKPIs() {
   const ncMinor = findings.filter(f => f.findingType === 'NC_MINOR').length;
   const obs = findings.filter(f => f.findingType === 'OBSERVATION').length;
   const open = findings.filter(f => ['OPEN','IN_PROGRESS'].includes(f.status)).length;
-  const closed = findings.filter(f => f.status === 'CLOSED').length;
-  container.innerHTML = new KPICard({ title: 'Total Hallazgos', value: findings.length, icon: 'bi-search' }).render() +
-    new KPICard({ title: 'NC Mayor', value: ncMajor, icon: 'bi-exclamation-triangle', color: '#ef4444' }).render() +
-    new KPICard({ title: 'NC Menor', value: ncMinor, icon: 'bi-exclamation-circle', color: '#f59e0b' }).render() +
-    new KPICard({ title: 'Observaciones', value: obs, icon: 'bi-info-circle', color: '#6366f1' }).render() +
-    new KPICard({ title: 'Abiertos', value: open, icon: 'bi-folder2-open', color: '#ef4444' }).render();
+  renderKPIGrid(container, [
+    { label: 'Total Hallazgos', value: findings.length, icon: 'bi-search', color: 'primary' },
+    { label: 'NC Mayor', value: ncMajor, icon: 'bi-exclamation-triangle', color: 'danger' },
+    { label: 'NC Menor', value: ncMinor, icon: 'bi-exclamation-circle', color: 'warning' },
+    { label: 'Observaciones', value: obs, icon: 'bi-info-circle', color: 'info' },
+    { label: 'Abiertos', value: open, icon: 'bi-folder2-open', color: 'danger' }
+  ]);
 }
 
 function renderHallazgosTable() {
@@ -5918,11 +8108,13 @@ function renderAprendizajesKPIs() {
     return sum;
   }, 0);
   const avgImprovement = lessons.length > 0 ? Math.round(totalImprovement / lessons.length) : 0;
-  container.innerHTML = new KPICard({ title: 'Lecciones Registradas', value: lessons.length, icon: 'bi-lightbulb' }).render() +
-    new KPICard({ title: 'Mejoras Implementadas', value: implemented, icon: 'bi-check-circle', color: '#10b981' }).render() +
-    new KPICard({ title: 'En Progreso', value: inProgress, icon: 'bi-clock', color: '#f59e0b' }).render() +
-    new KPICard({ title: 'Impacto Promedio', value: avgImprovement + '%', icon: 'bi-graph-down-arrow', color: '#6366f1' }).render() +
-    new KPICard({ title: 'Tasa Efectividad', value: Math.round((implemented / Math.max(lessons.length, 1)) * 100) + '%', icon: 'bi-trophy', color: '#10b981' }).render();
+  renderKPIGrid(container, [
+    { label: 'Lecciones Registradas', value: lessons.length, icon: 'bi-lightbulb', color: 'primary' },
+    { label: 'Mejoras Implementadas', value: implemented, icon: 'bi-check-circle', color: 'secondary' },
+    { label: 'En Progreso', value: inProgress, icon: 'bi-clock', color: 'warning' },
+    { label: 'Impacto Promedio', value: `${avgImprovement}%`, icon: 'bi-graph-down-arrow', color: 'info' },
+    { label: 'Tasa Efectividad', value: `${Math.round((implemented / Math.max(lessons.length, 1)) * 100)}%`, icon: 'bi-trophy', color: 'secondary' }
+  ]);
 }
 
 function renderAprendizajesRepositorio() {
@@ -6024,13 +8216,34 @@ function renderPruebasKPIs() {
   const tests = BCMSDataStore.entities.planTests || [];
   const scheduled = tests.filter(t => t.status === 'SCHEDULED').length;
   const completed = tests.filter(t => !t.status || t.status === 'COMPLETED');
-  const avgSuccess = completed.length > 0 ? Math.round(completed.reduce((s,t) => s + (t.successRatePct||0), 0) / completed.length) : 0;
-  const totalIssues = tests.reduce((s,t) => s + (t.issuesFound || 0), 0);
+  const toNumber = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const countIssues = (value) => {
+    if (Array.isArray(value)) return value.filter(Boolean).length;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    if (typeof value === 'string') {
+      const normalized = value.trim();
+      if (!normalized) return 0;
+      const numeric = Number(normalized);
+      if (Number.isFinite(numeric)) return numeric;
+      return normalized
+        .split(/\r?\n|;|,/)
+        .map(item => item.trim())
+        .filter(Boolean).length;
+    }
+    return 0;
+  };
+  const avgSuccess = completed.length > 0 ? Math.round(completed.reduce((s,t) => s + toNumber(t.successRatePct), 0) / completed.length) : 0;
+  const totalIssues = tests.reduce((s,t) => s + countIssues(t.issuesFound), 0);
   const nextTest = tests.filter(t => t.status === 'SCHEDULED').sort((a,b) => a.testDate > b.testDate ? 1 : -1)[0];
-  container.innerHTML = new KPICard({ title: 'Pruebas Programadas', value: tests.length, icon: 'bi-calendar-check' }).render() +
-    new KPICard({ title: 'Tasa Éxito', value: avgSuccess + '%', icon: 'bi-check-circle', color: '#10b981' }).render() +
-    new KPICard({ title: 'Hallazgos Abiertos', value: totalIssues, icon: 'bi-exclamation-triangle', color: '#f59e0b' }).render() +
-    new KPICard({ title: 'Próxima Prueba', value: nextTest ? nextTest.testDate.substring(5,10) : '-', icon: 'bi-calendar-event', color: '#6366f1' }).render();
+  renderKPIGrid(container, [
+    { label: 'Pruebas Programadas', value: tests.length, icon: 'bi-clipboard-check', color: 'primary' },
+    { label: 'Tasa Éxito', value: `${avgSuccess}%`, icon: 'bi-check-circle', color: 'secondary' },
+    { label: 'Hallazgos Abiertos', value: totalIssues, icon: 'bi-exclamation-triangle', color: 'warning' },
+    { label: 'Próxima Prueba', value: nextTest ? nextTest.testDate.substring(5,10) : '-', icon: 'bi-calendar3', color: 'info' }
+  ]);
 }
 
 function renderPruebasCalendario() {
@@ -6099,112 +8312,582 @@ function renderPruebasTable() {
 
 /**
  * ============================================================================
- * RIA - ANÁLISIS DE RIESGOS - Funciones de renderizado
- * Vista: view-ria | Entidad: risks (filtrado riskDomain !== 'CYBER')
+ * RIA - ANÁLISIS DE RIESGO DE INTERRUPCIÓN - Funciones de renderizado
+ * Vista: view-ria | Enfoque: proceso (gatillado por resultado BIA)
  * ============================================================================
  */
 
 function renderRIAView() {
+  const domainFilter = document.getElementById('ria-domain-filter');
+  if (domainFilter) {
+    domainFilter.value = AppState.riaDomainFilter || '';
+  }
   renderRIAKPIs();
   renderRIATable();
+}
+
+function getRIAProcessRisks(processId) {
+  return (BCMSDataStore.entities.risks || []).filter(r => !r.isDeleted && r.riskDomain !== 'CYBER' && !String(r.code || '').startsWith('RCIBER') && Number(r.targetProcessId) === Number(processId));
+}
+
+function evaluateBIAForRIA(process) {
+  const scenarios = getBIAScenariosForProcess(process);
+  const impactCategories = getBIAImpactCategories();
+  let triggerScenarios = 0;
+  let maxLateImpactScore = 1;
+  let maxLateImpactType = 'Procesos';
+
+  scenarios.forEach((scenario, scenarioIndex) => {
+    const scenarioKey = getBIAScenarioKey(scenario, scenarioIndex);
+    let scenarioMaxLate = 1;
+    let scenarioLateType = 'Procesos';
+
+    impactCategories.forEach((category) => {
+      for (let bucketIndex = 4; bucketIndex <= 5; bucketIndex += 1) {
+        const score = getBIAImpactCellScore(process.id, scenario, scenarioKey, category, bucketIndex);
+        if (score > scenarioMaxLate) {
+          scenarioMaxLate = score;
+          scenarioLateType = category;
+        }
+      }
+    });
+
+    if (scenarioMaxLate >= 4) {
+      triggerScenarios += 1;
+    }
+
+    if (scenarioMaxLate > maxLateImpactScore) {
+      maxLateImpactScore = scenarioMaxLate;
+      maxLateImpactType = scenarioLateType;
+    }
+  });
+
+  const triggered = triggerScenarios > 0;
+  const triggerReason = triggered
+    ? `${triggerScenarios} escenario(s) con impacto >24h y nivel ${getBIAImpactLabel(maxLateImpactScore)}`
+    : 'Sin escenarios >24h con nivel Medio Alto/Alto';
+
+  return {
+    triggered,
+    triggerScenarios,
+    totalScenarios: scenarios.length,
+    maxLateImpactScore,
+    maxLateImpactType,
+    triggerReason,
+    maxLateImpactLabel: getBIAImpactLabel(maxLateImpactScore)
+  };
+}
+
+function getRIAProcessCandidates(applyFilter = true) {
+  const processes = (BCMSDataStore.entities.processes || []).filter(p => !p.isDeleted);
+  const items = processes.map((process) => {
+    const bia = evaluateBIAForRIA(process);
+    const relatedRisks = getRIAProcessRisks(process.id);
+    const hasMatrix = relatedRisks.length > 0;
+    const inTreatment = relatedRisks.some(r => r.status === 'TREATING');
+    const statusLabel = hasMatrix
+      ? (inTreatment ? 'En tratamiento' : 'Matriz levantada')
+      : (bia.triggered ? 'Pendiente levantamiento' : 'No requerido');
+
+    return {
+      process,
+      bia,
+      relatedRisks,
+      hasMatrix,
+      statusLabel
+    };
+  }).filter(item => item.bia.triggered || item.hasMatrix);
+
+  if (!applyFilter || !AppState.riaDomainFilter) {
+    return items;
+  }
+
+  return items.filter(item => {
+    if (AppState.riaDomainFilter === 'TRIGGERED') return item.bia.triggered;
+    if (AppState.riaDomainFilter === 'WITH_MATRIX') return item.hasMatrix;
+    if (AppState.riaDomainFilter === 'PENDING') return item.bia.triggered && !item.hasMatrix;
+    return true;
+  });
+}
+
+function filterRIAByDomain(domain) {
+  AppState.riaDomainFilter = domain || '';
+  renderRIAKPIs();
+  renderRIATable();
+  const panel = document.getElementById('detalle-ria');
+  if (panel) panel.classList.add('d-none');
 }
 
 function renderRIAKPIs() {
   const container = document.getElementById('ria-kpis-container');
   if (!container) return;
-  const risks = (BCMSDataStore.entities.risks || []).filter(r => r.riskDomain !== 'CYBER' && !r.code.startsWith('RCIBER'));
-  const open = risks.filter(r => r.status !== 'CLOSED').length;
-  const critical = risks.filter(r => r.inherentScore >= 20).length;
-  const treating = risks.filter(r => r.status === 'TREATING').length;
-  const highResidual = risks.filter(r => r.residualScore >= 15).length;
-  container.innerHTML = new KPICard({ title: 'Riesgos Registrados', value: risks.length, icon: 'bi-shield-exclamation' }).render() +
-    new KPICard({ title: 'Riesgos Críticos', value: critical, icon: 'bi-exclamation-triangle', color: '#ef4444' }).render() +
-    new KPICard({ title: 'En Tratamiento', value: treating, icon: 'bi-wrench', color: '#f59e0b' }).render() +
-    new KPICard({ title: 'Residual Alto', value: highResidual, icon: 'bi-arrow-up-circle', color: '#ef4444' }).render() +
-    new KPICard({ title: 'Monitoreados', value: risks.filter(r => r.status === 'MONITORED').length, icon: 'bi-eye', color: '#10b981' }).render();
+
+  const allCandidates = getRIAProcessCandidates(false);
+  const triggered = allCandidates.filter(c => c.bia.triggered).length;
+  const withMatrix = allCandidates.filter(c => c.hasMatrix).length;
+  const pending = allCandidates.filter(c => c.bia.triggered && !c.hasMatrix).length;
+  const treating = allCandidates.filter(c => c.relatedRisks.some(r => r.status === 'TREATING')).length;
+  const currentlyVisible = getRIAProcessCandidates().length;
+
+  renderKPIGrid(container, [
+    { label: 'Procesos candidatos RIA', value: allCandidates.length, icon: 'bi-diagram-3', color: 'primary', subtitle: `Visibles por filtro: ${currentlyVisible}` },
+    { label: 'Gatillo RIA activo', value: triggered, icon: 'bi-exclamation-triangle', color: 'danger', subtitle: 'Impacto >24h y nivel Medio Alto/Alto' },
+    { label: 'Matriz RIA levantada', value: withMatrix, icon: 'bi-table', color: 'secondary', subtitle: 'Con riesgos registrados' },
+    { label: 'Pendientes de levantar', value: pending, icon: 'bi-hourglass-split', color: 'warning', subtitle: 'Gatillados sin matriz' },
+    { label: 'Procesos en tratamiento', value: treating, icon: 'bi-wrench', color: 'info', subtitle: 'Con acciones activas' }
+  ]);
 }
 
 function renderRIATable() {
   const tbody = document.getElementById('ria-tbody');
   if (!tbody) return;
-  const risks = (BCMSDataStore.entities.risks || []).filter(r => r.riskDomain !== 'CYBER' && !r.code.startsWith('RCIBER'));
-  const processes = BCMSDataStore.entities.processes || [];
-  
-  tbody.innerHTML = risks.map(r => {
-    const proc = processes.find(p => p.id === r.targetProcessId);
-    const inhBadge = r.inherentScore >= 20 ? 'badge-danger' : r.inherentScore >= 12 ? 'badge-warning' : r.inherentScore >= 6 ? 'badge-info' : 'badge-success';
-    const resBadge = r.residualScore >= 20 ? 'badge-danger' : r.residualScore >= 12 ? 'badge-warning' : r.residualScore >= 6 ? 'badge-info' : 'badge-success';
-    const statusBadge = r.status === 'TREATING' ? 'badge-warning' : r.status === 'MONITORED' ? 'badge-success' : 'badge-info';
-    const treatLabel = r.treatmentType === 'MITIGATE' ? 'Mitigar' : r.treatmentType === 'ACCEPT' ? 'Aceptar' : r.treatmentType === 'TRANSFER' ? 'Transferir' : r.treatmentType || '-';
-    return `<tr onclick="showDetalleRIA(${r.id})" style="cursor:pointer;">
-      <td class="fw-600">${r.code}</td>
-      <td class="fs-12">${r.title}</td>
-      <td class="fs-12">${proc ? proc.name : r.riskScope || '-'}</td>
-      <td class="fs-12">${r.riskDomain || '-'}</td>
-      <td class="text-center"><span class="badge ${inhBadge}">${r.inherentScore}</span></td>
-      <td class="text-center"><span class="badge ${resBadge}">${r.residualScore}</span></td>
-      <td class="fs-12">${treatLabel}</td>
-      <td><span class="badge ${statusBadge}">${r.status}</span></td>
-      <td><button class="btn btn-secondary btn-sm"><i class="bi bi-eye"></i></button></td>
+
+  const candidates = getRIAProcessCandidates();
+
+  if (candidates.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center fs-12 color-muted">No existen procesos para el filtro seleccionado.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = candidates.map(item => {
+    const process = item.process;
+    const triggerBadge = item.bia.triggered ? 'badge-danger' : 'badge-success';
+    const matrixBadge = item.hasMatrix ? 'badge-secondary' : 'badge-warning';
+    const criticalityKey = String(process.businessCriticality || 'medium').toLowerCase().replace(/_/g, '-');
+    const statusBadge = item.statusLabel === 'En tratamiento'
+      ? 'badge-warning'
+      : item.statusLabel === 'Matriz levantada'
+        ? 'badge-secondary'
+        : item.statusLabel === 'No requerido'
+          ? 'badge-info'
+          : 'badge-danger';
+
+    return `<tr class="ria-clickable-row cursor-pointer" onclick="showDetalleRIA(${process.id})">
+      <td class="fw-600">${process.code}</td>
+      <td class="fs-12">${process.name}</td>
+      <td class="fs-12"><span class="badge badge-${criticalityKey}">${process.businessCriticality || '-'}</span></td>
+      <td class="fs-12">${item.bia.maxLateImpactLabel} (${item.bia.maxLateImpactType})</td>
+      <td class="text-center"><span class="badge ${triggerBadge}">${item.bia.triggered ? 'Sí' : 'No'}</span></td>
+      <td class="text-center"><span class="badge ${matrixBadge}">${item.relatedRisks.length}</span></td>
+      <td class="fs-12">${item.bia.triggerReason}</td>
+      <td><span class="badge ${statusBadge}">${item.statusLabel}</span></td>
+      <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
     </tr>`;
   }).join('');
 }
 
-function showDetalleRIA(riskId) {
+function showDetalleRIA(processId) {
   const panel = document.getElementById('detalle-ria');
   if (!panel) return;
-  const r = BCMSDataStore.entities.risks.find(x => x.id === riskId);
-  if (!r) return;
+
   const processes = BCMSDataStore.entities.processes || [];
-  const proc = processes.find(p => p.id === r.targetProcessId);
-  const controls = r.controls || [];
+  const proc = processes.find(p => p.id === processId);
+  if (!proc) return;
+
+  const relatedRisks = getRIAProcessRisks(processId);
+  const bia = evaluateBIAForRIA(proc);
   const allControls = BCMSDataStore.entities.controls || [];
-  
+  const controlsFromRelated = relatedRisks.flatMap(r => r.controls || []);
+  const uniqueControls = [...new Set(controlsFromRelated)];
+
+  const statusLabel = relatedRisks.length > 0
+    ? (relatedRisks.some(r => r.status === 'TREATING') ? 'En tratamiento' : 'Matriz levantada')
+    : (bia.triggered ? 'Pendiente levantamiento' : 'No requerido');
+  const statusBadge = statusLabel === 'En tratamiento'
+    ? 'badge-warning'
+    : statusLabel === 'Matriz levantada'
+      ? 'badge-secondary'
+      : statusLabel === 'No requerido'
+        ? 'badge-info'
+        : 'badge-danger';
+
+  const avgInherent = relatedRisks.length > 0
+    ? Math.round(relatedRisks.reduce((sum, r) => sum + Number(r.inherentScore || 0), 0) / relatedRisks.length)
+    : 0;
+  const avgResidual = relatedRisks.length > 0
+    ? Math.round(relatedRisks.reduce((sum, r) => sum + Number(r.residualScore || 0), 0) / relatedRisks.length)
+    : 0;
+  const detailClass = bia.triggered ? 'ria-detail-critical' : 'ria-detail-warning';
+
+  const syntheticRisk = relatedRisks[0] || {
+    id: `RIA-PROC-${proc.id}`,
+    code: `RIA-${proc.code}`,
+    title: `Matriz continuidad ${proc.name}`,
+    targetProcessId: proc.id,
+    riskDomain: 'CONTINUITY',
+    scenario: 'Escenario base derivado de BIA',
+    cause: bia.triggerReason,
+    effect: 'Afectación de continuidad operacional',
+    inherentImpact: Math.max(3, bia.maxLateImpactScore),
+    residualImpact: Math.max(2, bia.maxLateImpactScore - 1),
+    inherentProbability: 3,
+    residualProbability: 2,
+    inherentScore: Math.max(6, bia.maxLateImpactScore * 3),
+    residualScore: Math.max(4, (bia.maxLateImpactScore - 1) * 2),
+    treatmentType: 'MITIGATE',
+    controls: []
+  };
+
   panel.innerHTML = `
-    <div class="card mb-24" style="border-left: 4px solid ${r.inherentScore >= 20 ? '#ef4444' : '#f59e0b'};">
+    <div class="card mb-24 ria-detail-card ${detailClass}">
       <div class="card-header">
-        <div><h3><i class="bi bi-shield-exclamation"></i> ${r.code} - ${r.title}</h3></div>
+        <div><h3><i class="bi bi-shield-exclamation"></i> ${proc.code} - ${proc.name}</h3></div>
         <button class="btn btn-secondary btn-sm" onclick="document.getElementById('detalle-ria').classList.add('d-none')"><i class="bi bi-x"></i> Cerrar</button>
       </div>
       <div class="p-20">
         <div class="d-grid grid-3-equal gap-16 mb-24">
-          <div><span class="fs-11 fw-600 color-muted">Proceso/Activo</span><div class="fs-13 mt-4">${proc ? proc.name : r.riskScope || '-'}</div></div>
-          <div><span class="fs-11 fw-600 color-muted">Dominio</span><div class="fs-13 mt-4">${r.riskDomain}</div></div>
-          <div><span class="fs-11 fw-600 color-muted">Estado</span><div class="mt-4"><span class="badge ${r.status === 'TREATING' ? 'badge-warning' : 'badge-success'}">${r.status}</span></div></div>
-          <div><span class="fs-11 fw-600 color-muted">Escenario</span><div class="fs-12 mt-4">${r.scenario || '-'}</div></div>
-          <div><span class="fs-11 fw-600 color-muted">Causa</span><div class="fs-12 mt-4">${r.cause || '-'}</div></div>
-          <div><span class="fs-11 fw-600 color-muted">Efecto</span><div class="fs-12 mt-4">${r.effect || '-'}</div></div>
+          <div><span class="fs-11 fw-600 color-muted">Resultado BIA</span><div class="fs-13 mt-4"><span class="badge badge-${(proc.businessCriticality || 'medium').toLowerCase()}">${proc.businessCriticality || '-'}</span></div></div>
+          <div><span class="fs-11 fw-600 color-muted">Gatillo RIA</span><div class="mt-4"><span class="badge ${bia.triggered ? 'badge-danger' : 'badge-success'}">${bia.triggered ? 'Sí' : 'No'}</span></div></div>
+          <div><span class="fs-11 fw-600 color-muted">Estado</span><div class="mt-4"><span class="badge ${statusBadge}">${statusLabel}</span></div></div>
+          <div><span class="fs-11 fw-600 color-muted">Criterio BancoEstado</span><div class="fs-12 mt-4">${bia.triggerReason}</div></div>
+          <div><span class="fs-11 fw-600 color-muted">Riesgos asociados</span><div class="fs-12 mt-4">${relatedRisks.length}</div></div>
+          <div><span class="fs-11 fw-600 color-muted">Controles asociados</span><div class="fs-12 mt-4">${uniqueControls.length}</div></div>
         </div>
         <div class="d-grid grid-2-equal gap-20 mb-24">
-          <div class="card p-16" style="background:#fef2f2;border:1px solid #fecaca;">
-            <h4 class="fs-12 fw-600 color-danger mb-8">Riesgo Inherente</h4>
-            <div class="d-flex jc-between fs-12 mb-4"><span>Probabilidad</span><span class="fw-600">${r.inherentProbability}</span></div>
-            <div class="d-flex jc-between fs-12 mb-4"><span>Impacto</span><span class="fw-600">${r.inherentImpact}</span></div>
-            <div class="d-flex jc-between fs-13 fw-600 pt-8 border-top-soft"><span>Score</span><span>${r.inherentScore}</span></div>
+          <div class="card p-16 ria-risk-box ria-risk-box-inherent">
+            <h4 class="fs-12 fw-600 color-danger mb-8">Promedio Riesgo Inherente</h4>
+            <div class="d-flex jc-between fs-12 mb-4"><span>Escenarios gatillados</span><span class="fw-600">${bia.triggerScenarios}/${bia.totalScenarios}</span></div>
+            <div class="d-flex jc-between fs-12 mb-4"><span>Impacto BIA >24h</span><span class="fw-600">${bia.maxLateImpactLabel}</span></div>
+            <div class="d-flex jc-between fs-13 fw-600 pt-8 border-top-soft"><span>Score promedio</span><span>${avgInherent || '-'}</span></div>
           </div>
-          <div class="card p-16" style="background:#f0fdf4;border:1px solid #bbf7d0;">
-            <h4 class="fs-12 fw-600 color-green mb-8">Riesgo Residual</h4>
-            <div class="d-flex jc-between fs-12 mb-4"><span>Probabilidad</span><span class="fw-600">${r.residualProbability}</span></div>
-            <div class="d-flex jc-between fs-12 mb-4"><span>Impacto</span><span class="fw-600">${r.residualImpact}</span></div>
-            <div class="d-flex jc-between fs-13 fw-600 pt-8 border-top-soft"><span>Score</span><span>${r.residualScore}</span></div>
+          <div class="card p-16 ria-risk-box ria-risk-box-residual">
+            <h4 class="fs-12 fw-600 color-green mb-8">Promedio Riesgo Residual</h4>
+            <div class="d-flex jc-between fs-12 mb-4"><span>Matriz levantada</span><span class="fw-600">${relatedRisks.length > 0 ? 'Sí' : 'No'}</span></div>
+            <div class="d-flex jc-between fs-12 mb-4"><span>Riesgos en tratamiento</span><span class="fw-600">${relatedRisks.filter(r => r.status === 'TREATING').length}</span></div>
+            <div class="d-flex jc-between fs-13 fw-600 pt-8 border-top-soft"><span>Score promedio</span><span>${avgResidual || '-'}</span></div>
           </div>
         </div>
         <div class="mb-16">
+          <h4 class="fs-13 fw-600 mb-8">Riesgos derivados de la matriz</h4>
+          ${relatedRisks.length > 0 ? `<div class="table-wrapper"><table class="fs-12"><thead><tr><th>Código</th><th>Riesgo</th><th>Inherente</th><th>Residual</th><th>Estado</th><th>Tratamiento</th></tr></thead><tbody>` +
+            relatedRisks.map(r => {
+              const statusBadgeRow = r.status === 'TREATING' ? 'badge-warning' : r.status === 'MONITORED' ? 'badge-success' : 'badge-info';
+              const treatmentLabel = r.treatmentType === 'MITIGATE' ? 'Mitigar' : r.treatmentType === 'ACCEPT' ? 'Aceptar' : r.treatmentType === 'TRANSFER' ? 'Transferir' : (r.treatmentType || '-');
+              return `<tr><td class="fw-600">${r.code}</td><td>${r.title}</td><td>${r.inherentScore || '-'}</td><td>${r.residualScore || '-'}</td><td><span class="badge ${statusBadgeRow}">${r.status || '-'}</span></td><td>${treatmentLabel}</td></tr>`;
+            }).join('') + `</tbody></table></div>` : '<p class="fs-12 color-muted">No hay riesgos asociados todavía. El proceso está gatillado por BIA y requiere levantar matriz RIA.</p>'}
+        </div>
+        <div class="mb-16">
           <h4 class="fs-13 fw-600 mb-8">Controles Identificados</h4>
-          ${controls.length > 0 ? `<table class="fs-12"><thead><tr><th>Control</th><th>Tipo</th><th>Efectividad</th></tr></thead><tbody>` +
-            controls.map(cId => {
+          ${uniqueControls.length > 0 ? `<div class="table-wrapper"><table class="fs-12"><thead><tr><th>Control</th><th>Tipo</th><th>Efectividad</th></tr></thead><tbody>` +
+            uniqueControls.map(cId => {
               const ctrl = allControls.find(c => c.id === cId || c.code === cId);
               return ctrl ? `<tr><td>${ctrl.code} - ${ctrl.name}</td><td>${ctrl.type || '-'}</td><td>${ctrl.effectiveness || '-'}</td></tr>` : '';
-            }).join('') + `</tbody></table>` : '<p class="fs-12 color-muted">Sin controles vinculados</p>'}
+            }).join('') + `</tbody></table></div>` : '<p class="fs-12 color-muted">Sin controles vinculados</p>'}
         </div>
-        <div>
-          <h4 class="fs-13 fw-600 mb-8">Plan de Tratamiento</h4>
-          <div class="fs-12"><strong>Estrategia:</strong> ${r.treatmentType || '-'}</div>
-        </div>
+        ${renderRIABancoEstadoSchema(syntheticRisk, proc, allControls)}
       </div>
     </div>`;
   panel.classList.remove('d-none');
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderRIABancoEstadoSchema(risk, process, allControls) {
+  const relatedRisks = getRIARelatedRisksForSchema(risk);
+
+  const matrixRows = relatedRisks.map((item, index) => {
+    const controlEval = getRIAControlEvaluation(item, allControls);
+    const impact = Number(item.inherentImpact || item.residualImpact || 3);
+    const inherentProbability = Number(item.inherentProbability || 1);
+    const residualProbability = Number(item.residualProbability || inherentProbability || 1);
+    const inherentScore = Number(item.inherentScore || (impact * inherentProbability));
+    const residualScore = Number(item.residualScore || inherentScore);
+    const residualControlScore = Math.max(1, Math.min(5, controlEval.score + (residualScore < inherentScore ? 1 : 0)));
+    const inherentBand = getRIAScoreBand(inherentScore);
+    const residualBand = getRIAScoreBand(residualScore);
+    const beta = getRIABetaValue(residualScore, controlEval.score);
+    const residualWithBeta = beta < 1 ? Math.round(residualScore / beta) : residualScore;
+    const residualFinalBand = getRIAResidualFinalBand(residualBand, beta, residualScore);
+    const response = getRIAResponseByFinalBand(residualFinalBand);
+    const controlNames = getRIAControlNames(item, allControls);
+
+    return `
+      <tr>
+        <td class="fw-600 ria-sticky-id">${item.code || `RIA-${index + 1}`}</td>
+        <td class="ria-matrix-text ria-sticky-name">${process?.name || process?.description || '-'}</td>
+        <td class="ria-matrix-text ria-sticky-scenario">${item.scenario || item.cause || item.effect || '-'}</td>
+        <td class="ria-matrix-text">${item.effect || 'Costos adicionales del proceso'}</td>
+        <td>${getRIAFactorLabel(item.riskDomain)}</td>
+        <td class="ria-matrix-text">${item.cause || item.scenario || '-'}</td>
+        <td class="ria-matrix-text">${controlNames}</td>
+        <td>${getRIAImpactType(item)}</td>
+        <td><span class="badge badge-danger">${impact} ${getRIAImpactLevelLabel(impact)}</span></td>
+        <td>${inherentProbability} ${getRIAProbabilityLabel(inherentProbability)}</td>
+        <td>${controlEval.score} ${controlEval.label}</td>
+        <td class="fw-600 text-center">${impact}</td>
+        <td class="fw-600 text-center">${residualProbability}</td>
+        <td class="fw-600 text-center">${residualControlScore}</td>
+        <td class="fw-700 text-center">${inherentScore}</td>
+        <td class="fw-700 text-center">${residualScore}</td>
+        <td><span class="badge badge-warning">${inherentBand}</span></td>
+        <td><span class="badge badge-info">${residualBand}</span></td>
+        <td class="text-center">${beta < 1 ? beta.toFixed(2) : beta}</td>
+        <td class="text-center fw-700">${residualWithBeta}</td>
+        <td><span class="badge ${residualFinalBand === 'Alto' ? 'badge-danger' : residualFinalBand === 'Medio Alto' ? 'badge-warning' : 'badge-success'}">${residualFinalBand}</span></td>
+        <td class="ria-matrix-text">${response}</td>
+        <td class="ria-matrix-text">${item.description || 'Sin observaciones'}</td>
+        <td class="ria-matrix-text">${getRIAContingencyDescription(item)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  return `
+    <div class="ria-xlsx-section mt-20">
+      <div class="ria-xlsx-header">
+        <h4><i class="bi bi-file-earmark-spreadsheet"></i> BancoEstado - 2 Matriz Continuidad (RIA)</h4>
+        <span class="badge badge-info">Vista operativa prioritaria</span>
+      </div>
+
+      <div class="ria-xlsx-table-wrapper table-wrapper mt-12">
+        <table class="ria-xlsx-table fs-11">
+          <thead>
+            <tr>
+              <th class="ria-sticky-id">ID</th>
+              <th class="ria-sticky-name">Nombre</th>
+              <th class="ria-sticky-scenario">Escenario</th>
+              <th>Riesgos de Pérdida</th>
+              <th>Factor de Riesgo</th>
+              <th>Factor de Riesgo Específico</th>
+              <th>Controles identificados</th>
+              <th>Tipo de Impacto</th>
+              <th>Mayor Impacto hasta 24h</th>
+              <th>Probabilidad</th>
+              <th>Evaluación del Control</th>
+              <th>Impacto</th>
+              <th>Probabilidad (residual)</th>
+              <th>Eval. control (residual)</th>
+              <th>RI</th>
+              <th>RR</th>
+              <th>Riesgo Inherente</th>
+              <th>Riesgo Residual</th>
+              <th>Beta</th>
+              <th>Riesgo Residual con Beta</th>
+              <th>Riesgo Residual Final</th>
+              <th>Respuesta al Riesgo de Continuidad</th>
+              <th>Observaciones</th>
+              <th>Descripción contingencia</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${matrixRows}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function getRIARelatedRisksForSchema(risk) {
+  const risks = (BCMSDataStore.entities.risks || []).filter(r => !r.isDeleted);
+  const nonCyber = risks.filter(r => r.riskDomain !== 'CYBER' && !String(r.code || '').startsWith('RCIBER'));
+  if (risk.targetProcessId) {
+    const related = nonCyber.filter(r => Number(r.targetProcessId) === Number(risk.targetProcessId));
+    if (related.length > 0) return related.slice(0, 12);
+  }
+  return [risk];
+}
+
+function getRIAProbabilityLabel(score) {
+  const map = {
+    1: 'Muy poco probable',
+    2: 'Poco probable',
+    3: 'Ocasional',
+    4: 'Frecuente',
+    5: 'Muy frecuente'
+  };
+  return map[score] || '-';
+}
+
+function getRIAImpactLevelLabel(score) {
+  const levels = ['Bajo', 'Medio Bajo', 'Medio', 'Medio Alto', 'Alto'];
+  const normalized = Math.max(1, Math.min(5, Number(score) || 1));
+  return levels[normalized - 1];
+}
+
+function getRIAScoreBand(score) {
+  const value = Number(score) || 0;
+  if (value >= 15) return 'Alto';
+  if (value >= 10) return 'Medio Alto';
+  if (value >= 5) return 'Medio';
+  if (value >= 3) return 'Medio Bajo';
+  return 'Bajo';
+}
+
+function getRIABetaValue(residualScore, controlScore) {
+  if (residualScore >= 10 && controlScore <= 2) return 0.01;
+  if (residualScore >= 8 && controlScore <= 2) return 0.1;
+  return 1;
+}
+
+function getRIAResidualFinalBand(residualBand, beta, residualScore) {
+  if (beta < 1 && residualScore >= 10) return 'Alto';
+  if (beta < 1 && residualScore >= 7) return 'Medio Alto';
+  return residualBand;
+}
+
+function getRIAResponseByFinalBand(finalBand) {
+  if (finalBand === 'Alto' || finalBand === 'Medio Alto') {
+    return 'Se debe crear o modificar un Plan de Continuidad, o bien, si el plan existe y no se ha probado, se debe concretar una prueba.';
+  }
+  return 'No se requiere actualizar o construir un plan de continuidad, se debe mantener el plan de pruebas.';
+}
+
+function getRIAFactorLabel(domain) {
+  const map = {
+    CONTINUITY: 'Escenario de Continuidad',
+    OPERATIONAL: 'Escenario Operacional',
+    COMPLIANCE: 'Escenario Normativo',
+    INTEGRATED: 'Escenario Integrado'
+  };
+  return map[String(domain || '').toUpperCase()] || 'Escenario Operacional';
+}
+
+function getRIAControlNames(risk, allControls) {
+  const controls = risk.controls || [];
+  if (controls.length === 0) return 'No existen controles identificados';
+  const names = controls.map(cId => {
+    const ctrl = allControls.find(c => c.id === cId || c.code === cId);
+    return ctrl ? `${ctrl.code} - ${ctrl.name}` : String(cId);
+  });
+  return names.join(' | ');
+}
+
+function getRIAControlEvaluation(risk, allControls) {
+  const controls = risk.controls || [];
+  if (controls.length === 0) return { score: 1, label: 'Deficiente' };
+
+  const effectivityMap = { WEAK: 1, ADEQUATE: 3, STRONG: 5 };
+  const scores = controls.map(cId => {
+    const ctrl = allControls.find(c => c.id === cId || c.code === cId);
+    const key = String(ctrl?.effectiveness || '').toUpperCase();
+    return effectivityMap[key] || 2;
+  });
+  const avg = Math.round(scores.reduce((sum, n) => sum + n, 0) / scores.length);
+  const labelMap = { 1: 'Deficiente', 2: 'Regular', 3: 'Suficiente', 4: 'Bueno', 5: 'Óptimo' };
+  return { score: Math.max(1, Math.min(5, avg)), label: labelMap[Math.max(1, Math.min(5, avg))] };
+}
+
+function getRIAImpactType(risk) {
+  const text = `${risk.effect || ''} ${risk.title || ''}`.toLowerCase();
+  if (text.includes('reput')) return 'Reputacional';
+  if (text.includes('norm') || text.includes('regul')) return 'Normativo';
+  if (text.includes('cliente') || text.includes('afiliad')) return 'Clientes';
+  if (text.includes('costo') || text.includes('financ')) return 'Monetario';
+  return 'Procesos';
+}
+
+function getRIAContingencyDescription(risk) {
+  if (String(risk.treatmentType || '').toUpperCase() === 'MITIGATE') {
+    return 'Ruta de contingencia definida y pendiente de validación en prueba.';
+  }
+  if (String(risk.treatmentType || '').toUpperCase() === 'TRANSFER') {
+    return 'Cobertura por tercero/proveedor con seguimiento contractual.';
+  }
+  return 'Sin contingencia adicional declarada.';
+}
+
+function buildRIAFichaDiscriminacion(process, risk) {
+  const incidents = BCMSDataStore.entities.incidents || [];
+  const processIncidents = incidents.filter(i => Number(i.affectedProcessId) === Number(process?.id));
+  const hasMassiveImpact = Number(risk.inherentImpact || 0) >= 4 || Number(risk.residualImpact || 0) >= 4;
+  const evidenceProcess = process?.name || risk.riskScope || 'No definido';
+
+  return [
+    { condition: 'Nivel de Exposición Monetaria', result: hasMassiveImpact ? 'Sí' : 'No', evidence: `Proceso evaluado: ${evidenceProcess}` },
+    { condition: 'Pérdidas Operacionales', result: (risk.effect || '').toLowerCase().includes('costo') ? 'Sí' : 'No', evidence: risk.effect || 'Sin evidencia declarada' },
+    { condition: 'Lineamientos Estratégicos', result: ['CRITICAL', 'HIGH'].includes(process?.businessCriticality) ? 'Sí' : 'No', evidence: `Criticidad proceso: ${process?.businessCriticality || 'N/A'}` },
+    { condition: 'Nivel de Exposición Reputacional', result: (risk.effect || '').toLowerCase().includes('reput') ? 'Sí' : 'No', evidence: risk.title || '-' },
+    { condition: 'Riesgo de Incumplimiento Normativo', result: String(risk.riskDomain || '').toUpperCase() === 'COMPLIANCE' ? 'Sí' : 'No', evidence: risk.riskDomain || '-' },
+    { condition: 'Incidentes Operacionales', result: processIncidents.length > 0 ? 'Sí' : 'No', evidence: `${processIncidents.length} incidentes vinculados` }
+  ];
+}
+
+function getRIAApprovalData(process, risk) {
+  const users = BCMSDataStore.entities.users || [];
+  const continuityLead = users.find(u => String(u.role || '').toLowerCase().includes('continuidad'));
+  const riskLead = users.find(u => String(u.role || '').toLowerCase().includes('riesgo'));
+  const ownerName = process?.ownerName || process?.owner || risk.ownerName || '-';
+  const dateRef = formatDate(process?.updatedAt || risk.updatedAt || risk.createdAt);
+
+  return [
+    { role: 'Responsable de Proceso', name: ownerName, date: dateRef },
+    { role: 'Jefe de Continuidad de Negocios', name: continuityLead ? `${continuityLead.firstName} ${continuityLead.lastName}` : '-', date: dateRef },
+    { role: 'Jefe de Departamento de Riesgo Operacional', name: riskLead ? `${riskLead.firstName} ${riskLead.lastName}` : '-', date: dateRef }
+  ];
+}
+
+function getRIAProcessTests(processId) {
+  if (!processId) return [];
+  const plans = BCMSDataStore.entities.continuityPlans || [];
+  const tests = BCMSDataStore.entities.planTests || [];
+  const relatedPlans = plans.filter(p => Number(p.targetProcessId) === Number(processId));
+  if (relatedPlans.length === 0) return [];
+  const planMap = {};
+  relatedPlans.forEach(p => { planMap[p.id] = p; });
+
+  return tests
+    .filter(t => Boolean(planMap[t.planId]))
+    .sort((a, b) => new Date(b.testDate || 0) - new Date(a.testDate || 0))
+    .slice(0, 8)
+    .map((test) => {
+      const plan = planMap[test.planId];
+      const testTypeMap = {
+        TABLETOP: 'Escritorio',
+        WALKTHROUGH: 'Recorrido',
+        SIMULATION: 'Simulación',
+        TECHNICAL_TEST: 'Técnica',
+        FULL_EXERCISE: 'Real'
+      };
+      const success = Number(test.successRatePct || 0);
+      const result = test.status === 'SCHEDULED'
+        ? 'Programada'
+        : (success >= 80 ? 'Satisfactorio' : (success > 0 ? 'Insuficiente' : 'En evaluación'));
+      const resultClass = test.status === 'SCHEDULED'
+        ? 'badge-info'
+        : (success >= 80 ? 'badge-success' : 'badge-warning');
+
+      return {
+        planCode: plan.code || '-',
+        planName: plan.title || '-',
+        scenario: test.scopeDescription || test.title || '-',
+        date: test.testDate ? formatDate(test.testDate) : '-',
+        type: testTypeMap[test.testType] || test.testType || '-',
+        result,
+        resultClass
+      };
+    });
+}
+
+function getRIAProbabilityScale() {
+  return [
+    { level: '1', label: 'Muy poco probable' },
+    { level: '2', label: 'Poco probable' },
+    { level: '3', label: 'Ocasional' },
+    { level: '4', label: 'Frecuente' },
+    { level: '5', label: 'Muy frecuente' }
+  ];
+}
+
+function getRIAControlScale() {
+  return [
+    { level: '1', label: 'Deficiente' },
+    { level: '2', label: 'Regular' },
+    { level: '3', label: 'Suficiente' },
+    { level: '4', label: 'Bueno' },
+    { level: '5', label: 'Óptimo' }
+  ];
+}
+
+function getRIAResponseScale() {
+  return [
+    {
+      when: 'Residual Final Alto / Medio Alto',
+      action: 'Se debe crear o modificar un Plan de Continuidad o ejecutar prueba pendiente.'
+    },
+    {
+      when: 'Residual Final Medio / Medio Bajo / Bajo',
+      action: 'No se requiere construir nuevo plan, mantener y probar el plan vigente.'
+    }
+  ];
 }
 
 /**
@@ -6218,24 +8901,47 @@ function renderBIAResumen() {
   const container = document.getElementById('bia-resumen-container');
   if (!container) return;
   const processes = (BCMSDataStore.entities.processes || []).filter(p => !p.isDeleted);
-  
-  container.innerHTML = `<table class="fs-12">
-    <thead><tr><th>Código</th><th>Proceso/Servicio</th><th>Criticidad</th><th>RTO (h)</th><th>MTPD (h)</th><th>Margen (h)</th><th>Cumplimiento</th></tr></thead>
-    <tbody>${processes.filter(p => p.businessCriticality === 'CRITICAL' || p.businessCriticality === 'HIGH').map(p => {
-      const rto = p.rto || (p.targetRtoMinutes ? p.targetRtoMinutes / 60 : null);
-      const mtpd = p.mtpdMinutes ? p.mtpdMinutes / 60 : (p.maximumTolerableDowntimeMinutes ? p.maximumTolerableDowntimeMinutes / 60 : null);
-      const margen = (rto !== null && mtpd !== null) ? Math.round((mtpd - rto) * 10) / 10 : null;
-      const cumple = margen !== null ? margen >= 0 : null;
-      const critBadge = p.businessCriticality === 'CRITICAL' ? 'badge-danger' : 'badge-warning';
-      return `<tr class="${cumple === false ? 'row-danger-bg' : ''}">
-        <td class="fw-600">${p.code}</td><td>${p.name}</td>
-        <td><span class="badge ${critBadge}">${p.businessCriticality}</span></td>
-        <td class="text-center">${rto !== null ? rto : '-'}</td>
-        <td class="text-center">${mtpd !== null ? mtpd : '-'}</td>
-        <td class="text-center ${margen !== null && margen < 0 ? 'color-danger fw-600' : 'color-green fw-600'}">${margen !== null ? (margen >= 0 ? '+' : '') + margen : '-'}</td>
-        <td class="text-center">${cumple === null ? '-' : cumple ? '<span class="badge badge-success">Cumple</span>' : '<span class="badge badge-danger">No cumple</span>'}</td>
-      </tr>`;
-    }).join('')}</tbody></table>`;
+
+  const criticalScope = processes.filter(p => p.businessCriticality === 'CRITICAL' || p.businessCriticality === 'HIGH');
+
+  container.innerHTML = `
+    <div class="table-wrapper">
+      <table class="fs-12 bia-resumen-table">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Proceso/Servicio</th>
+            <th>Criticidad</th>
+            <th>RTO (h)</th>
+            <th>MTPD (h)</th>
+            <th>Margen (h)</th>
+            <th>Cumplimiento</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${criticalScope.map(p => {
+            const rto = p.rto || (p.targetRtoMinutes ? p.targetRtoMinutes / 60 : null);
+            const mtpd = p.mtpdMinutes ? p.mtpdMinutes / 60 : (p.maximumTolerableDowntimeMinutes ? p.maximumTolerableDowntimeMinutes / 60 : null);
+            const margin = (rto !== null && mtpd !== null) ? Math.round((mtpd - rto) * 10) / 10 : null;
+            const isCompliant = margin !== null ? margin >= 0 : null;
+            const critBadge = p.businessCriticality === 'CRITICAL' ? 'badge-danger' : 'badge-warning';
+            const rowClass = isCompliant === false ? 'bia-row-nocumple' : isCompliant === true ? 'bia-row-cumple' : 'bia-row-riesgo';
+            const marginClass = margin !== null && margin < 0 ? 'margen-negativo' : 'margen-positivo';
+
+            return `<tr class="${rowClass}">
+              <td class="fw-600">${p.code}</td>
+              <td>${p.name}</td>
+              <td><span class="badge ${critBadge}">${p.businessCriticality}</span></td>
+              <td class="text-center">${rto !== null ? rto : '-'}</td>
+              <td class="text-center">${mtpd !== null ? mtpd : '-'}</td>
+              <td class="text-center ${marginClass}">${margin !== null ? (margin >= 0 ? '+' : '') + margin : '-'}</td>
+              <td class="text-center">${isCompliant === null ? '-' : isCompliant ? '<span class="badge badge-success">Cumple</span>' : '<span class="badge badge-danger">No cumple</span>'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 /**
@@ -6254,11 +8960,13 @@ function renderBCPKPIs() {
   const testedPlanIds = [...new Set(tests.map(t => t.planId))];
   const testedBCP = plans.filter(p => testedPlanIds.includes(p.id)).length;
   const avgRto = plans.length > 0 ? Math.round(plans.reduce((s,p) => s + (p.rtoTarget || 0), 0) / plans.length * 10) / 10 : 0;
-  container.innerHTML = new KPICard({ title: 'Total Planes BCP', value: plans.length, icon: 'bi-journal-check' }).render() +
-    new KPICard({ title: 'Vigentes', value: active, icon: 'bi-check-circle', color: '#10b981' }).render() +
-    new KPICard({ title: 'Probados', value: testedBCP, icon: 'bi-clipboard-check', color: '#6366f1' }).render() +
-    new KPICard({ title: 'RTO Promedio', value: avgRto + 'h', icon: 'bi-clock-history', color: '#f59e0b' }).render() +
-    new KPICard({ title: 'Requieren Prueba', value: plans.length - testedBCP, icon: 'bi-exclamation-circle', color: '#ef4444' }).render();
+  renderKPIGrid(container, [
+    { label: 'Total planes BCP', value: plans.length, icon: 'bi-journal-check', color: 'primary', subtitle: 'Catálogo operativo' },
+    { label: 'Vigentes', value: active, icon: 'bi-check-circle', color: 'secondary', subtitle: 'Estado activo' },
+    { label: 'Probados', value: testedBCP, icon: 'bi-clipboard-check', color: 'info', subtitle: 'Con evidencia reciente' },
+    { label: 'RTO promedio', value: `${avgRto}h`, icon: 'bi-clock-history', color: 'warning', subtitle: 'Objetivo agregado' },
+    { label: 'Requieren prueba', value: plans.length - testedBCP, icon: 'bi-exclamation-circle', color: 'danger', subtitle: 'Pendientes por ejecutar' }
+  ]);
 }
 
 /**
@@ -6284,11 +8992,14 @@ function renderIncidentesKPIs() {
   const closed = incidents.filter(i => i.status === 'CLOSED');
   const avgResolve = closed.length > 0 ? Math.round(closed.filter(i => i.resolvedAt && i.reportedAt).reduce((s, i) => { return s + (new Date(i.resolvedAt) - new Date(i.reportedAt)) / 3600000; }, 0) / closed.filter(i => i.resolvedAt && i.reportedAt).length * 10) / 10 : 0;
   const escalated = incidents.filter(i => i.status === 'ESCALATED').length;
-  container.innerHTML = new KPICard({ title: 'Activos', value: active, icon: 'bi-exclamation-diamond', color: '#ef4444' }).render() +
-    new KPICard({ title: 'Críticos', value: critical, icon: 'bi-exclamation-triangle', color: '#ef4444' }).render() +
-    new KPICard({ title: 'MTTR (h)', value: avgResolve, icon: 'bi-clock', color: '#f59e0b' }).render() +
-    new KPICard({ title: 'Resueltos 30d', value: resolved30d, icon: 'bi-check-circle', color: '#10b981' }).render() +
-    new KPICard({ title: 'Escalados', value: escalated, icon: 'bi-arrow-up-right', color: '#8b5cf6' }).render();
+
+  renderKPIGrid(container, [
+    { label: 'Activos', value: active, icon: 'bi-exclamation-diamond', color: 'danger', subtitle: 'Incidentes en gestión' },
+    { label: 'Críticos', value: critical, icon: 'bi-exclamation-triangle', color: 'danger', subtitle: 'Severidad alta' },
+    { label: 'MTTR (h)', value: avgResolve, icon: 'bi-clock', color: 'warning', subtitle: 'Tiempo medio de resolución' },
+    { label: 'Resueltos 30d', value: resolved30d, icon: 'bi-check-circle', color: 'secondary', subtitle: 'Tendencia reciente' },
+    { label: 'Escalados', value: escalated, icon: 'bi-arrow-up-right', color: 'info', subtitle: 'Con impacto transversal' }
+  ]);
 }
 
 function renderIncidentesBacklog() {
@@ -6316,27 +9027,37 @@ function renderIncidentesBacklog() {
 function renderIncidentesList() {
   const container = document.getElementById('incidentes-lista');
   if (!container) return;
-  const incidents = BCMSDataStore.entities.incidents || [];
-  
-  container.innerHTML = incidents.sort((a, b) => new Date(b.reportedAt) - new Date(a.reportedAt)).map(inc => {
+  const incidents = [...(BCMSDataStore.entities.incidents || [])].sort((a, b) => new Date(b.reportedAt) - new Date(a.reportedAt));
+
+  if (!AppState.selectedIncidente && incidents.length > 0) {
+    AppState.selectedIncidente = incidents[0].id;
+  }
+
+  container.innerHTML = incidents.map(inc => {
     const sevColor = inc.severity === 'HIGH' ? '#ef4444' : inc.severity === 'MEDIUM' ? '#f59e0b' : '#6366f1';
     const statusBadge = inc.status === 'CLOSED' ? 'badge-success' : inc.status === 'RESOLVED' ? 'badge-success' : inc.status === 'ESCALATED' ? 'badge-danger' : inc.status === 'IN_PROGRESS' ? 'badge-warning' : 'badge-info';
     const statusLabel = inc.status === 'CLOSED' ? 'Cerrado' : inc.status === 'RESOLVED' ? 'Resuelto' : inc.status === 'ESCALATED' ? 'Escalado' : inc.status === 'IN_PROGRESS' ? 'En Curso' : 'Abierto';
-    return `<div class="card mb-8 p-12" style="border-left:3px solid ${sevColor};cursor:pointer;" onclick="selectIncidente(${inc.id})">
-      <div class="d-flex jc-between ai-center">
+    const isSelected = AppState.selectedIncidente === inc.id;
+    return `<div class="incidente-list-item ${isSelected ? 'selected' : ''}" style="--severity-color:${sevColor}" data-incident-id="${inc.id}" onclick="selectIncidente(${inc.id})">
+      <div class="d-flex jc-between ai-center gap-8">
         <div>
           <div class="fw-600 fs-12">${inc.code}</div>
-          <div class="fs-11 color-muted" style="margin-top:2px;">${inc.title.substring(0, 40)}${inc.title.length > 40 ? '...' : ''}</div>
+          <div class="fs-11 color-muted mt-4">${inc.title.substring(0, 48)}${inc.title.length > 48 ? '...' : ''}</div>
         </div>
         <span class="badge ${statusBadge} fs-10">${statusLabel}</span>
       </div>
     </div>`;
   }).join('');
+
+  if (AppState.selectedIncidente) {
+    selectIncidente(AppState.selectedIncidente);
+  }
 }
 
 function selectIncidente(id) {
   const panel = document.getElementById('incidente-detalle');
   if (!panel) return;
+  AppState.selectedIncidente = id;
   const inc = BCMSDataStore.entities.incidents.find(x => x.id === id);
   if (!inc) return;
   const users = BCMSDataStore.entities.users || [];
@@ -6359,17 +9080,17 @@ function selectIncidente(id) {
       <div><span class="fs-11 color-muted">Fecha Reporte</span><div class="fs-12 mt-2">${inc.reportedAt ? inc.reportedAt.substring(0, 10) : '-'}</div></div>
       <div><span class="fs-11 color-muted">Proceso Afectado</span><div class="fs-12 mt-2">${proc ? proc.name : '-'}</div></div>
     </div>
-    <div class="mb-16"><p class="fs-12 color-secondary" style="line-height:1.6;">${inc.description || ''}</p></div>
+    <div class="mb-16"><p class="fs-12 color-secondary incident-description">${inc.description || ''}</p></div>
     <div class="mb-16">
       <h4 class="fs-12 fw-600 mb-8">Workflow</h4>
-      <div class="d-flex gap-4 ai-center">
+      <div class="incident-workflow">
         ${workflowSteps.map((step, i) => {
           const isActive = i <= currentStepIdx;
           const isCurrent = i === currentStepIdx;
-          return `<div style="flex:1;text-align:center;">
-            <div style="height:6px;border-radius:3px;background:${isActive ? 'var(--accent-primary)' : '#e5e7eb'};${isCurrent ? 'box-shadow:0 0 0 2px var(--accent-primary);' : ''}"></div>
+          return `<div class="incident-workflow-step">
+            <div class="incident-workflow-bar ${isActive ? 'is-active' : ''} ${isCurrent ? 'is-current' : ''}"></div>
             <div class="fs-10 mt-4 ${isActive ? 'fw-600' : 'color-muted'}">${stepLabels[step]}</div>
-          </div>${i < workflowSteps.length - 1 ? '' : ''}`;
+          </div>`;
         }).join('')}
       </div>
     </div>
@@ -6381,12 +9102,11 @@ function selectIncidente(id) {
       <button class="btn btn-secondary btn-sm"><i class="bi bi-check-circle"></i> Marcar Resuelto</button>
       <button class="btn btn-secondary btn-sm"><i class="bi bi-chat-dots"></i> Comentar</button>
     </div>`;
-  
+
   // Highlight selected in list
-  document.querySelectorAll('#incidentes-lista .card').forEach(c => c.style.background = '');
-  const cards = document.querySelectorAll('#incidentes-lista .card');
-  const idx = BCMSDataStore.entities.incidents.sort((a,b) => new Date(b.reportedAt) - new Date(a.reportedAt)).findIndex(i => i.id === id);
-  if (cards[idx]) cards[idx].style.background = '#f5f3ff';
+  document.querySelectorAll('#incidentes-lista .incidente-list-item').forEach(item => {
+    item.classList.toggle('selected', Number(item.dataset.incidentId) === id);
+  });
 }
 
 function showIncidentesTab(tabName) {
@@ -6406,39 +9126,343 @@ function showIncidentesTab(tabName) {
  */
 
 function renderVistaIntegradaView() {
+  renderVistaIntegradaKPIs();
   renderVistaIntegradaContinuidad();
   renderVistaIntegradaCiber();
+  showIntegradaTab(AppState.integradaTab || 'continuidad');
+}
+
+function renderVistaIntegradaKPIs() {
+  const container = document.getElementById('integrada-kpis-container');
+  if (!container) return;
+
+  const processes = BCMSDataStore.api
+    .getAll('processes')
+    .filter(process => !process.isDeleted && ['CRITICAL', 'HIGH'].includes(process.businessCriticality));
+  const risks = BCMSDataStore.api
+    .getAll('risks')
+    .filter(risk => !risk.isDeleted);
+  const openRisks = risks.filter(risk => risk.status !== 'CLOSED');
+  const continuityPlans = BCMSDataStore.api
+    .getAll('continuityPlans')
+    .filter(plan => !plan.isDeleted && ['BCP', 'DRP'].includes(plan.planType) && plan.status === 'ACTIVE');
+  const tests = BCMSDataStore.api.getAll('planTests');
+  const testedPlanIds = new Set((tests || []).map(test => test.planId));
+  const testedPlans = continuityPlans.filter(plan => testedPlanIds.has(plan.id));
+  const mappedProcesses = processes.filter(process =>
+    continuityPlans.some(plan => Number(plan.targetProcessId) === process.id)
+  ).length;
+  const traceabilityCoverage = processes.length > 0 ? Math.round((mappedProcesses / processes.length) * 100) : 0;
+
+  renderKPIGrid(container, [
+    {
+      label: 'Procesos foco',
+      value: processes.length,
+      subtitle: 'Criticidad alta y crítica',
+      icon: 'bi-diagram-3',
+      color: 'primary'
+    },
+    {
+      label: 'Riesgos activos',
+      value: openRisks.length,
+      subtitle: 'Continuidad + ciber',
+      icon: 'bi-exclamation-octagon',
+      color: openRisks.length > 0 ? 'warning' : 'secondary'
+    },
+    {
+      label: 'Planes vigentes',
+      value: continuityPlans.length,
+      subtitle: 'BCP y DRP activos',
+      icon: 'bi-journal-check',
+      color: 'info'
+    },
+    {
+      label: 'Planes probados',
+      value: testedPlans.length,
+      subtitle: 'Con evidencia en pruebas',
+      icon: 'bi-clipboard-check',
+      color: testedPlans.length > 0 ? 'secondary' : 'warning'
+    },
+    {
+      label: 'Cobertura trazabilidad',
+      value: `${traceabilityCoverage}%`,
+      subtitle: 'Procesos con plan vinculado',
+      icon: 'bi-link-45deg',
+      color: traceabilityCoverage >= 80 ? 'secondary' : traceabilityCoverage >= 60 ? 'warning' : 'danger'
+    }
+  ]);
+}
+
+function getVistaIntegradaContinuidadRows() {
+  const processes = BCMSDataStore.api
+    .getAll('processes')
+    .filter(process => !process.isDeleted && ['CRITICAL', 'HIGH'].includes(process.businessCriticality))
+    .sort((a, b) => {
+      const order = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+      return (order[a.businessCriticality] ?? 9) - (order[b.businessCriticality] ?? 9);
+    });
+
+  const risks = BCMSDataStore.api.getAll('risks').filter(risk =>
+    !risk.isDeleted &&
+    risk.riskDomain !== 'CYBER' &&
+    !String(risk.code || '').startsWith('RCIBER')
+  );
+  const plans = BCMSDataStore.api
+    .getAll('continuityPlans')
+    .filter(plan => !plan.isDeleted && ['BCP', 'DRP'].includes(plan.planType) && plan.status === 'ACTIVE');
+  const tests = BCMSDataStore.api.getAll('planTests');
+
+  const isDateLike = value => typeof value === 'string' && !Number.isNaN(new Date(value).getTime());
+  const getRiskClass = score => {
+    if (score >= 15) return 'badge-danger';
+    if (score >= 9) return 'badge-warning';
+    if (score >= 4) return 'badge-info';
+    return 'badge-success';
+  };
+
+  return processes.map(process => {
+    const processRisks = risks.filter(risk => Number(risk.targetProcessId) === process.id);
+    const openRisks = processRisks.filter(risk => risk.status !== 'CLOSED');
+    const maxResidual = processRisks.reduce((maxScore, risk) => {
+      const score = Number(risk.residualScore ?? risk.inherentScore ?? 0);
+      return Math.max(maxScore, score);
+    }, 0);
+
+    const bcpPlan = plans.find(plan => plan.planType === 'BCP' && Number(plan.targetProcessId) === process.id);
+    const drpPlan = plans.find(plan => plan.planType === 'DRP' && Number(plan.targetProcessId) === process.id);
+    const planIds = [bcpPlan?.id, drpPlan?.id].filter(Boolean);
+    const planTests = tests.filter(test => planIds.includes(test.planId));
+
+    const dateCandidates = [];
+    planTests.forEach(test => {
+      if (isDateLike(test.testDate)) dateCandidates.push(test.testDate);
+    });
+    [bcpPlan, drpPlan].forEach(plan => {
+      if (plan && isDateLike(plan.lastTest)) dateCandidates.push(plan.lastTest);
+    });
+    const sortedDates = dateCandidates.sort((a, b) => new Date(b) - new Date(a));
+    const fallbackDate = [bcpPlan?.lastTest, drpPlan?.lastTest].find(value => value);
+    const lastTestRaw = sortedDates[0] || fallbackDate || null;
+    const lastTestLabel = lastTestRaw
+      ? (isDateLike(lastTestRaw) ? formatDate(lastTestRaw) : lastTestRaw)
+      : 'Sin evidencia';
+
+    let integratedState = { label: 'Sin plan', className: 'badge-danger' };
+    if ((bcpPlan || drpPlan) && planTests.length > 0 && openRisks.length <= 1) {
+      integratedState = { label: 'Operativo', className: 'badge-success' };
+    } else if (bcpPlan || drpPlan) {
+      integratedState = openRisks.length > 0
+        ? { label: 'Atención', className: 'badge-warning' }
+        : { label: 'En despliegue', className: 'badge-info' };
+    }
+
+    return {
+      process,
+      openRiskCount: openRisks.length,
+      totalRiskCount: processRisks.length,
+      maxResidual,
+      residualClass: getRiskClass(maxResidual),
+      bcpPlan,
+      drpPlan,
+      planTestsCount: planTests.length,
+      lastTestRaw,
+      lastTestLabel,
+      integratedState
+    };
+  });
 }
 
 function renderVistaIntegradaContinuidad() {
-  const container = document.getElementById('integrada-continuidad-stats');
-  if (!container) return;
-  const processes = (BCMSDataStore.entities.processes || []).filter(p => !p.isDeleted);
-  const criticalProcesses = processes.filter(p => p.businessCriticality === 'CRITICAL' || p.businessCriticality === 'HIGH').length;
-  const risks = (BCMSDataStore.entities.risks || []).filter(r => r.riskDomain !== 'CYBER' && !r.code.startsWith('RCIBER'));
-  const activeRisks = risks.filter(r => r.status !== 'CLOSED').length;
-  const plans = (BCMSDataStore.entities.continuityPlans || []).filter(p => p.planType === 'BCP');
-  const coverage = processes.length > 0 ? Math.round((plans.length / processes.length) * 100) : 0;
-  container.innerHTML = `
-    <div class="integrada-stat-card"><div class="integrada-stat-value">${criticalProcesses}</div><div class="integrada-stat-label">Procesos Críticos/Altos</div></div>
-    <div class="integrada-stat-card"><div class="integrada-stat-value">${activeRisks}</div><div class="integrada-stat-label">Riesgos Activos</div></div>
-    <div class="integrada-stat-card"><div class="integrada-stat-value">${Math.min(coverage, 100)}%</div><div class="integrada-stat-label">Cobertura BCP</div></div>`;
+  const flowContainer = document.getElementById('integrada-flujo');
+  const tbody = document.getElementById('integrada-continuidad-tbody');
+  const alertsContainer = document.getElementById('integrada-alertas');
+  if (!flowContainer || !tbody || !alertsContainer) return;
+
+  const rows = getVistaIntegradaContinuidadRows();
+  const total = rows.length || 1;
+  const withRiskAssessment = rows.filter(row => row.totalRiskCount > 0).length;
+  const withBCP = rows.filter(row => row.bcpPlan).length;
+  const withDRP = rows.filter(row => row.drpPlan).length;
+  const withTests = rows.filter(row => row.lastTestRaw).length;
+
+  const getFlowClass = value => {
+    const pct = Math.round((value / total) * 100);
+    if (pct >= 80) return 'integrada-flow-good';
+    if (pct >= 55) return 'integrada-flow-warn';
+    return 'integrada-flow-danger';
+  };
+
+  const flowItems = [
+    { icon: 'bi-diagram-3', label: 'Procesos foco', value: rows.length, detail: 'Alta criticidad' },
+    { icon: 'bi-search', label: 'Con evaluación riesgo', value: withRiskAssessment, detail: `${Math.round((withRiskAssessment / total) * 100)}% cobertura` },
+    { icon: 'bi-journal-text', label: 'Con BCP', value: withBCP, detail: `${Math.round((withBCP / total) * 100)}% procesos` },
+    { icon: 'bi-hdd-rack', label: 'Con DRP', value: withDRP, detail: `${Math.round((withDRP / total) * 100)}% procesos` },
+    { icon: 'bi-clipboard-check', label: 'Con evidencia prueba', value: withTests, detail: `${Math.round((withTests / total) * 100)}% procesos` }
+  ];
+
+  flowContainer.innerHTML = flowItems.map(item => `
+    <div class="integrada-flow-item ${getFlowClass(item.value)}">
+      <div class="integrada-flow-icon"><i class="bi ${item.icon}"></i></div>
+      <div class="integrada-flow-title">${item.label}</div>
+      <div class="integrada-flow-value">${item.value}/${rows.length}</div>
+      <div class="integrada-flow-detail">${item.detail}</div>
+    </div>
+  `).join('');
+
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No hay procesos críticos para trazabilidad integrada</td></tr>';
+    alertsContainer.innerHTML = '<div class="integrada-alert-empty">Sin alertas de trazabilidad</div>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(row => `
+    <tr>
+      <td>
+        <div class="integrada-process-cell">
+          <span class="integrada-process-code">${row.process.code}</span>
+          <span class="integrada-process-name">${row.process.name}</span>
+        </div>
+      </td>
+      <td><span class="badge ${row.process.businessCriticality === 'CRITICAL' ? 'badge-danger' : 'badge-warning'}">${BCMSDataStore.api.getLookupLabel('businessCriticality', row.process.businessCriticality) || row.process.businessCriticality}</span></td>
+      <td class="text-center">${row.openRiskCount}/${row.totalRiskCount}</td>
+      <td class="text-center">${row.maxResidual > 0 ? `<span class="badge ${row.residualClass}">${row.maxResidual}</span>` : '<span class="badge badge-neutral">N/A</span>'}</td>
+      <td>${row.bcpPlan ? `<span class="badge badge-success">${row.bcpPlan.code}</span>` : '<span class="badge badge-neutral">Sin BCP</span>'}</td>
+      <td>${row.drpPlan ? `<span class="badge badge-info">${row.drpPlan.code}</span>` : '<span class="badge badge-neutral">Sin DRP</span>'}</td>
+      <td>${row.lastTestLabel}</td>
+      <td><span class="badge ${row.integratedState.className}">${row.integratedState.label}</span></td>
+    </tr>
+  `).join('');
+
+  const alerts = [];
+  const noPlan = rows.filter(row => !row.bcpPlan && !row.drpPlan);
+  const criticalResidual = rows.filter(row => row.maxResidual >= 15);
+  const noEvidence = rows.filter(row => (row.bcpPlan || row.drpPlan) && !row.lastTestRaw);
+
+  if (noPlan.length > 0) {
+    alerts.push({ className: 'integrada-alert-danger', text: `${noPlan.length} proceso(s) críticos sin BCP/DRP vinculado` });
+  }
+  if (criticalResidual.length > 0) {
+    alerts.push({ className: 'integrada-alert-warning', text: `${criticalResidual.length} proceso(s) con riesgo residual crítico (>=15)` });
+  }
+  if (noEvidence.length > 0) {
+    alerts.push({ className: 'integrada-alert-info', text: `${noEvidence.length} proceso(s) con plan pero sin evidencia reciente de prueba` });
+  }
+
+  alertsContainer.innerHTML = alerts.length > 0
+    ? alerts.map(alert => `<div class="integrada-alert-item ${alert.className}"><i class="bi bi-exclamation-circle"></i> ${alert.text}</div>`).join('')
+    : '<div class="integrada-alert-empty"><i class="bi bi-check-circle"></i> Sin alertas críticas de trazabilidad</div>';
 }
 
 function renderVistaIntegradaCiber() {
-  const container = document.getElementById('integrada-ciber-stats');
-  if (!container) return;
-  const risks = (BCMSDataStore.entities.risks || []).filter(r => r.riskDomain === 'CYBER' || r.code.startsWith('RCIBER'));
-  const criticalCiber = risks.filter(r => r.inherentScore >= 15).length;
-  const controls = BCMSDataStore.entities.controls || [];
-  const activeControls = controls.filter(c => c.status === 'ACTIVE' || c.status === 'IMPLEMENTED').length;
-  const coverage = controls.length > 0 ? Math.round((activeControls / controls.length) * 100) : 0;
-  container.innerHTML = `
-    <div class="integrada-stat-card"><div class="integrada-stat-value">${risks.length}</div><div class="integrada-stat-label">Riesgos Ciber</div></div>
-    <div class="integrada-stat-card"><div class="integrada-stat-value">${criticalCiber}</div><div class="integrada-stat-label">Críticos Ciber</div></div>
-    <div class="integrada-stat-card"><div class="integrada-stat-value">${activeControls}</div><div class="integrada-stat-label">Controles Activos</div></div>
-    <div class="integrada-stat-card"><div class="integrada-stat-value">${coverage}%</div><div class="integrada-stat-label">Cobertura Controles</div></div>`;
+  const statsContainer = document.getElementById('integrada-ciber-stats');
+  const tbody = document.getElementById('integrada-ciber-riesgos-tbody');
+  const postureContainer = document.getElementById('integrada-ciber-postura');
+  if (!statsContainer || !tbody || !postureContainer) return;
+
+  const processMap = new Map(
+    BCMSDataStore.api.getAll('processes').map(process => [process.id, process])
+  );
+  const userMap = new Map(
+    BCMSDataStore.api.getAll('users').map(user => [user.id, `${user.firstName || ''} ${user.lastName || ''}`.trim()])
+  );
+
+  const cyberRisks = BCMSDataStore.api
+    .getAll('risks')
+    .filter(risk => !risk.isDeleted && (risk.riskDomain === 'CYBER' || String(risk.code || '').startsWith('RCIBER')));
+  const openCyberRisks = cyberRisks.filter(risk => risk.status !== 'CLOSED');
+  const criticalCyberRisks = cyberRisks.filter(risk => {
+    const cvss = Number(risk.cvssScore || 0);
+    const residual = Number(risk.residualScore || risk.inherentScore || 0);
+    return cvss >= 9 || residual >= 15;
+  });
+
+  const controls = BCMSDataStore.api.getAll('controls').filter(control => !control.isDeleted);
+  const implementedControls = controls.filter(control => ['IMPLEMENTED', 'ACTIVE'].includes(control.status)).length;
+  const coverage = controls.length > 0 ? Math.round((implementedControls / controls.length) * 100) : 0;
+  const withOwner = openCyberRisks.filter(risk => risk.ownerUserId || risk.ownerName).length;
+
+  renderKPIGrid(statsContainer, [
+    { label: 'Riesgos ciber activos', value: openCyberRisks.length, subtitle: 'Monitoreados y en tratamiento', icon: 'bi-shield-exclamation', color: 'danger' },
+    { label: 'Riesgos críticos', value: criticalCyberRisks.length, subtitle: 'CVSS>=9 o residual>=15', icon: 'bi-exclamation-octagon', color: criticalCyberRisks.length > 0 ? 'warning' : 'secondary' },
+    { label: 'Controles implementados', value: implementedControls, subtitle: `Sobre ${controls.length} controles`, icon: 'bi-check2-square', color: 'secondary' },
+    { label: 'Cobertura controles', value: `${coverage}%`, subtitle: `${withOwner}/${openCyberRisks.length || 0} riesgos con responsable`, icon: 'bi-shield-check', color: coverage >= 80 ? 'secondary' : coverage >= 60 ? 'warning' : 'danger' }
+  ]);
+
+  if (cyberRisks.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hay riesgos ciber registrados</td></tr>';
+  } else {
+    const sortedRisks = [...cyberRisks].sort((a, b) => {
+      const scoreA = Number(a.cvssScore ?? a.residualScore ?? a.inherentScore ?? 0);
+      const scoreB = Number(b.cvssScore ?? b.residualScore ?? b.inherentScore ?? 0);
+      return scoreB - scoreA;
+    });
+
+    tbody.innerHTML = sortedRisks.slice(0, 10).map(risk => {
+      const score = Number(risk.cvssScore ?? risk.residualScore ?? risk.inherentScore ?? 0);
+      const scoreLabel = Number.isFinite(score) ? (risk.cvssScore ? score.toFixed(1) : `${score}`) : 'N/A';
+      const scoreClass = score >= 15 || Number(risk.cvssScore || 0) >= 9
+        ? 'badge-danger'
+        : score >= 9 || Number(risk.cvssScore || 0) >= 7
+          ? 'badge-warning'
+          : 'badge-info';
+      const treatmentLabel = BCMSDataStore.api.getLookupLabel('treatmentType', risk.treatmentType) || risk.treatmentType || 'N/D';
+      const statusLabel = BCMSDataStore.api.getLookupLabel('riskStatus', risk.status) || risk.status || 'N/D';
+      const statusClass = risk.status === 'TREATING' ? 'badge-warning' : risk.status === 'MONITORED' ? 'badge-info' : 'badge-success';
+      const process = processMap.get(Number(risk.targetProcessId));
+      const targetName = risk.targetAsset || (process ? process.name : 'Cobertura global');
+      const controlCount = Array.isArray(risk.controls) ? risk.controls.length : 0;
+
+      return `
+        <tr>
+          <td><strong>${risk.code}</strong></td>
+          <td>${targetName}</td>
+          <td><span class="badge ${scoreClass}">${scoreLabel}</span></td>
+          <td><span class="badge badge-neutral">${treatmentLabel}</span></td>
+          <td><span class="badge ${statusClass}">${statusLabel}</span></td>
+          <td class="text-center">${controlCount}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  const statusCounts = {
+    implemented: controls.filter(control => ['IMPLEMENTED', 'ACTIVE'].includes(control.status)).length,
+    partial: controls.filter(control => control.status === 'PARTIAL').length,
+    pending: controls.filter(control => ['PLANNED', 'DRAFT', 'IN_PROGRESS'].includes(control.status)).length
+  };
+  statusCounts.other = Math.max(0, controls.length - statusCounts.implemented - statusCounts.partial - statusCounts.pending);
+
+  const mappedControlCodes = new Set(
+    cyberRisks.flatMap(risk => Array.isArray(risk.controls) ? risk.controls : [])
+  );
+  const mappedControls = controls.filter(control => mappedControlCodes.has(control.code)).length;
+  const mappingCoverage = controls.length > 0 ? Math.round((mappedControls / controls.length) * 100) : 0;
+  const denominator = controls.length || 1;
+
+  const postureItems = [
+    { label: 'Implementados', count: statusCounts.implemented, className: 'integrada-postura-fill-success' },
+    { label: 'Parciales', count: statusCounts.partial, className: 'integrada-postura-fill-warning' },
+    { label: 'Pendientes', count: statusCounts.pending + statusCounts.other, className: 'integrada-postura-fill-danger' }
+  ];
+
+  postureContainer.innerHTML = postureItems.map(item => `
+    <div class="integrada-postura-item">
+      <div class="integrada-postura-head">
+        <span>${item.label}</span>
+        <strong>${item.count}</strong>
+      </div>
+      <div class="integrada-postura-track">
+        <div class="integrada-postura-fill ${item.className}" style="width:${Math.round((item.count / denominator) * 100)}%"></div>
+      </div>
+    </div>
+  `).join('') + `
+    <div class="integrada-postura-meta">
+      <span class="badge badge-info">Controles mapeados a riesgos: ${mappedControls}/${controls.length}</span>
+      <span class="badge ${mappingCoverage >= 80 ? 'badge-success' : mappingCoverage >= 60 ? 'badge-warning' : 'badge-danger'}">Cobertura mapeo: ${mappingCoverage}%</span>
+    </div>
+  `;
 }
 
 console.log('functions.js cargado correctamente');
+
 

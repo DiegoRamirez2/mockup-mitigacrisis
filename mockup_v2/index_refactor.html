@@ -18,7 +18,7 @@
          ================================================================ -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <div class="logo">MitigaResilence</div>
+        <div class="logo">MitigaCibersecurity</div>
         <div class="logo-subtitle">Gestiona continuidad del servicio: preparar, responder y recuperar funciones críticas.</div>
       </div>
 
@@ -39,17 +39,19 @@
           <div class="nav-item" data-view="usuarios">Usuarios & Accesos</div>
         </div>
 
-        <!-- GOBIERNO -->
+        <!-- GOBIERNO (oculto temporalmente) -->
+        <!--
         <div class="nav-section">
           <div class="nav-section-title">GOBIERNO</div>
           <div class="nav-item" data-view="gobierno">Políticas & Estrategias</div>
         </div>
+        -->
 
         <!-- ANÁLISIS -->
         <div class="nav-section">
           <div class="nav-section-title">ANÁLISIS</div>
           <div class="nav-item" data-view="bia">BIA - Análisis de Impacto</div>
-          <div class="nav-item" data-view="ria">RIA - Análisis de Riesgos</div>
+          <div class="nav-item" data-view="ria">RIA - Riesgo de Interrupción por Proceso</div>
           <div class="nav-item" data-view="riesgos-ciber">Riesgos Ciber</div>
           <div class="nav-item" data-view="vista-integrada">Vista Integrada (BIA + RIA + Ciber)</div>
         </div>
@@ -67,16 +69,16 @@
         <!-- OPERACIÓN -->
         <div class="nav-section">
           <div class="nav-section-title">OPERACIÓN</div>
-          <div class="nav-item" data-view="incidentes">Gestión de Incidentes</div>
-          <div class="nav-item" data-view="crisis">Gestión de Crisis</div>
-          <div class="nav-item" data-view="comunicaciones-crisis">Comunicaciones de Crisis</div>
+          <div class="nav-item" data-view="incidentes">Incidentes</div>
+          <div class="nav-item" data-view="crisis">Crisis</div>
+          <div class="nav-item" data-view="comunicaciones-crisis">Comunicaciones en Crisis</div>
         </div>
 
         <!-- VERIFICACIÓN -->
         <div class="nav-section">
           <div class="nav-section-title">VERIFICACIÓN</div>
           <div class="nav-item" data-view="pruebas">Pruebas y Simulacros</div>
-          <div class="nav-item" data-view="capacitacion">Capacitación & Concienciación</div>
+          <div class="nav-item" data-view="capacitacion">Formación & Concienciación</div>
         </div>
 
         <!-- ASEGURAMIENTO & MEJORA -->
@@ -114,52 +116,23 @@
             <p class="page-subtitle" id="page-subtitle">Visión ejecutiva consolidada de continuidad, resiliencia operacional y ciberseguridad</p>
           </div>
           <div class="top-actions">
-            <span class="pill">
-              <span class="pill-dot"></span>
-              Demo Ejecutivo
-            </span>
-            <button class="btn btn-outline" id="btn-exportar">Exportar Reportes</button>
-            <button class="btn btn-secondary" id="btn-nuevo-incidente">Nuevo Incidente</button>
-            <button class="btn btn-primary" id="btn-acciones">Acciones Rápidas</button>
-          </div>
-        </div>
-        <div class="context-filters">
-          <div class="d-flex ai-center gap-16 flex-wrap">
-            <div class="d-flex gap-12">
-              <div class="filter-group">
-                <label class="filter-label">Pais/Jurisdiccion</label>
-                <select class="filter-select" id="global-pais" onchange="updateGlobalContext()">
-                  <option value="">Todos</option>
-                  <option value="CL" selected>Chile</option>
-                  <option value="PE">Perú</option>
-                  <option value="CO">Colombia</option>
-                  <option value="MX">México</option>
-                </select>
+            <div class="top-actions-secondary">
+              <div class="context-badge context-badge-compact">
+                <span class="fw-600 text-info">Contexto activo:</span>
+                <span id="badge-contexto-global" class="text-main">Chile · Operaciones · Ejecutivo</span>
               </div>
-              <div class="filter-group">
-                <label class="filter-label">Unidad</label>
-                <select class="filter-select" id="global-unidad" onchange="updateGlobalContext()">
-                  <option value="">Todas</option>
-                  <option value="operaciones" selected>Operaciones</option>
-                  <option value="riesgos">Riesgos</option>
-                  <option value="ti">TI</option>
-                  <option value="legal">Legal</option>
-                </select>
-              </div>
-              <div class="filter-group">
-                <label class="filter-label">Rol</label>
-                <select class="filter-select" id="global-rol" onchange="updateGlobalContext()">
-                  <option value="ejecutivo" selected>Ejecutivo</option>
-                  <option value="riesgos">Riesgos / BCMS</option>
-                  <option value="ti">TI / DRP</option>
-                  <option value="auditoria">Auditoría</option>
-                  <option value="operador">Operador</option>
-                </select>
+              <button class="session-icon-btn has-notification" id="btn-notificaciones" type="button" title="Notificaciones">
+                <i class="bi bi-bell"></i>
+              </button>
+              <div class="session-user">
+                <i class="bi bi-person-circle"></i>
+                <span id="top-user-name">María González</span>
               </div>
             </div>
-            <div class="d-flex ai-center gap-8 py-8 px-16 context-badge">
-              <span class="fw-600 text-info">Contexto activo:</span>
-              <span id="badge-contexto-global" class="text-main">Chile · Operaciones · Ejecutivo</span>
+            <div class="top-actions-primary">
+              <button class="btn btn-outline" id="btn-exportar">Exportar Reportes</button>
+              <button class="btn btn-secondary" id="btn-nuevo-incidente">Nuevo Incidente</button>
+              <button class="btn btn-primary" id="btn-acciones">Acciones Rápidas</button>
             </div>
           </div>
         </div>
@@ -2446,9 +2419,6 @@
                       <i class="bi bi-plus"></i> Nueva causa
                     </button>
                   </div>
-                  <p class="color-muted mb-16">
-                    Causas raiz identificadas en incidentes, riesgos y lecciones aprendidas.
-                  </p>
                   <table class="dm-entity-table">
                     <thead>
                       <tr>
@@ -2658,9 +2628,6 @@
                       <i class="bi bi-plus"></i> Nuevo efecto
                     </button>
                   </div>
-                  <p class="color-muted mb-16">
-                    Efectos e impactos resultantes de incidentes y materializacion de riesgos.
-                  </p>
                   <table class="dm-entity-table">
                     <thead>
                       <tr>
@@ -3436,39 +3403,73 @@
 
         <!-- INICIO VISTA: BIA -->
         <div class="view" id="view-bia">
-          <div class="grid-2">
-            <!-- Lista de Procesos -->
-            <div class="card">
-              <div class="card-header">
-                <h3>Procesos</h3>
-                <input type="text" placeholder="Buscar proceso..." class="filter-select" style="width: 200px;" id="bia-search">
-              </div>
-              <div id="bia-process-list" style="max-height: 500px; overflow-y: auto;">
-                <!-- Se renderiza dinámicamente -->
-              </div>
-            </div>
-
-            <!-- Detalle BIA -->
-            <div class="card">
-              <div class="card-header">
-                <h3 id="bia-detail-title">Seleccione un proceso</h3>
-                <button class="btn btn-outline" onclick="editBIA()">Editar BIA</button>
-              </div>
-              <div id="bia-detail-content">
-                <p class="color-muted">Seleccione un proceso de la lista para ver su análisis de impacto.</p>
-              </div>
-            </div>
+          <!-- Inicio - BIA: KPIs -->
+          <div id="bia-kpis-container" class="kpi-grid mb-24">
+            <!-- Renderizado dinámicamente -->
           </div>
+          <!-- Fin - BIA: KPIs -->
 
-          <!-- Dependencias -->
-          <div class="card" style="margin-top: 20px;">
+          <!-- Inicio - BIA: Resumen -->
+          <div class="card mb-20">
             <div class="card-header">
-              <h3>Dependencias del Proceso</h3>
+              <h3><i class="bi bi-table"></i> Resumen de criticidad y objetivos</h3>
             </div>
-            <div id="bia-dependencies-content">
-              <p class="color-muted">Las dependencias se mostrarán al seleccionar un proceso.</p>
+            <div id="bia-resumen-container">
+              <!-- Renderizado dinámicamente -->
             </div>
           </div>
+          <!-- Fin - BIA: Resumen -->
+
+          <!-- Inicio - BIA: Tabla de Procesos -->
+          <div class="card mb-20">
+            <div class="card-header">
+              <h3><i class="bi bi-diagram-3"></i> Procesos para Análisis Detallado</h3>
+              <button class="btn btn-primary btn-sm" onclick="openBIALevantamientoModal()"><i class="bi bi-journal-check"></i> Hacer levantamiento</button>
+            </div>
+            <div class="table-toolbar-unified">
+              <div class="toolbar-search-integrated">
+                <i class="bi bi-search"></i>
+                <input type="text" id="bia-search" placeholder="Buscar por código, proceso o responsable...">
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="clearBIAProcessFilter()">
+                <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+              </button>
+            </div>
+            <div class="table-wrapper">
+              <table class="dm-entity-table bia-selection-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Proceso</th>
+                    <th>Criticidad</th>
+                    <th>RTO</th>
+                    <th>Responsable</th>
+                    <th>Dependencias</th>
+                    <th>Estado levantamiento</th>
+                    <th class="bia-col-action">Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="bia-process-summary-body">
+                  <!-- Renderizado dinámicamente -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <!-- Fin - BIA: Tabla de Procesos -->
+
+          <!-- Inicio - BIA: Detalle Proceso -->
+          <div class="card">
+            <div class="card-header">
+              <h3 id="bia-detail-title"><i class="bi bi-clipboard-data"></i> Seleccione un proceso</h3>
+              <div class="d-flex gap-8">
+                <button class="btn btn-outline btn-sm" onclick="editBIA()"><i class="bi bi-pencil"></i> Editar BIA</button>
+              </div>
+            </div>
+            <div id="bia-detail-content" class="bia-detail-content">
+              <p class="color-muted fs-13">Seleccione un proceso desde la tabla para ver su análisis de impacto y su matriz BancoEstado.</p>
+            </div>
+          </div>
+          <!-- Fin - BIA: Detalle Proceso -->
         </div>
 
         <!-- FIN VISTA: BIA -->
@@ -3482,31 +3483,31 @@
           </div>
           <!-- Fin - RIA: KPIs -->
 
-          <!-- Inicio - RIA: Tabla de Riesgos -->
+          <!-- Inicio - RIA: Tabla por Proceso -->
           <div class="card mb-24">
             <div class="card-header">
-              <h3><i class="bi bi-shield-exclamation"></i> RIA - Análisis de Riesgos</h3>
+              <h3><i class="bi bi-shield-exclamation"></i> RIA - Evaluación por Proceso</h3>
               <div class="d-flex gap-8">
-                <select class="form-select fs-12" style="width:140px;">
-                  <option value="">Todos los dominios</option>
-                  <option value="CONTINUITY">Continuidad</option>
-                  <option value="OPERATIONAL">Operacional</option>
-                  <option value="COMPLIANCE">Cumplimiento</option>
+                <select id="ria-domain-filter" class="filter-select ria-toolbar-select" onchange="filterRIAByDomain(this.value)">
+                  <option value="">Todos los procesos</option>
+                  <option value="TRIGGERED">Gatillo RIA activo</option>
+                  <option value="WITH_MATRIX">Con matriz levantada</option>
+                  <option value="PENDING">Pendiente levantamiento</option>
                 </select>
-                <button class="btn btn-primary btn-sm"><i class="bi bi-plus"></i> Nuevo Riesgo</button>
+                <button class="btn btn-primary btn-sm"><i class="bi bi-diagram-3"></i> Evaluar Proceso</button>
               </div>
             </div>
             <div class="table-wrapper">
               <table>
                 <thead>
                   <tr>
-                    <th>Código</th>
-                    <th>Riesgo</th>
-                    <th>Proceso/Activo</th>
-                    <th>Dominio</th>
-                    <th>Inherente</th>
-                    <th>Residual</th>
-                    <th>Tratamiento</th>
+                    <th>Código Proceso</th>
+                    <th>Proceso</th>
+                    <th>Criticidad BIA</th>
+                    <th>Resultado BIA (&gt;24h)</th>
+                    <th>Gatillo RIA</th>
+                    <th>Riesgos asociados</th>
+                    <th>Criterio BancoEstado</th>
                     <th>Estado</th>
                     <th>Detalle</th>
                   </tr>
@@ -3517,7 +3518,7 @@
               </table>
             </div>
           </div>
-          <!-- Fin - RIA: Tabla de Riesgos -->
+          <!-- Fin - RIA: Tabla por Proceso -->
 
           <!-- Inicio - RIA: Panel Detalle -->
           <div id="detalle-ria" class="d-none">
@@ -3530,14 +3531,18 @@
 
         <!-- INICIO VISTA: BCP -->
         <div class="view" id="view-bcp">
+          <div id="bcp-kpis-container" class="kpi-grid mb-24"></div>
+
           <div class="grid-2">
             <!-- Lista de Planes -->
             <div class="card">
               <div class="card-header">
                 <h3>Planes de Continuidad (BCP)</h3>
-                <button class="btn btn-primary">+ Nuevo Plan</button>
+                <button class="btn btn-primary" onclick="showToast('Formulario de creación de planes en siguiente iteración', 'info')">
+                  <i class="bi bi-plus-circle"></i> Nuevo Plan
+                </button>
               </div>
-              <div id="plans-list" style="max-height: 400px; overflow-y: auto;">
+              <div id="plans-list" class="plan-list">
                 <!-- Se renderiza dinámicamente -->
               </div>
             </div>
@@ -3576,7 +3581,7 @@
         <div class="view" id="view-incidentes">
 
           <!-- Inicio - Incidentes: Tabs -->
-          <div class="tab-buttons mb-24" style="display:flex;gap:12px;border-bottom:2px solid var(--border-soft);">
+          <div class="tab-buttons mb-24 incidentes-tab-bar">
             <button class="tab-button incidentes-tab-btn active" data-tab="incidentes" onclick="showIncidentesTab('incidentes')">
               <i class="bi bi-exclamation-diamond"></i> Incidentes
             </button>
@@ -3608,11 +3613,11 @@
             <!-- Fin - Incidentes: Backlog por Severidad -->
 
             <!-- Inicio - Incidentes: Master-Detail -->
-            <div class="d-grid" style="grid-template-columns: 340px 1fr; gap: 20px;">
+            <div class="d-grid incidentes-master-detail">
               <!-- Lista de Incidentes -->
               <div class="card">
                 <div class="card-header"><h3 class="fs-13"><i class="bi bi-list-ul"></i> Incidentes Recientes</h3></div>
-                <div class="p-12" id="incidentes-lista" style="max-height:500px;overflow-y:auto;">
+                <div class="p-12 incidentes-list-scroll" id="incidentes-lista">
                   <!-- Renderizado dinámicamente -->
                 </div>
               </div>
@@ -4293,24 +4298,26 @@
                 <i class="bi bi-plus"></i> Nuevo Proveedor
               </button>
             </div>
-            <table class="dm-entity-table">
-              <thead>
-                <tr>
-                  <th>Proveedor</th>
-                  <th>Tipo Servicio</th>
-                  <th>Criticidad</th>
-                  <th>Procesos Dependientes</th>
-                  <th>Última Evaluación</th>
-                  <th>Puntaje Riesgo</th>
-                  <th>SLA</th>
-                  <th>Estado</th>
-                  <th class="text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-proveedores-criticos">
-                <!-- Se renderiza dinámicamente -->
-              </tbody>
-            </table>
+            <div class="table-wrapper">
+              <table class="dm-entity-table">
+                <thead>
+                  <tr>
+                    <th>Proveedor</th>
+                    <th>Tipo Servicio</th>
+                    <th>Criticidad</th>
+                    <th>Procesos Dependientes</th>
+                    <th>Última Evaluación</th>
+                    <th>Puntaje Riesgo</th>
+                    <th>SLA</th>
+                    <th>Estado</th>
+                    <th class="text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-proveedores-criticos">
+                  <!-- Se renderiza dinámicamente -->
+                </tbody>
+              </table>
+            </div>
             <div class="dm-pagination" id="pagination-proveedores-criticos">
               <button class="btn btn-outline" disabled><i class="bi bi-chevron-left"></i> Anterior</button>
               <span class="page-info">Página 1 de 1</span>
@@ -4329,22 +4336,24 @@
             </div>
 
             <!-- Tabla de Evaluaciones -->
-            <table class="dm-entity-table mb-20">
-              <thead>
-                <tr>
-                  <th>Proveedor</th>
-                  <th>Fecha Evaluación</th>
-                  <th>Riesgo Inherente</th>
-                  <th>Riesgo Residual</th>
-                  <th>Estado</th>
-                  <th>Próxima Revisión</th>
-                  <th class="text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-tprm-evaluaciones">
-                <!-- Se renderiza dinámicamente -->
-              </tbody>
-            </table>
+            <div class="table-wrapper">
+              <table class="dm-entity-table mb-20">
+                <thead>
+                  <tr>
+                    <th>Proveedor</th>
+                    <th>Fecha Evaluación</th>
+                    <th>Riesgo Inherente</th>
+                    <th>Riesgo Residual</th>
+                    <th>Estado</th>
+                    <th>Próxima Revisión</th>
+                    <th class="text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-tprm-evaluaciones">
+                  <!-- Se renderiza dinámicamente -->
+                </tbody>
+              </table>
+            </div>
             <div class="dm-pagination" id="pagination-tprm-evaluaciones">
               <button class="btn btn-outline" disabled><i class="bi bi-chevron-left"></i> Anterior</button>
               <span class="page-info">Página 1 de 1</span>
@@ -4357,7 +4366,7 @@
           <!-- Inicio - Proveedores: Panel Detalle Evaluación TPRM -->
           <div id="detalle-evaluacion-tprm" class="d-none mb-24">
             <div class="card">
-              <div class="card-header" style="background: linear-gradient(135deg, #f9fafb, #f3f4f6);">
+              <div class="card-header card-header-soft-gradient">
                 <div>
                   <h3><i class="bi bi-file-earmark-text"></i> Detalle Evaluación TPRM: AWS Cloud Services</h3>
                   <div class="sub-text-muted mt-4">Evaluación realizada: 15-Nov-2025 | Evaluador: M. Torres (Risk Manager)</div>
@@ -4419,82 +4428,86 @@
                 
                 <!-- TAB: Evidencias -->
                 <div id="tprm-tab-evidencias" class="tprm-tab-content d-none">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Documento</th>
-                        <th>Tipo</th>
-                        <th>Fecha Carga</th>
-                        <th>Vigencia</th>
-                        <th>Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td><i class="bi bi-file-earmark-pdf"></i> ISO-27001-2022-Certificate.pdf</td>
-                        <td><span class="badge badge-info">Certificación</span></td>
-                        <td>10-Nov-2025</td>
-                        <td><span class="badge badge-success">Vigente hasta 10-Nov-2027</span></td>
-                        <td><button class="btn btn-outline btn-sm"><i class="bi bi-download"></i> Descargar</button></td>
-                      </tr>
-                      <tr>
-                        <td><i class="bi bi-file-earmark-pdf"></i> SOC2-Type-II-Report-2025.pdf</td>
-                        <td><span class="badge badge-info">Auditoría</span></td>
-                        <td>05-Oct-2025</td>
-                        <td><span class="badge badge-success">Vigente hasta 31-Dic-2025</span></td>
-                        <td><button class="btn btn-outline btn-sm"><i class="bi bi-download"></i> Descargar</button></td>
-                      </tr>
-                      <tr>
-                        <td><i class="bi bi-file-earmark-pdf"></i> BCP-AWS-2025-Q3-TestResults.pdf</td>
-                        <td><span class="badge badge-neutral">Prueba BCP</span></td>
-                        <td>18-Sep-2025</td>
-                        <td><span class="badge badge-success">Válido hasta Sep-2026</span></td>
-                        <td><button class="btn btn-outline btn-sm"><i class="bi bi-download"></i> Descargar</button></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                
-                <!-- TAB: Plan Mitigación -->
-                <div id="tprm-tab-mitigacion" class="tprm-tab-content d-none">
-                  <div class="mb-16">
-                    <div style="font-weight: 600; font-size: 12px; margin-bottom: 8px;">Acciones de Mitigación</div>
+                  <div class="table-wrapper">
                     <table>
                       <thead>
                         <tr>
-                          <th>Acción</th>
-                          <th>Responsable</th>
-                          <th>Frecuencia</th>
-                          <th>Estado</th>
+                          <th>Documento</th>
+                          <th>Tipo</th>
+                          <th>Fecha Carga</th>
+                          <th>Vigencia</th>
+                          <th>Acciones</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
-                          <td>Monitoreo mensual SLA (automatizado)</td>
-                          <td>IT Manager</td>
-                          <td>Mensual</td>
-                          <td><span class="badge badge-success">Activo</span></td>
+                          <td><i class="bi bi-file-earmark-pdf"></i> ISO-27001-2022-Certificate.pdf</td>
+                          <td><span class="badge badge-info">Certificación</span></td>
+                          <td>10-Nov-2025</td>
+                          <td><span class="badge badge-success">Vigente hasta 10-Nov-2027</span></td>
+                          <td><button class="btn btn-outline btn-sm"><i class="bi bi-download"></i> Descargar</button></td>
                         </tr>
                         <tr>
-                          <td>Revisión trimestral certificaciones</td>
-                          <td>Compliance Officer</td>
-                          <td>Trimestral</td>
-                          <td><span class="badge badge-success">Activo</span></td>
+                          <td><i class="bi bi-file-earmark-pdf"></i> SOC2-Type-II-Report-2025.pdf</td>
+                          <td><span class="badge badge-info">Auditoría</span></td>
+                          <td>05-Oct-2025</td>
+                          <td><span class="badge badge-success">Vigente hasta 31-Dic-2025</span></td>
+                          <td><button class="btn btn-outline btn-sm"><i class="bi bi-download"></i> Descargar</button></td>
                         </tr>
                         <tr>
-                          <td>Simulacro failover anual (próximo: Jul-2026)</td>
-                          <td>BCM Officer</td>
-                          <td>Anual</td>
-                          <td><span class="badge badge-warning">Programado</span></td>
+                          <td><i class="bi bi-file-earmark-pdf"></i> BCP-AWS-2025-Q3-TestResults.pdf</td>
+                          <td><span class="badge badge-neutral">Prueba BCP</span></td>
+                          <td>18-Sep-2025</td>
+                          <td><span class="badge badge-success">Válido hasta Sep-2026</span></td>
+                          <td><button class="btn btn-outline btn-sm"><i class="bi bi-download"></i> Descargar</button></td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
                 </div>
                 
+                <!-- TAB: Plan Mitigación -->
+                <div id="tprm-tab-mitigacion" class="tprm-tab-content d-none">
+                  <div class="mb-16">
+                    <div class="tprm-table-section-title">Acciones de Mitigación</div>
+                    <div class="table-wrapper">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Acción</th>
+                            <th>Responsable</th>
+                            <th>Frecuencia</th>
+                            <th>Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>Monitoreo mensual SLA (automatizado)</td>
+                            <td>IT Manager</td>
+                            <td>Mensual</td>
+                            <td><span class="badge badge-success">Activo</span></td>
+                          </tr>
+                          <tr>
+                            <td>Revisión trimestral certificaciones</td>
+                            <td>Compliance Officer</td>
+                            <td>Trimestral</td>
+                            <td><span class="badge badge-success">Activo</span></td>
+                          </tr>
+                          <tr>
+                            <td>Simulacro failover anual (próximo: Jul-2026)</td>
+                            <td>BCM Officer</td>
+                            <td>Anual</td>
+                            <td><span class="badge badge-warning">Programado</span></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+                
                 <!-- TAB: Aprobaciones -->
                 <div id="tprm-tab-aprobaciones" class="tprm-tab-content d-none">
-                  <div style="display: grid; gap: 16px;">
+                  <div class="grid-gap-16">
                     <div class="approval-box">
                       <div class="approval-box-title">
                         <i class="bi bi-check-circle"></i> Aprobado por: M. Torres (Risk Manager)
@@ -4525,23 +4538,25 @@
                 <i class="bi bi-plus"></i> Nuevo Plan
               </button>
             </div>
-            <table class="dm-entity-table">
-              <thead>
-                <tr>
-                  <th>Proveedor</th>
-                  <th>Escenario</th>
-                  <th>Plan Contingencia</th>
-                  <th>Proveedor Alternativo</th>
-                  <th>Tiempo Activación</th>
-                  <th>Última Prueba</th>
-                  <th>Estado</th>
-                  <th class="text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-tprm-contingencia">
-                <!-- Se renderiza dinámicamente -->
-              </tbody>
-            </table>
+            <div class="table-wrapper">
+              <table class="dm-entity-table">
+                <thead>
+                  <tr>
+                    <th>Proveedor</th>
+                    <th>Escenario</th>
+                    <th>Plan Contingencia</th>
+                    <th>Proveedor Alternativo</th>
+                    <th>Tiempo Activación</th>
+                    <th>Última Prueba</th>
+                    <th>Estado</th>
+                    <th class="text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-tprm-contingencia">
+                  <!-- Se renderiza dinámicamente -->
+                </tbody>
+              </table>
+            </div>
             <div class="dm-pagination" id="pagination-tprm-contingencia">
               <button class="btn btn-outline" disabled><i class="bi bi-chevron-left"></i> Anterior</button>
               <span class="page-info">Página 1 de 1</span>
@@ -4587,7 +4602,7 @@
                     <div>
                       <div class="mb-16">
                         <div class="fw-600 fs-13 mb-8">Escenario de Activación</div>
-                        <div style="font-size: 12px; color: #374151; line-height: 1.6;">
+                        <div class="text-body-sm">
                           Caída completa de la región AWS US-East-1 (Virginia) que afecta a los servicios críticos de Core Banking, Portal Web y APIs REST.
                           Este escenario incluye pérdida total de conectividad, indisponibilidad de instancias EC2, bases de datos RDS y storage S3.
                         </div>
@@ -4605,21 +4620,21 @@
                       </div>
                     </div>
                     <div>
-                      <div style="padding: 12px; background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; margin-bottom: 16px;">
-                        <div style="font-weight: 600; font-size: 11px; color: #92400e; margin-bottom: 6px;">
+                      <div class="contingencia-info-box contingencia-info-box-warning">
+                        <div class="contingencia-info-title contingencia-info-title-warning">
                           <i class="bi bi-clock"></i> Tiempos Objetivo
                         </div>
-                        <div style="font-size: 11px; color: #78350f;">
+                        <div class="contingencia-info-text contingencia-info-text-warning">
                           RTO: <strong>2 horas</strong><br>
                           RPO: <strong>15 minutos</strong><br>
                           Tiempo activación: <strong>120 min</strong>
                         </div>
                       </div>
-                      <div style="padding: 12px; background: #dcfce7; border: 1px solid #10b981; border-radius: 8px; margin-bottom: 16px;">
-                        <div style="font-weight: 600; font-size: 11px; color: #065f46; margin-bottom: 6px;">
+                      <div class="contingencia-info-box contingencia-info-box-success">
+                        <div class="contingencia-info-title contingencia-info-title-success">
                           <i class="bi bi-check-circle"></i> Última Prueba
                         </div>
-                        <div style="font-size: 11px; color: #064e3b;">
+                        <div class="contingencia-info-text contingencia-info-text-success">
                           Fecha: <strong>18-Nov-2025</strong><br>
                           Resultado: <strong>Exitosa</strong><br>
                           Tiempo real: <strong>105 minutos</strong><br>
@@ -4632,71 +4647,74 @@
                 
                 <!-- TAB: Disparadores -->
                 <div id="contingencia-tab-disparadores" class="contingencia-tab-content d-none">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Disparador</th>
-                        <th>Criterio de Activación</th>
-                        <th>Severidad</th>
-                        <th>Tiempo Respuesta</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>Caída región AWS completa</td>
-                        <td>Indisponibilidad > 15 min + confirmación AWS status</td>
-                        <td><span class="badge badge-danger">Crítica</span></td>
-                        <td>Activación inmediata</td>
-                      </tr>
-                      <tr>
-                        <td>Degradación servicios > 50%</td>
-                        <td>Performance < 50% capacidad por > 30 min</td>
-                        <td><span class="badge badge-warning">Alta</span></td>
-                        <td>Evaluar en 15 min</td>
-                      </tr>
-                      <tr>
-                        <td>Pérdida conectividad RDS</td>
-                        <td>Sin acceso a BD principal > 10 min</td>
-                        <td><span class="badge badge-danger">Crítica</span></td>
-                        <td>Activación inmediata</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  <div class="table-wrapper">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Disparador</th>
+                          <th>Criterio de Activación</th>
+                          <th>Severidad</th>
+                          <th>Tiempo Respuesta</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Caída región AWS completa</td>
+                          <td>Indisponibilidad > 15 min + confirmación AWS status</td>
+                          <td><span class="badge badge-danger">Crítica</span></td>
+                          <td>Activación inmediata</td>
+                        </tr>
+                        <tr>
+                          <td>Degradación servicios > 50%</td>
+                          <td>Performance < 50% capacidad por > 30 min</td>
+                          <td><span class="badge badge-warning">Alta</span></td>
+                          <td>Evaluar en 15 min</td>
+                        </tr>
+                        <tr>
+                          <td>Pérdida conectividad RDS</td>
+                          <td>Sin acceso a BD principal > 10 min</td>
+                          <td><span class="badge badge-danger">Crítica</span></td>
+                          <td>Activación inmediata</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
                 
                 <!-- TAB: Acciones -->
                 <div id="contingencia-tab-acciones" class="contingencia-tab-content d-none">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Paso</th>
-                        <th>Acción</th>
-                        <th>Responsable</th>
-                        <th>Tiempo Estimado</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>1</td>
-                        <td>Validar alcance de caída</td>
-                        <td>NOC Team</td>
-                        <td>10 min</td>
-                      </tr>
-                      <tr>
-                        <td>2</td>
-                        <td>Autorización activación DRP</td>
-                        <td>Gerente TI</td>
-                        <td>5 min</td>
-                      </tr>
-                      <tr>
-                        <td>3</td>
-                        <td>Ejecutar script failover automático</td>
-                        <td>DevOps Lead</td>
-                        <td>15 min</td>
-                      </tr>
-                      <tr>
-                        <td>4</td>
-                        <td>Redirigir DNS a Azure (Route53)</td>
+                  <div class="table-wrapper">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Paso</th>
+                          <th>Acción</th>
+                          <th>Responsable</th>
+                          <th>Tiempo Estimado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>1</td>
+                          <td>Validar alcance de caída</td>
+                          <td>NOC Team</td>
+                          <td>10 min</td>
+                        </tr>
+                        <tr>
+                          <td>2</td>
+                          <td>Autorización activación DRP</td>
+                          <td>Gerente TI</td>
+                          <td>5 min</td>
+                        </tr>
+                        <tr>
+                          <td>3</td>
+                          <td>Ejecutar script failover automático</td>
+                          <td>DevOps Lead</td>
+                          <td>15 min</td>
+                        </tr>
+                        <tr>
+                          <td>4</td>
+                          <td>Redirigir DNS a Azure (Route53)</td>
                         <td>DevOps Lead</td>
                         <td>10 min</td>
                       </tr>
@@ -4715,6 +4733,7 @@
                     </tbody>
                   </table>
                 </div>
+                </div>
                 
                 <!-- TAB: Alternativos -->
                 <div id="contingencia-tab-alternativos" class="contingencia-tab-content d-none">
@@ -4727,47 +4746,49 @@
                       Sincronización datos: Cada 15 minutos (RPO: 15min)
                     </div>
                   </div>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Recurso</th>
-                        <th>Proveedor Principal</th>
-                        <th>Alternativo</th>
-                        <th>Capacidad</th>
-                        <th>Estado</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>Compute (VMs)</td>
-                        <td>AWS EC2 US-East-1</td>
-                        <td>Azure VMs West-US</td>
-                        <td>80% de AWS</td>
-                        <td><span class="badge badge-success">Listo</span></td>
-                      </tr>
-                      <tr>
-                        <td>Base Datos</td>
-                        <td>AWS RDS PostgreSQL</td>
-                        <td>Azure PostgreSQL</td>
-                        <td>100%</td>
-                        <td><span class="badge badge-success">Replicado</span></td>
-                      </tr>
-                      <tr>
-                        <td>Storage</td>
-                        <td>AWS S3</td>
-                        <td>Azure Blob Storage</td>
-                        <td>90%</td>
-                        <td><span class="badge badge-success">Sincronizado</span></td>
-                      </tr>
-                      <tr>
-                        <td>CDN</td>
-                        <td>CloudFront</td>
-                        <td>Azure CDN</td>
-                        <td>100%</td>
-                        <td><span class="badge badge-success">Activo</span></td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  <div class="table-wrapper">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Recurso</th>
+                          <th>Proveedor Principal</th>
+                          <th>Alternativo</th>
+                          <th>Capacidad</th>
+                          <th>Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Compute (VMs)</td>
+                          <td>AWS EC2 US-East-1</td>
+                          <td>Azure VMs West-US</td>
+                          <td>80% de AWS</td>
+                          <td><span class="badge badge-success">Listo</span></td>
+                        </tr>
+                        <tr>
+                          <td>Base Datos</td>
+                          <td>AWS RDS PostgreSQL</td>
+                          <td>Azure PostgreSQL</td>
+                          <td>100%</td>
+                          <td><span class="badge badge-success">Replicado</span></td>
+                        </tr>
+                        <tr>
+                          <td>Storage</td>
+                          <td>AWS S3</td>
+                          <td>Azure Blob Storage</td>
+                          <td>90%</td>
+                          <td><span class="badge badge-success">Sincronizado</span></td>
+                        </tr>
+                        <tr>
+                          <td>CDN</td>
+                          <td>CloudFront</td>
+                          <td>Azure CDN</td>
+                          <td>100%</td>
+                          <td><span class="badge badge-success">Activo</span></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -4794,57 +4815,59 @@
                   <i class="bi bi-plus"></i> Agregar Jurisdicción
                 </button>
               </div>
-              <table class="mt-12">
-                <thead>
-                  <tr>
-                    <th>País/Jurisdicción</th>
-                    <th>Sector</th>
-                    <th>Autoridad Nacional</th>
-                    <th>Regulador Sectorial</th>
-                    <th>Plazos Base</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><strong>Chile</strong></td>
-                    <td>Financiero</td>
-                    <td>CSIRT Gubernamental</td>
-                    <td><span class="badge badge-info">CMF</span> (Comisión Mercado Financiero)</td>
-                    <td>Alerta: 6h • Actualización: 24h • Final: 72h</td>
-                    <td><span class="badge badge-success">Activo</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-pencil"></i> Editar</button></td>
-                  </tr>
-                  <tr>
-                    <td><strong>Perú</strong></td>
-                    <td>Financiero</td>
-                    <td>ANCI Perú</td>
-                    <td><span class="badge badge-info">SBS</span> (Superintendencia Banca/Seguros)</td>
-                    <td>Según normativa SBS</td>
-                    <td><span class="badge badge-success">Activo</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-pencil"></i> Editar</button></td>
-                  </tr>
-                  <tr>
-                    <td><strong>Colombia</strong></td>
-                    <td>Financiero</td>
-                    <td>CSIRT Colombia</td>
-                    <td><span class="badge badge-info">SFC</span> (Superintendencia Financiera)</td>
-                    <td>Según Circular Externa XXX</td>
-                    <td><span class="badge badge-success">Activo</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-pencil"></i> Editar</button></td>
-                  </tr>
-                  <tr>
-                    <td><strong>México</strong></td>
-                    <td>Financiero</td>
-                    <td>CERT-MX</td>
-                    <td><span class="badge badge-info">CNBV</span> (Comisión Nacional Bancaria)</td>
-                    <td>Según disposiciones CNBV</td>
-                    <td><span class="badge badge-success">Activo</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-pencil"></i> Editar</button></td>
-                  </tr>
-                </tbody>
-              </table>
+              <div class="table-wrapper">
+                <table class="mt-12">
+                  <thead>
+                    <tr>
+                      <th>País/Jurisdicción</th>
+                      <th>Sector</th>
+                      <th>Autoridad Nacional</th>
+                      <th>Regulador Sectorial</th>
+                      <th>Plazos Base</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>Chile</strong></td>
+                      <td>Financiero</td>
+                      <td>CSIRT Gubernamental</td>
+                      <td><span class="badge badge-info">CMF</span> (Comisión Mercado Financiero)</td>
+                      <td>Alerta: 6h • Actualización: 24h • Final: 72h</td>
+                      <td><span class="badge badge-success">Activo</span></td>
+                      <td><button class="btn btn-outline btn-sm"><i class="bi bi-pencil"></i> Editar</button></td>
+                    </tr>
+                    <tr>
+                      <td><strong>Perú</strong></td>
+                      <td>Financiero</td>
+                      <td>ANCI Perú</td>
+                      <td><span class="badge badge-info">SBS</span> (Superintendencia Banca/Seguros)</td>
+                      <td>Según normativa SBS</td>
+                      <td><span class="badge badge-success">Activo</span></td>
+                      <td><button class="btn btn-outline btn-sm"><i class="bi bi-pencil"></i> Editar</button></td>
+                    </tr>
+                    <tr>
+                      <td><strong>Colombia</strong></td>
+                      <td>Financiero</td>
+                      <td>CSIRT Colombia</td>
+                      <td><span class="badge badge-info">SFC</span> (Superintendencia Financiera)</td>
+                      <td>Según Circular Externa XXX</td>
+                      <td><span class="badge badge-success">Activo</span></td>
+                      <td><button class="btn btn-outline btn-sm"><i class="bi bi-pencil"></i> Editar</button></td>
+                    </tr>
+                    <tr>
+                      <td><strong>México</strong></td>
+                      <td>Financiero</td>
+                      <td>CERT-MX</td>
+                      <td><span class="badge badge-info">CNBV</span> (Comisión Nacional Bancaria)</td>
+                      <td>Según disposiciones CNBV</td>
+                      <td><span class="badge badge-success">Activo</span></td>
+                      <td><button class="btn btn-outline btn-sm"><i class="bi bi-pencil"></i> Editar</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
           <!-- Fin - Configuración: Jurisdicción & Reguladores -->
@@ -4858,19 +4881,20 @@
                   <i class="bi bi-plus"></i> Agregar Canal
                 </button>
               </div>
-              <table class="mt-12">
-                <thead>
-                  <tr>
-                    <th>Canal</th>
-                    <th>Tipo</th>
-                    <th>Provider/Servicio</th>
-                    <th>Parámetros</th>
-                    <th>Estado</th>
-                    <th>Última Prueba</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div class="table-wrapper">
+                <table class="mt-12">
+                  <thead>
+                    <tr>
+                      <th>Canal</th>
+                      <th>Tipo</th>
+                      <th>Provider/Servicio</th>
+                      <th>Parámetros</th>
+                      <th>Estado</th>
+                      <th>Última Prueba</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                   <tr>
                     <td><i class="bi bi-envelope"></i> <strong>Email</strong></td>
                     <td>SMTP</td>
@@ -4907,8 +4931,9 @@
                     <td>11-Dic-2025 07:30</td>
                     <td><button class="btn btn-outline btn-sm"><i class="bi bi-gear"></i> Configurar</button></td>
                   </tr>
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
           <!-- Fin - Configuración: Canales de Comunicación -->
@@ -4922,19 +4947,20 @@
                   <i class="bi bi-plus"></i> Nueva Integración
                 </button>
               </div>
-              <table class="mt-12">
-                <thead>
-                  <tr>
-                    <th>Sistema</th>
-                    <th>Tipo</th>
-                    <th>Protocolo</th>
-                    <th>Endpoint</th>
-                    <th>Última Sincronización</th>
-                    <th>Estado Conexión</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div class="table-wrapper">
+                <table class="mt-12">
+                  <thead>
+                    <tr>
+                      <th>Sistema</th>
+                      <th>Tipo</th>
+                      <th>Protocolo</th>
+                      <th>Endpoint</th>
+                      <th>Última Sincronización</th>
+                      <th>Estado Conexión</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                   <tr>
                     <td><strong>ServiceNow</strong></td>
                     <td>Gestión Incidentes</td>
@@ -4971,8 +4997,9 @@
                     <td><span class="badge badge-success"><i class="bi bi-link-45deg"></i> Conectado</span></td>
                     <td><button class="btn btn-outline btn-sm"><i class="bi bi-gear"></i> Configurar</button></td>
                   </tr>
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <!-- API Keys -->
@@ -4983,19 +5010,20 @@
                   <i class="bi bi-plus"></i> Generar Nueva Key
                 </button>
               </div>
-              <table class="mt-12">
-                <thead>
-                  <tr>
-                    <th>Nombre</th>
-                    <th>API Key</th>
-                    <th>Permisos</th>
-                    <th>Creada</th>
-                    <th>Último Uso</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div class="table-wrapper">
+                <table class="mt-12">
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>API Key</th>
+                      <th>Permisos</th>
+                      <th>Creada</th>
+                      <th>Último Uso</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                   <tr>
                     <td><strong>Power BI Integration</strong></td>
                     <td><code class="fs-11">miti_************************a8f2</code></td>
@@ -5023,18 +5051,19 @@
                     <td><span class="badge badge-warning">Expira 7d</span></td>
                     <td><button class="btn btn-outline btn-sm"><i class="bi bi-arrow-clockwise"></i> Renovar</button></td>
                   </tr>
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
           <!-- Fin - Configuración: Integraciones -->
 
           <!-- Inicio - Configuración: Parámetros del Sistema -->
           <div class="mb-32">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div class="config-params-grid">
               <!-- Umbrales y Alertas -->
-              <div class="card" style="background: linear-gradient(135deg, #fee2e2 0%, #ffffff 100%); border-left: 5px solid #dc2626;">
-                <div class="card-header" style="background: linear-gradient(90deg, #dc2626, #ef4444); color: white;">
+              <div class="card config-threshold-card">
+                <div class="card-header config-threshold-header">
                   <h3 class="m-0 d-flex ai-center gap-12">
                     <i class="bi bi-exclamation-triangle-fill fs-24"></i>
                     <span>Umbrales y Alertas</span>
@@ -5098,15 +5127,15 @@
               </div>
 
               <!-- Información del Sistema -->
-              <div class="card" style="background: linear-gradient(135deg, #f3f4f6 0%, #ffffff 100%); border-left: 5px solid #64748b;">
-                <div class="card-header" style="background: linear-gradient(90deg, #64748b, #94a3b8); color: white;">
+              <div class="card config-system-card">
+                <div class="card-header config-system-header">
                   <h3 class="m-0 d-flex ai-center gap-12">
                     <i class="bi bi-info-circle-fill fs-24"></i>
                     <span>Información del Sistema</span>
                   </h3>
                 </div>
                 <div class="p-20">
-                  <div style="display: grid; gap: 12px;">
+                  <div class="config-system-info-grid">
                     <div class="d-flex jc-between p-12 bg-white rounded-8 border-soft">
                       <span class="color-muted fw-500">Versión DataStore:</span>
                       <span class="fw-600" id="info-version">2.1.0</span>
@@ -5117,7 +5146,7 @@
                     </div>
                     <div class="d-flex jc-between p-12 bg-white rounded-8 border-soft">
                       <span class="color-muted fw-500">Cumplimiento ISO:</span>
-                      <span style="font-weight: 600; color: var(--accent-secondary);" id="info-compliance">ISO 22301:2019</span>
+                      <span class="config-iso-value" id="info-compliance">ISO 22301:2019</span>
                     </div>
                     <div class="d-flex jc-between p-12 bg-white rounded-8 border-soft">
                       <span class="color-muted fw-500">Última Actualización:</span>
@@ -5125,7 +5154,7 @@
                     </div>
                   </div>
                   
-                  <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 8px;">
+                  <div class="config-actions-stack">
                     <button class="btn btn-secondary w-full">
                       <i class="bi bi-download"></i> Exportar Configuración
                     </button>
@@ -5151,18 +5180,19 @@
                   <i class="bi bi-plus"></i> Ejecutar Backup Manual
                 </button>
               </div>
-              <table class="mt-12">
-                <thead>
-                  <tr>
-                    <th>Fecha Backup</th>
-                    <th>Tipo</th>
-                    <th>Tamaño</th>
-                    <th>Duración</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div class="table-wrapper">
+                <table class="mt-12">
+                  <thead>
+                    <tr>
+                      <th>Fecha Backup</th>
+                      <th>Tipo</th>
+                      <th>Tamaño</th>
+                      <th>Duración</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                   <tr>
                     <td>11-Dic-2025 03:00</td>
                     <td><span class="badge badge-info">Automático Diario</span></td>
@@ -5187,8 +5217,9 @@
                     <td><span class="badge badge-success"><i class="bi bi-check2"></i> Exitoso</span></td>
                     <td><button class="btn btn-outline btn-sm"><i class="bi bi-download"></i> Descargar</button></td>
                   </tr>
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
           <!-- Fin - Configuración: Backups y Logs -->
@@ -5282,7 +5313,7 @@
           <!-- Fin - Gobierno: KPIs Dashboard -->
 
           <!-- Inicio - Gobierno: Gráficos de Análisis -->
-          <div class="grid-2" style="margin-bottom: 32px; gap: 16px;">
+          <div class="grid-2 mb-32 gap-16">
             <div class="card">
               <div class="card-header">
                 <h3 class="fs-14"><i class="bi bi-pie-chart"></i> Distribución de Políticas por Área</h3>
@@ -5336,102 +5367,104 @@
                   <i class="bi bi-plus"></i> Nueva Política
                 </button>
               </div>
-              <table class="mt-16">
-                <thead>
-                  <tr>
-                    <th>Código</th>
-                    <th>Nombre de la Política</th>
-                    <th>Versión</th>
-                    <th>Fecha Aprobación</th>
-                    <th>Próxima Revisión</th>
-                    <th>Responsable</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><b>POL-BCMS-001</b></td>
-                    <td>Política General de Continuidad de Negocio</td>
-                    <td>v4.0</td>
-                    <td>15-Mar-2025</td>
-                    <td>Mar-2026</td>
-                    <td>BCMS Manager</td>
-                    <td><span class="badge badge-success">Vigente</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
-                  </tr>
-                  <tr>
-                    <td><b>POL-SGSI-001</b></td>
-                    <td>Política General de Seguridad de la Información</td>
-                    <td>v4.2</td>
-                    <td>10-Jun-2025</td>
-                    <td>Jun-2026</td>
-                    <td>CISO</td>
-                    <td><span class="badge badge-success">Vigente</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
-                  </tr>
-                  <tr>
-                    <td><b>POL-BCMS-002</b></td>
-                    <td>Política de Gestión de Incidentes y Crisis</td>
-                    <td>v2.1</td>
-                    <td>22-Ago-2025</td>
-                    <td>Ago-2026</td>
-                    <td>BCMS Manager</td>
-                    <td><span class="badge badge-success">Vigente</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
-                  </tr>
-                  <tr>
-                    <td><b>POL-BCMS-003</b></td>
-                    <td>Política de Análisis de Impacto al Negocio (BIA)</td>
-                    <td>v3.0</td>
-                    <td>05-Abr-2025</td>
-                    <td>Abr-2026</td>
-                    <td>Risk Manager</td>
-                    <td><span class="badge badge-success">Vigente</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
-                  </tr>
-                  <tr>
-                    <td><b>POL-BCMS-004</b></td>
-                    <td>Política de Pruebas y Ejercicios de Continuidad</td>
-                    <td>v1.5</td>
-                    <td>18-Sep-2025</td>
-                    <td>Sep-2026</td>
-                    <td>BCMS Manager</td>
-                    <td><span class="badge badge-success">Vigente</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
-                  </tr>
-                  <tr>
-                    <td><b>POL-SGSI-002</b></td>
-                    <td>Política de Clasificación de la Información</td>
-                    <td>v2.0</td>
-                    <td>12-May-2025</td>
-                    <td>May-2026</td>
-                    <td>CISO</td>
-                    <td><span class="badge badge-success">Vigente</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
-                  </tr>
-                  <tr>
-                    <td><b>POL-CIBER-001</b></td>
-                    <td>Política de Ciberseguridad (Ley 21.663)</td>
-                    <td>v1.0</td>
-                    <td>-</td>
-                    <td>Dic-2025</td>
-                    <td>CISO</td>
-                    <td><span class="badge badge-danger">Pendiente Aprobación</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
-                  </tr>
-                  <tr>
-                    <td><b>POL-BCMS-005</b></td>
-                    <td>Política de Gestión de Proveedores Críticos</td>
-                    <td>v2.3</td>
-                    <td>30-Jul-2025</td>
-                    <td>Jul-2026</td>
-                    <td>Procurement</td>
-                    <td><span class="badge badge-success">Vigente</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
-                  </tr>
-                </tbody>
-              </table>
+              <div class="table-wrapper mt-16">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Código</th>
+                      <th>Nombre de la Política</th>
+                      <th>Versión</th>
+                      <th>Fecha Aprobación</th>
+                      <th>Próxima Revisión</th>
+                      <th>Responsable</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><b>POL-BCMS-001</b></td>
+                      <td>Política General de Continuidad de Negocio</td>
+                      <td>v4.0</td>
+                      <td>15-Mar-2025</td>
+                      <td>Mar-2026</td>
+                      <td>BCMS Manager</td>
+                      <td><span class="badge badge-success">Vigente</span></td>
+                      <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
+                    </tr>
+                    <tr>
+                      <td><b>POL-SGSI-001</b></td>
+                      <td>Política General de Seguridad de la Información</td>
+                      <td>v4.2</td>
+                      <td>10-Jun-2025</td>
+                      <td>Jun-2026</td>
+                      <td>CISO</td>
+                      <td><span class="badge badge-success">Vigente</span></td>
+                      <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
+                    </tr>
+                    <tr>
+                      <td><b>POL-BCMS-002</b></td>
+                      <td>Política de Gestión de Incidentes y Crisis</td>
+                      <td>v2.1</td>
+                      <td>22-Ago-2025</td>
+                      <td>Ago-2026</td>
+                      <td>BCMS Manager</td>
+                      <td><span class="badge badge-success">Vigente</span></td>
+                      <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
+                    </tr>
+                    <tr>
+                      <td><b>POL-BCMS-003</b></td>
+                      <td>Política de Análisis de Impacto al Negocio (BIA)</td>
+                      <td>v3.0</td>
+                      <td>05-Abr-2025</td>
+                      <td>Abr-2026</td>
+                      <td>Risk Manager</td>
+                      <td><span class="badge badge-success">Vigente</span></td>
+                      <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
+                    </tr>
+                    <tr>
+                      <td><b>POL-BCMS-004</b></td>
+                      <td>Política de Pruebas y Ejercicios de Continuidad</td>
+                      <td>v1.5</td>
+                      <td>18-Sep-2025</td>
+                      <td>Sep-2026</td>
+                      <td>BCMS Manager</td>
+                      <td><span class="badge badge-success">Vigente</span></td>
+                      <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
+                    </tr>
+                    <tr>
+                      <td><b>POL-SGSI-002</b></td>
+                      <td>Política de Clasificación de la Información</td>
+                      <td>v2.0</td>
+                      <td>12-May-2025</td>
+                      <td>May-2026</td>
+                      <td>CISO</td>
+                      <td><span class="badge badge-success">Vigente</span></td>
+                      <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
+                    </tr>
+                    <tr>
+                      <td><b>POL-CIBER-001</b></td>
+                      <td>Política de Ciberseguridad (Ley 21.663)</td>
+                      <td>v1.0</td>
+                      <td>-</td>
+                      <td>Dic-2025</td>
+                      <td>CISO</td>
+                      <td><span class="badge badge-danger">Pendiente Aprobación</span></td>
+                      <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
+                    </tr>
+                    <tr>
+                      <td><b>POL-BCMS-005</b></td>
+                      <td>Política de Gestión de Proveedores Críticos</td>
+                      <td>v2.3</td>
+                      <td>30-Jul-2025</td>
+                      <td>Jul-2026</td>
+                      <td>Procurement</td>
+                      <td><span class="badge badge-success">Vigente</span></td>
+                      <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -5444,9 +5477,9 @@
                   <i class="bi bi-plus"></i> Nueva Estrategia
                 </button>
               </div>
-              <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 16px;">
+              <div class="estrategias-stack">
                 <!-- Estrategia 1 -->
-                <div style="padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+                <div class="estrategia-card estrategia-card-indigo">
                   <div class="section-header-start">
                     <div>
                       <h3 class="heading-18">Estrategia de Resiliencia Operacional 2025-2027</h3>
@@ -5463,7 +5496,7 @@
                       <div class="stat-label">Avance Global</div>
                       <div class="kpi-value-lg">68%</div>
                       <div class="sidebar-progress-track">
-                        <div style="width: 68%; height: 100%; background: white;"></div>
+                        <div class="progress-bar-fill" style="width: 68%;"></div>
                       </div>
                     </div>
                     <div class="sidebar-stat">
@@ -5480,7 +5513,7 @@
                 </div>
 
                 <!-- Estrategia 2 -->
-                <div style="padding: 20px; background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); border-radius: 12px; color: white;">
+                <div class="estrategia-card estrategia-card-purple">
                   <div class="section-header-start">
                     <div>
                       <h3 class="heading-18">Estrategia de Cumplimiento Normativo Integrado</h3>
@@ -5497,7 +5530,7 @@
                       <div class="stat-label">Avance Global</div>
                       <div class="kpi-value-lg">82%</div>
                       <div class="sidebar-progress-track">
-                        <div style="width: 82%; height: 100%; background: white;"></div>
+                        <div class="progress-bar-fill" style="width: 82%;"></div>
                       </div>
                     </div>
                     <div class="sidebar-stat">
@@ -5514,7 +5547,7 @@
                 </div>
 
                 <!-- Estrategia 3 -->
-                <div style="padding: 20px; background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%); border-radius: 12px; color: white;">
+                <div class="estrategia-card estrategia-card-blue">
                   <div class="section-header-start">
                     <div>
                       <h3 class="heading-18">Estrategia de Cultura de Resiliencia</h3>
@@ -5531,7 +5564,7 @@
                       <div class="stat-label">Avance Global</div>
                       <div class="kpi-value-lg">55%</div>
                       <div class="sidebar-progress-track">
-                        <div style="width: 55%; height: 100%; background: white;"></div>
+                        <div class="progress-bar-fill" style="width: 55%;"></div>
                       </div>
                     </div>
                     <div class="sidebar-stat">
@@ -5612,7 +5645,7 @@
           <!-- Fin - Riesgos Ciber: KPIs -->
 
           <!-- Inicio - Riesgos Ciber: Visualizaciones -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+          <div class="ciber-visual-grid">
             
             <!-- Matriz de Riesgos Ciber (Heatmap) -->
             <div class="card">
@@ -5646,24 +5679,26 @@
                 <i class="bi bi-plus"></i> Registrar Riesgo Ciber
               </button>
             </div>
-            <table id="riesgos-ciber-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Activo/Sistema</th>
-                  <th>Amenaza/Vector</th>
-                  <th>Vulnerabilidad</th>
-                  <th>CVSS Score</th>
-                  <th>Tratamiento</th>
-                  <th>Estado</th>
-                  <th>Responsable</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="riesgos-ciber-tbody">
-                <!-- Las filas se renderizarán dinámicamente desde datastore.js -->
-              </tbody>
-            </table>
+            <div class="table-wrapper">
+              <table id="riesgos-ciber-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Activo/Sistema</th>
+                    <th>Amenaza/Vector</th>
+                    <th>Vulnerabilidad</th>
+                    <th>CVSS Score</th>
+                    <th>Tratamiento</th>
+                    <th>Estado</th>
+                    <th>Responsable</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="riesgos-ciber-tbody">
+                  <!-- Las filas se renderizarán dinámicamente desde datastore.js -->
+                </tbody>
+              </table>
+            </div>
           </div>
           <!-- Fin - Riesgos Ciber: Registro de Riesgos -->
 
@@ -5672,7 +5707,7 @@
             <div class="card">
               <div class="card-header">
                 <h3><i class="bi bi-shield-shaded"></i> Detalle Riesgo Ciber: <span id="detalle-riesgo-ciber-title"></span></h3>
-                <button class="btn btn-outline btn-sm" onclick="document.getElementById('detalle-riesgo-ciber').style.display='none'">
+                <button class="btn btn-outline btn-sm" onclick="closeRiesgoCiberDetalle()">
                   <i class="bi bi-x-lg"></i> Cerrar
                 </button>
               </div>
@@ -5748,7 +5783,7 @@
         <!-- FIN VISTA: Recursos & Capacidades -->
 
         <!-- INICIO VISTA: DRP -->
-        <div class="view" id="view-drp">
+          <div class="view" id="view-drp">
           
           <!-- Inicio - DRP: KPIs -->
           <div class="grid-5 mb-24" id="drp-kpis-container">
@@ -5772,7 +5807,7 @@
             <div class="card-header">
               <h3><i class="bi bi-building"></i> Arquitectura Multi-Site de Recuperación</h3>
             </div>
-            <div class="drp-sites-grid" style="margin-top: 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 16px;">
+            <div class="drp-sites-grid mt-16 p-16">
               
               <!-- Site Primario -->
               <div class="drp-site-card drp-site-primary">
@@ -5837,21 +5872,23 @@
                 <i class="bi bi-arrow-right"></i> Ver Módulo Proveedores
               </button>
             </div>
-            <table id="drp-proveedores-table">
-              <thead>
-                <tr>
-                  <th>Proveedor Crítico</th>
-                  <th>Servicio</th>
-                  <th>Sistemas Dependientes</th>
-                  <th>Estado Evaluación</th>
-                  <th>Plan Contingencia</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="drp-proveedores-tbody">
-                <!-- Las filas se renderizarán dinámicamente -->
-              </tbody>
-            </table>
+            <div class="table-wrapper">
+              <table id="drp-proveedores-table">
+                <thead>
+                  <tr>
+                    <th>Proveedor Crítico</th>
+                    <th>Servicio</th>
+                    <th>Sistemas Dependientes</th>
+                    <th>Estado Evaluación</th>
+                    <th>Plan Contingencia</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="drp-proveedores-tbody">
+                  <!-- Las filas se renderizarán dinámicamente -->
+                </tbody>
+              </table>
+            </div>
           </div>
           <!-- Fin - DRP: Dependencias Externas -->
 
@@ -5859,28 +5896,30 @@
           <div class="card">
             <div class="card-header">
               <h3><i class="bi bi-clipboard-data"></i> Registro de Planes DRP por Aplicación</h3>
-              <button class="btn btn-primary">
+              <button class="btn btn-primary" onclick="showToast('Formulario DRP en siguiente iteración', 'info')">
                 <i class="bi bi-plus"></i> Nuevo Plan DRP
               </button>
             </div>
-            <table class="mt-12" id="drp-planes-table">
-              <thead>
-                <tr>
-                  <th>Plan</th>
-                  <th>Aplicación / Infraestructura</th>
-                  <th>Criticidad</th>
-                  <th>RTO</th>
-                  <th>RPO</th>
-                  <th>Site Alterno</th>
-                  <th>Tipo Replicación</th>
-                  <th>Última Prueba</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody id="drp-planes-tbody">
-                <!-- Las filas se renderizarán dinámicamente desde datastore.js -->
-              </tbody>
-            </table>
+            <div class="table-wrapper">
+              <table class="mt-12" id="drp-planes-table">
+                <thead>
+                  <tr>
+                    <th>Plan</th>
+                    <th>Aplicación / Infraestructura</th>
+                    <th>Criticidad</th>
+                    <th>RTO</th>
+                    <th>RPO</th>
+                    <th>Site Alterno</th>
+                    <th>Tipo Replicación</th>
+                    <th>Última Prueba</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="drp-planes-tbody">
+                  <!-- Las filas se renderizarán dinámicamente desde datastore.js -->
+                </tbody>
+              </table>
+            </div>
           </div>
           <!-- Fin - DRP: Registro de Planes -->
 
@@ -5891,8 +5930,8 @@
         <div class="view" id="view-crisis">
           
           <!-- Inicio - Crisis: Semáforo de Estado -->
-          <div style="display: flex; gap: 16px; margin-bottom: 24px;">
-            <div id="crisis-estado-semaforo" class="card" style="flex: 2;">
+          <div class="crisis-top-row">
+            <div id="crisis-estado-semaforo" class="card crisis-top-main">
               <!-- El semáforo se renderizará dinámicamente -->
             </div>
             <div class="card flex-1" id="crisis-kpi-historial">
@@ -5905,7 +5944,7 @@
           <!-- Fin - Crisis: Semáforo de Estado -->
 
           <!-- Inicio - Crisis: Contenido Principal -->
-          <div style="display: grid; grid-template-columns: 420px 1fr; gap: 20px;">
+          <div class="crisis-main-grid">
             
             <!-- Formulario de Activación de Crisis -->
             <div class="card crisis-activation-form">
@@ -5914,7 +5953,7 @@
                 <div class="sub-text-muted mt-4">Complete formulario para convocar Comité de Crisis</div>
               </div>
               <div class="mt-16">
-                <form id="crisis-activation-form" style="display: flex; flex-direction: column; gap: 14px;">
+                <form id="crisis-activation-form" class="crisis-form-fields">
                   
                   <div>
                     <label class="form-label">TIPO DE CRISIS *</label>
@@ -5954,10 +5993,10 @@
                   </div>
 
                   <div class="crisis-info-box">
-                    <div style="font-size: 11px; font-weight: 600; color: #92400e; margin-bottom: 6px;">
+                    <div class="crisis-info-title">
                       <i class="bi bi-info-circle"></i> Acciones Automáticas al Activar:
                     </div>
-                    <ul style="margin: 0; padding-left: 20px; font-size: 10px; color: #78350f; line-height: 1.6;">
+                    <ul class="crisis-info-list">
                       <li>Convocatoria automática Comité de Crisis vía SMS/email</li>
                       <li>Activación sala de crisis virtual (Teams/Zoom)</li>
                       <li>Notificación a CEO y directorio</li>
@@ -5966,7 +6005,7 @@
                     </ul>
                   </div>
 
-                  <button type="submit" class="btn btn-danger" style="width: 100%; margin-top: 8px;">
+                  <button type="submit" class="btn btn-danger crisis-submit-btn">
                     <i class="bi bi-lightning-charge"></i> ACTIVAR PROTOCOLO DE CRISIS
                   </button>
                 </form>
@@ -5974,7 +6013,7 @@
             </div>
 
             <!-- Panel de Crisis: Tablero e Historial -->
-            <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="crisis-side-column">
               
               <!-- Gráfico de Crisis por Tipo -->
               <div class="card">
@@ -5991,22 +6030,24 @@
                 <div class="card-header">
                   <h3><i class="bi bi-clock-history"></i> Historial de Crisis</h3>
                 </div>
-                <table class="mt-12" id="crisis-historial-table">
-                  <thead>
-                    <tr>
-                      <th>Código</th>
-                      <th>Tipo de Crisis</th>
-                      <th>Fecha</th>
-                      <th>Duración</th>
-                      <th>Severidad</th>
-                      <th>Estado</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody id="crisis-historial-tbody">
-                    <!-- Las filas se renderizarán dinámicamente -->
-                  </tbody>
-                </table>
+                <div class="table-wrapper">
+                  <table class="mt-12" id="crisis-historial-table">
+                    <thead>
+                      <tr>
+                        <th>Código</th>
+                        <th>Tipo de Crisis</th>
+                        <th>Fecha</th>
+                        <th>Duración</th>
+                        <th>Severidad</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody id="crisis-historial-tbody">
+                      <!-- Las filas se renderizarán dinámicamente -->
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
             </div>
@@ -6019,69 +6060,159 @@
 
         <!-- INICIO VISTA: Vista Integrada -->
         <div class="view" id="view-vista-integrada">
-          
           <!-- Inicio - Vista Integrada: Bloque Explicativo -->
-          <div class="card" style="margin-bottom: 20px; background: linear-gradient(135deg, #f5f3ff, #ede9fe); border-left: 4px solid var(--accent-primary);">
+          <div class="card integrada-hero-card mb-24">
             <div class="p-16">
-              <h3 style="margin: 0 0 12px 0; color: #5b21b6;">
+              <h3 class="integrada-hero-title">
                 <i class="bi bi-link-45deg"></i> Vista Integrada (BIA + RIA + Ciber)
               </h3>
-              <p style="font-size: 13px; color: #1e3a8a; margin: 0 0 16px 0; line-height: 1.6;">
-                Esta vista muestra la <strong>trazabilidad</strong> entre procesos críticos (BIA), sus riesgos de continuidad (RIA), riesgos de ciberseguridad y controles asociados. 
-                Para gestionar cada categoría de riesgos, accede a los módulos específicos:
+              <p class="integrada-hero-text">
+                Consolida la trazabilidad operativa de continuidad y ciberseguridad: procesos críticos, riesgos activos,
+                planes asociados y evidencia de pruebas.
               </p>
-              <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+              <div class="integrada-hero-actions">
                 <button onclick="showView('ria')" class="btn btn-primary">
-                  <i class="bi bi-graph-up"></i> Ver Riesgos de Continuidad (RIA)
+                  <i class="bi bi-graph-up"></i> Abrir RIA
                 </button>
                 <button onclick="showView('riesgos-ciber')" class="btn btn-danger">
-                  <i class="bi bi-shield-shaded"></i> Ver Riesgos Ciber
+                  <i class="bi bi-shield-shaded"></i> Abrir Riesgos Ciber
                 </button>
-                <button onclick="showView('dashboard')" class="btn" style="background: #f59e0b; color: #fff;">
-                  <i class="bi bi-pie-chart"></i> Ver Consolidado (Dashboard)
+                <button onclick="showView('dashboard')" class="btn btn-warning">
+                  <i class="bi bi-pie-chart"></i> Abrir Dashboard
                 </button>
               </div>
             </div>
           </div>
           <!-- Fin - Vista Integrada: Bloque Explicativo -->
 
+          <!-- Inicio - Vista Integrada: KPIs Globales -->
+          <div id="integrada-kpis-container" class="kpi-grid mb-24">
+            <!-- Renderizado dinámicamente por renderVistaIntegradaKPIs() -->
+          </div>
+          <!-- Fin - Vista Integrada: KPIs Globales -->
+
           <!-- Inicio - Vista Integrada: Tabs -->
-          <div class="tab-buttons" style="display: flex; gap: 12px; border-bottom: 2px solid var(--border-soft); margin-bottom: 24px;">
-            <button class="tab-button active" onclick="showIntegradaTab('continuidad')" data-tab="continuidad">
-              <i class="bi bi-graph-up"></i> Continuidad (BIA + RIA)
+          <div class="tab-buttons integrada-tab-buttons mb-24">
+            <button class="tab-button integrada-tab-btn active" onclick="showIntegradaTab('continuidad')" data-integrada-tab="continuidad">
+              <i class="bi bi-diagram-3"></i> Continuidad Integrada
             </button>
-            <button class="tab-button" onclick="showIntegradaTab('ciber')" data-tab="ciber">
-              <i class="bi bi-shield-shaded"></i> Ciber (Normativa local)
+            <button class="tab-button integrada-tab-btn" onclick="showIntegradaTab('ciber')" data-integrada-tab="ciber">
+              <i class="bi bi-shield-lock"></i> Ciber Integrado
             </button>
           </div>
           <!-- Fin - Vista Integrada: Tabs -->
 
           <!-- Inicio - TAB: Continuidad -->
           <div id="integrada-continuidad" class="integrada-tab-content">
+
+            <!-- Inicio - Vista Integrada: Continuidad Flujo -->
             <div class="card mb-24">
               <div class="card-header">
-                <h3><i class="bi bi-bar-chart-line"></i> Resumen por Proceso Crítico</h3>
+                <h3><i class="bi bi-bezier2"></i> Flujo Integrado por Etapas</h3>
               </div>
-              <div id="integrada-continuidad-stats" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px; padding: 16px;">
+              <div id="integrada-flujo" class="integrada-flow-grid p-16">
                 <!-- Renderizado dinámicamente por renderVistaIntegradaContinuidad() -->
               </div>
             </div>
+            <!-- Fin - Vista Integrada: Continuidad Flujo -->
+
+            <!-- Inicio - Vista Integrada: Continuidad Tabla -->
+            <div class="card mb-24">
+              <div class="card-header">
+                <h3><i class="bi bi-table"></i> Trazabilidad por Proceso Crítico</h3>
+                <button class="btn btn-outline btn-sm" onclick="showView('bcp')">
+                  <i class="bi bi-arrow-right-circle"></i> Ver Planes BCP/DRP
+                </button>
+              </div>
+              <div class="table-wrapper">
+                <table id="integrada-continuidad-table">
+                  <thead>
+                    <tr>
+                      <th>Proceso</th>
+                      <th>Criticidad</th>
+                      <th>Riesgos activos</th>
+                      <th>Residual máx.</th>
+                      <th>BCP</th>
+                      <th>DRP</th>
+                      <th>Última prueba</th>
+                      <th>Estado integrado</th>
+                    </tr>
+                  </thead>
+                  <tbody id="integrada-continuidad-tbody">
+                    <!-- Renderizado dinámicamente por renderVistaIntegradaContinuidad() -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <!-- Fin - Vista Integrada: Continuidad Tabla -->
+
+            <!-- Inicio - Vista Integrada: Continuidad Alertas -->
+            <div class="card">
+              <div class="card-header">
+                <h3><i class="bi bi-exclamation-triangle"></i> Alertas de Trazabilidad</h3>
+              </div>
+              <div id="integrada-alertas" class="integrada-alerts-list p-16">
+                <!-- Renderizado dinámicamente por renderVistaIntegradaContinuidad() -->
+              </div>
+            </div>
+            <!-- Fin - Vista Integrada: Continuidad Alertas -->
+
           </div>
           <!-- Fin - TAB: Continuidad -->
 
           <!-- Inicio - TAB: Ciber -->
           <div id="integrada-ciber" class="integrada-tab-content d-none">
+
+            <!-- Inicio - Vista Integrada: Ciber Resumen -->
             <div class="card mb-24">
               <div class="card-header">
-                <h3><i class="bi bi-shield-shaded"></i> Resumen de Riesgos Cibernéticos</h3>
-                <div style="font-size: 12px; color: var(--text-muted); font-weight: 400; margin-top: 4px;">
-                  Jurisdicción activa: Chile · Marco: Ley 21.663
-                </div>
+                <h3><i class="bi bi-shield-shaded"></i> Resumen de Riesgos Ciber</h3>
+                <div class="integrada-context-meta">Jurisdicción activa: Chile · Marco: Ley 21.663</div>
               </div>
-              <div id="integrada-ciber-stats" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px; padding: 16px;">
+              <div id="integrada-ciber-stats" class="integrada-ciber-stats p-16">
                 <!-- Renderizado dinámicamente por renderVistaIntegradaCiber() -->
               </div>
             </div>
+            <!-- Fin - Vista Integrada: Ciber Resumen -->
+
+            <div class="grid-2">
+              <!-- Inicio - Vista Integrada: Ciber Tabla Riesgos -->
+              <div class="card">
+                <div class="card-header">
+                  <h3><i class="bi bi-list-check"></i> Riesgos Ciber Priorizados</h3>
+                </div>
+                <div class="table-wrapper">
+                  <table id="integrada-ciber-riesgos-table">
+                    <thead>
+                      <tr>
+                        <th>Código</th>
+                        <th>Activo/Proceso</th>
+                        <th>Score</th>
+                        <th>Tratamiento</th>
+                        <th>Estado</th>
+                        <th>Controles</th>
+                      </tr>
+                    </thead>
+                    <tbody id="integrada-ciber-riesgos-tbody">
+                      <!-- Renderizado dinámicamente por renderVistaIntegradaCiber() -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <!-- Fin - Vista Integrada: Ciber Tabla Riesgos -->
+
+              <!-- Inicio - Vista Integrada: Ciber Postura -->
+              <div class="card">
+                <div class="card-header">
+                  <h3><i class="bi bi-sliders"></i> Postura de Controles</h3>
+                </div>
+                <div id="integrada-ciber-postura" class="integrada-postura-list p-16">
+                  <!-- Renderizado dinámicamente por renderVistaIntegradaCiber() -->
+                </div>
+              </div>
+              <!-- Fin - Vista Integrada: Ciber Postura -->
+            </div>
+
           </div>
           <!-- Fin - TAB: Ciber -->
 
@@ -6237,7 +6368,7 @@
           
           <div class="grid-4 mb-24" id="reportes-kpis-container"></div>
 
-          <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-bottom: 24px;">
+          <div class="reportes-layout">
             <div class="card">
               <div class="card-header">
                 <h3><i class="bi bi-gear-wide-connected"></i> Generador de Reportes</h3>
@@ -6269,11 +6400,11 @@
                 <div class="mb-16">
                   <label class="form-label">Formato Salida</label>
                   <div class="flex-gap-8">
-                    <label style="flex: 1; display: flex; align-items: center; gap: 6px; padding: 8px; border: 2px solid var(--accent-primary); background: #f5f3ff; border-radius: 6px; cursor: pointer;">
+                    <label class="report-format-option report-format-option-active">
                       <input type="radio" name="format" value="pdf" checked>
                       <span class="fw-600">PDF</span>
                     </label>
-                    <label style="flex: 1; display: flex; align-items: center; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;">
+                    <label class="report-format-option">
                       <input type="radio" name="format" value="excel">
                       <span>Excel</span>
                     </label>
@@ -6310,9 +6441,9 @@
               <div class="card-header">
                 <h3><i class="bi bi-eye"></i> Preview: Dashboard Directorio</h3>
               </div>
-              <div style="padding: 20px; background: #f9fafb; display: flex; align-items: center; justify-content: center; min-height: 300px;">
-                <div style="text-align: center; color: var(--text-muted);">
-                  <i class="bi bi-file-earmark-pdf" style="font-size: 48px; margin-bottom: 12px; color: var(--accent-primary);"></i>
+              <div class="report-preview">
+                <div class="report-preview-content">
+                  <i class="bi bi-file-earmark-pdf report-preview-icon"></i>
                   <p>Seleccione un template para ver el preview</p>
                 </div>
               </div>
@@ -6323,20 +6454,22 @@
             <div class="card-header">
               <h3><i class="bi bi-clock-history"></i> Reportes Generados Recientemente</h3>
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Reporte</th>
-                  <th>Generado</th>
-                  <th>Período</th>
-                  <th>Formato</th>
-                  <th>Usuario</th>
-                  <th>Tamaño</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="reportes-tbody"></tbody>
-            </table>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Reporte</th>
+                    <th>Generado</th>
+                    <th>Período</th>
+                    <th>Formato</th>
+                    <th>Usuario</th>
+                    <th>Tamaño</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="reportes-tbody"></tbody>
+              </table>
+            </div>
           </div>
 
         </div>
@@ -6371,6 +6504,7 @@
     document.addEventListener('DOMContentLoaded', function() {
       initializeApp();
       setupNavigation();
+      updateGlobalContext();
     });
 
     // Configurar navegación del sidebar
@@ -6383,18 +6517,32 @@
       });
     }
 
-    // Actualizar contexto global
+    const SESSION_CONTEXT = {
+      pais: 'Chile',
+      unidad: 'Operaciones',
+      rolText: 'Ejecutivo',
+      rolValue: 'ejecutivo'
+    };
+
+    // Actualizar contexto global (derivado de sesión)
     function updateGlobalContext() {
-      const pais = document.getElementById('global-pais');
-      const unidad = document.getElementById('global-unidad');
-      const rol = document.getElementById('global-rol');
-      
-      const paisText = pais.options[pais.selectedIndex].text;
-      const unidadText = unidad.options[unidad.selectedIndex].text;
-      const rolText = rol.options[rol.selectedIndex].text;
-      
-      document.getElementById('badge-contexto-global').textContent = 
-        `${paisText} · ${unidadText} · ${rolText}`;
+      const userNameEl = document.getElementById('top-user-name');
+      const badgeEl = document.getElementById('badge-contexto-global');
+      const userByRole = {
+        ejecutivo: 'María González',
+        riesgos: 'Ana Muñoz',
+        ti: 'Carlos Mendoza',
+        auditoria: 'Laura Torres',
+        operador: 'Pedro Soto'
+      };
+
+      if (badgeEl) {
+        badgeEl.textContent = `${SESSION_CONTEXT.pais} · ${SESSION_CONTEXT.unidad} · ${SESSION_CONTEXT.rolText}`;
+      }
+
+      if (userNameEl) {
+        userNameEl.textContent = userByRole[SESSION_CONTEXT.rolValue] || 'Usuario Demo';
+      }
     }
 
     // Mostrar tab de dashboard
@@ -6407,12 +6555,15 @@
     }
 
     // Mostrar grupo de datos maestros
-    function showDMGroup(group) {
+    function showDMGroup(group, triggerEl = null) {
       document.querySelectorAll('.dm-group').forEach(g => g.style.display = 'none');
       document.querySelectorAll('#view-datos-maestros > .card > .dm-tabs-container .tab-btn-secondary').forEach(b => b.classList.remove('active'));
       
       document.getElementById('dm-' + group).style.display = 'block';
-      event.currentTarget.classList.add('active');
+      const activeButton = triggerEl
+        || ((typeof event !== 'undefined' && event && event.currentTarget) ? event.currentTarget : null)
+        || document.querySelector('#view-datos-maestros > .card > .dm-tabs-container .tab-btn-secondary[onclick*="showDMGroup(\'' + group + '\')"]');
+      if (activeButton) activeButton.classList.add('active');
       
       // Resetear subtabs al primer elemento cuando cambia el grupo
       const subtabs = document.querySelectorAll('#dm-' + group + ' .dm-subtabs-container .tab-btn-secondary');
@@ -6428,7 +6579,7 @@
     }
 
     // <!-- BASE: Función para mostrar subtab dentro de un grupo de datos maestros -->
-    function showDMSubtab(group, subtab) {
+    function showDMSubtab(group, subtab, triggerEl = null) {
       // Ocultar todos los subtabs del grupo
       document.querySelectorAll('#dm-' + group + ' .dm-subtab').forEach(st => st.style.display = 'none');
       // Quitar active de botones del grupo
@@ -6437,7 +6588,10 @@
       // Mostrar subtab seleccionado
       const subtabEl = document.getElementById('dm-' + group + '-' + subtab);
       if (subtabEl) subtabEl.style.display = 'block';
-      event.currentTarget.classList.add('active');
+      const activeButton = triggerEl
+        || ((typeof event !== 'undefined' && event && event.currentTarget) ? event.currentTarget : null)
+        || document.querySelector('#dm-' + group + ' .dm-subtabs-container .tab-btn-secondary[onclick*="showDMSubtab(\'' + group + '\', \'' + subtab + '\')"]');
+      if (activeButton) activeButton.classList.add('active');
       
       // Cerrar todos los formularios abiertos
       document.querySelectorAll('.dm-edit-form-container').forEach(f => f.classList.remove('active'));
@@ -7459,6 +7613,196 @@
       </div>
     </div>
   </div>
+
+  <!-- INICIO MODAL: BIA Levantamiento -->
+  <div class="modal-overlay" id="modal-bia-levantamiento">
+    <div class="modal-content bia-lev-modal-content">
+      <div class="modal-header bia-lev-modal-header">
+        <h3 id="bia-lev-title"><i class="bi bi-journal-check"></i> Levantamiento BIA</h3>
+        <div class="d-flex gap-8 ai-center">
+          <button type="button" class="btn btn-outline btn-sm" onclick="handleImportBIAPlanilla()">
+            <i class="bi bi-upload"></i> Importar planilla
+          </button>
+          <button class="modal-close" onclick="closeBIALevantamientoModal()">&times;</button>
+        </div>
+      </div>
+      <div class="modal-body bia-lev-modal-body">
+        <input type="hidden" id="bia-lev-target-type-hidden" value="">
+        <input type="hidden" id="bia-lev-target-id-hidden" value="">
+        <input type="hidden" id="bia-lev-assessment-id" value="">
+        <input type="file" id="bia-lev-file-input" accept=".xlsx,.xls,.csv" class="d-none" onchange="onBIAPlanillaSelected(event)">
+
+        <!-- Inicio - BIA Levantamiento: Objetivo -->
+        <section class="bia-lev-section dm-form-section">
+          <h4><i class="bi bi-bullseye"></i> Objetivo BIA</h4>
+          <div class="dm-form-grid bia-lev-objective-grid">
+            <div class="dm-form-group">
+              <label>Tipo de objetivo</label>
+              <select id="bia-lev-target-type" onchange="onBIALevTargetTypeChange()">
+                <option value="MACROPROCESS">Macroproceso</option>
+                <option value="PROCESS" selected>Proceso</option>
+                <option value="SUBPROCESS">Subproceso</option>
+              </select>
+            </div>
+            <div class="dm-form-group">
+              <label>Objetivo</label>
+              <select id="bia-lev-target-id" onchange="onBIALevTargetEntityChange()">
+                <option value="">-- Seleccionar objetivo --</option>
+              </select>
+            </div>
+            <div class="dm-form-group bia-lev-objective-action">
+              <label>Acción</label>
+              <button type="button" class="btn btn-outline" onclick="goToDMEntityFromBIA()">
+                <i class="bi bi-box-arrow-up-right"></i> Ir a modificar en Datos Maestros
+              </button>
+            </div>
+          </div>
+        </section>
+        <!-- Fin - BIA Levantamiento: Objetivo -->
+
+        <!-- Inicio - BIA Levantamiento: Ficha Proceso -->
+        <section class="bia-lev-section dm-form-section">
+          <div class="bia-lev-section-header">
+            <h4><i class="bi bi-card-list"></i> Ficha del proceso (Datos Maestros)</h4>
+            <span class="badge badge-info" id="bia-lev-imported-file">Sin archivo importado</span>
+          </div>
+          <div id="bia-lev-ficha" class="bia-lev-ficha-grid"></div>
+        </section>
+        <!-- Fin - BIA Levantamiento: Ficha Proceso -->
+
+        <!-- Inicio - BIA Levantamiento: Datos Entrevistado -->
+        <section class="bia-lev-section dm-form-section">
+          <h4><i class="bi bi-person-vcard"></i> Datos entrevistado</h4>
+          <div class="dm-form-grid">
+            <div class="dm-form-group">
+              <label>Fecha de entrevista</label>
+              <input type="date" id="bia-lev-interview-date">
+            </div>
+            <div class="dm-form-group">
+              <label>Nombre de quien realiza levantamiento</label>
+              <input type="text" id="bia-lev-surveyor-name" placeholder="Nombre de quien realiza levantamiento">
+            </div>
+            <div class="dm-form-group">
+              <label>Cargo de quien realiza levantamiento</label>
+              <input type="text" id="bia-lev-surveyor-role" placeholder="Cargo de quien realiza levantamiento">
+            </div>
+          </div>
+          <div class="bia-lev-subsection">
+            <div class="bia-lev-subsection-header">
+              <h5><i class="bi bi-people"></i> Personas entrevistadas (Persona + Cargo)</h5>
+              <button type="button" class="btn btn-outline btn-sm" onclick="addBIAParticipantRow()">
+                <i class="bi bi-person-plus"></i> Agregar participante
+              </button>
+            </div>
+            <div class="table-wrapper">
+              <table class="dm-entity-table bia-participants-table">
+                <thead>
+                  <tr>
+                    <th>Persona</th>
+                    <th>Cargo</th>
+                    <th class="actions-cell">Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="bia-lev-participants-body">
+                  <!-- Renderizado dinámico -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+        <!-- Fin - BIA Levantamiento: Datos Entrevistado -->
+
+        <!-- Inicio - BIA Levantamiento: Validación -->
+        <section class="bia-lev-section dm-form-section">
+          <h4><i class="bi bi-check2-square"></i> Validación del proceso</h4>
+          <div class="table-wrapper">
+            <table class="dm-entity-table bia-approval-form-table">
+              <thead>
+                <tr>
+                  <th>Rol</th>
+                  <th>Nombre</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Responsable de Proceso</td>
+                  <td><input type="text" id="bia-approval-owner-name"></td>
+                  <td><input type="date" id="bia-approval-owner-date"></td>
+                </tr>
+                <tr>
+                  <td>Jefe de Continuidad de Negocio</td>
+                  <td><input type="text" id="bia-approval-cont-name"></td>
+                  <td><input type="date" id="bia-approval-cont-date"></td>
+                </tr>
+                <tr>
+                  <td>Jefe de Departamento de Riesgo Operacional</td>
+                  <td><input type="text" id="bia-approval-risk-name"></td>
+                  <td><input type="date" id="bia-approval-risk-date"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <!-- Fin - BIA Levantamiento: Validación -->
+
+        <!-- Inicio - BIA Levantamiento: Matrices -->
+        <section class="bia-lev-section dm-form-section">
+          <h4><i class="bi bi-grid-3x3-gap"></i> Matriz por tipo de impacto y tiempo</h4>
+          <div class="bia-lev-scenario-toolbar">
+            <div class="dm-form-group">
+              <label>Escenario activo</label>
+              <select id="bia-lev-scenario-select" onchange="onBIALevScenarioChange()">
+                <option value="">-- Sin escenarios --</option>
+              </select>
+            </div>
+            <div class="dm-form-group">
+              <label>Nuevo escenario de disrupción</label>
+              <input type="text" id="bia-lev-scenario-name" placeholder="Ej: Indisponibilidad masiva de personal">
+            </div>
+            <div class="dm-form-group bia-lev-scenario-actions">
+              <label>Acciones</label>
+              <div class="d-flex gap-8">
+                <button type="button" class="btn btn-outline btn-sm" onclick="addBIALevScenario()">
+                  <i class="bi bi-plus-circle"></i> Agregar escenario
+                </button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="removeBIALevScenario()">
+                  <i class="bi bi-trash"></i> Quitar escenario
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="table-wrapper bia-lev-matrix-wrapper">
+            <table class="bia-lev-matrix-table">
+              <thead>
+                <tr>
+                  <th>Rango de tiempo</th>
+                  <th>Monetario</th>
+                  <th>Procesos</th>
+                  <th>Reputacional</th>
+                  <th>Normativo</th>
+                  <th>Clientes</th>
+                </tr>
+              </thead>
+              <tbody id="bia-lev-matrix-tbody">
+                <!-- Renderizado dinámico -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <!-- Fin - BIA Levantamiento: Matrices -->
+      </div>
+      <div class="modal-footer">
+        <button id="bia-lev-save-draft-btn" class="btn btn-secondary" onclick="saveBIALevantamiento(false)" disabled>
+          <i class="bi bi-save"></i> Guardar borrador
+        </button>
+        <button id="bia-lev-save-close-btn" class="btn btn-primary" onclick="saveBIALevantamiento(true)" disabled>
+          <i class="bi bi-check2-circle"></i> Guardar y cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- FIN MODAL: BIA Levantamiento -->
 </body>
 </html>
 
