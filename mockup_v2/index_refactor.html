@@ -3493,8 +3493,10 @@
                   <option value="TRIGGERED">Gatillo RIA activo</option>
                   <option value="WITH_MATRIX">Con matriz levantada</option>
                   <option value="PENDING">Pendiente levantamiento</option>
+                  <option value="COMPLETED">Levantamiento completado</option>
+                  <option value="NO_REQUIRED">No requerido</option>
                 </select>
-                <button class="btn btn-primary btn-sm"><i class="bi bi-diagram-3"></i> Evaluar Proceso</button>
+                <button class="btn btn-primary btn-sm" onclick="openRIALevantamientoModal()"><i class="bi bi-journal-check"></i> Hacer levantamiento RIA</button>
               </div>
             </div>
             <div class="table-wrapper">
@@ -3506,10 +3508,9 @@
                     <th>Criticidad BIA</th>
                     <th>Resultado BIA (&gt;24h)</th>
                     <th>Gatillo RIA</th>
-                    <th>Riesgos asociados</th>
-                    <th>Criterio BancoEstado</th>
+                    <th>Matriz / escenarios</th>
                     <th>Estado</th>
-                    <th>Detalle</th>
+                    <th class="bia-col-action">Acción</th>
                   </tr>
                 </thead>
                 <tbody id="ria-tbody">
@@ -7803,6 +7804,186 @@
     </div>
   </div>
   <!-- FIN MODAL: BIA Levantamiento -->
+
+  <!-- INICIO MODAL: RIA Levantamiento -->
+  <div class="modal-overlay" id="modal-ria-levantamiento">
+    <div class="modal-content ria-lev-modal-content">
+      <div class="modal-header ria-lev-modal-header">
+        <h3 id="ria-lev-title"><i class="bi bi-shield-exclamation"></i> Levantamiento RIA</h3>
+        <div class="d-flex gap-8 ai-center">
+          <button class="modal-close" onclick="closeRIALevantamientoModal()">&times;</button>
+        </div>
+      </div>
+      <div class="modal-body ria-lev-modal-body">
+        <input type="hidden" id="ria-lev-assessment-id" value="">
+        <input type="hidden" id="ria-lev-target-id-hidden" value="">
+
+        <!-- Inicio - RIA Levantamiento: Objetivo -->
+        <section class="ria-lev-section dm-form-section">
+          <h4><i class="bi bi-bullseye"></i> Objetivo RIA</h4>
+          <div class="dm-form-grid ria-lev-objective-grid">
+            <div class="dm-form-group">
+              <label>Proceso</label>
+              <select id="ria-lev-target-id" onchange="onRIALevTargetEntityChange()">
+                <option value="">-- Seleccionar proceso --</option>
+              </select>
+            </div>
+            <div class="dm-form-group ria-lev-objective-action">
+              <label>Acción</label>
+              <button type="button" class="btn btn-outline" onclick="goToDMEntityFromRIA()">
+                <i class="bi bi-box-arrow-up-right"></i> Ir a modificar en Datos Maestros
+              </button>
+            </div>
+          </div>
+        </section>
+        <!-- Fin - RIA Levantamiento: Objetivo -->
+
+        <!-- Inicio - RIA Levantamiento: Ficha -->
+        <section class="ria-lev-section dm-form-section">
+          <h4><i class="bi bi-card-list"></i> Ficha del proceso (Datos Maestros)</h4>
+          <div id="ria-lev-ficha" class="ria-lev-ficha-grid">
+            <p class="color-muted fs-12 m-0">Seleccione un proceso para cargar la ficha.</p>
+          </div>
+        </section>
+        <!-- Fin - RIA Levantamiento: Ficha -->
+
+        <!-- Inicio - RIA Levantamiento: Ficha discriminación -->
+        <section class="ria-lev-section dm-form-section">
+          <h4><i class="bi bi-ui-checks-grid"></i> Ficha de discriminación</h4>
+          <div class="table-wrapper">
+            <table class="dm-entity-table ria-lev-discrimination-table">
+              <thead>
+                <tr>
+                  <th>Criterio</th>
+                  <th>Resultado</th>
+                  <th>Antecedentes</th>
+                </tr>
+              </thead>
+              <tbody id="ria-lev-discrimination-body">
+                <!-- Renderizado dinámico -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <!-- Fin - RIA Levantamiento: Ficha discriminación -->
+
+        <!-- Inicio - RIA Levantamiento: Matriz continuidad -->
+        <section class="ria-lev-section dm-form-section">
+          <div class="ria-lev-section-header">
+            <h4><i class="bi bi-grid-3x3-gap"></i> Matriz de continuidad</h4>
+            <button type="button" class="btn btn-outline btn-sm" onclick="addRIALevMatrixRow()">
+              <i class="bi bi-plus-circle"></i> Agregar escenario
+            </button>
+          </div>
+          <div class="table-wrapper ria-lev-matrix-wrapper">
+            <table class="ria-lev-matrix-table">
+              <thead>
+                <tr>
+                  <th class="ria-sticky-id">ID</th>
+                  <th class="ria-sticky-name">Nombre</th>
+                  <th class="ria-sticky-scenario">Escenario</th>
+                  <th>Riesgo de pérdida</th>
+                  <th>Factor de riesgo</th>
+                  <th>Factor específico</th>
+                  <th>Controles identificados</th>
+                  <th>Tipo de impacto</th>
+                  <th>Impacto máx. 24H (H)</th>
+                  <th>Probabilidad (I)</th>
+                  <th>Evaluación control (K)</th>
+                  <th>L</th>
+                  <th>M</th>
+                  <th>N</th>
+                  <th>RI (O)</th>
+                  <th>RR (P)</th>
+                  <th>Inherente (Q)</th>
+                  <th>Residual (R)</th>
+                  <th>Beta (S)</th>
+                  <th>Residual c/Beta (T)</th>
+                  <th>Riesgo final (U)</th>
+                  <th>Respuesta (V)</th>
+                  <th>Observaciones</th>
+                  <th>Contingencia</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="ria-lev-matrix-body">
+                <!-- Renderizado dinámico -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <!-- Fin - RIA Levantamiento: Matriz continuidad -->
+
+        <!-- Inicio - RIA Levantamiento: Validación -->
+        <section class="ria-lev-section dm-form-section">
+          <h4><i class="bi bi-check2-square"></i> Validación V°B°</h4>
+          <div class="table-wrapper">
+            <table class="dm-entity-table ria-lev-approval-form-table">
+              <thead>
+                <tr>
+                  <th>Rol</th>
+                  <th>Nombre</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Responsable de Proceso</td>
+                  <td><input type="text" id="ria-approval-owner-name"></td>
+                  <td><input type="date" id="ria-approval-owner-date"></td>
+                </tr>
+                <tr>
+                  <td>Jefe de Continuidad de Negocio</td>
+                  <td><input type="text" id="ria-approval-cont-name"></td>
+                  <td><input type="date" id="ria-approval-cont-date"></td>
+                </tr>
+                <tr>
+                  <td>Jefe de Departamento de Riesgo Operacional</td>
+                  <td><input type="text" id="ria-approval-risk-name"></td>
+                  <td><input type="date" id="ria-approval-risk-date"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <!-- Fin - RIA Levantamiento: Validación -->
+
+        <!-- Inicio - RIA Levantamiento: Pruebas -->
+        <section class="ria-lev-section dm-form-section">
+          <h4><i class="bi bi-clipboard-check"></i> Pruebas asociadas</h4>
+          <div id="ria-lev-tests">
+            <p class="color-muted fs-12 m-0">Seleccione un proceso para revisar pruebas asociadas.</p>
+          </div>
+        </section>
+        <!-- Fin - RIA Levantamiento: Pruebas -->
+
+        <!-- Inicio - RIA Levantamiento: Observaciones -->
+        <section class="ria-lev-section dm-form-section">
+          <h4><i class="bi bi-journal-text"></i> Observaciones generales</h4>
+          <div class="dm-form-grid">
+            <div class="dm-form-group">
+              <label>Notas del levantamiento</label>
+              <textarea id="ria-lev-notes" rows="3" placeholder="Observaciones generales del levantamiento RIA"></textarea>
+            </div>
+            <div class="dm-form-group">
+              <label>Comentario residual global</label>
+              <textarea id="ria-lev-residual-note" rows="3" placeholder="Resumen del riesgo residual del proceso"></textarea>
+            </div>
+          </div>
+        </section>
+        <!-- Fin - RIA Levantamiento: Observaciones -->
+      </div>
+      <div class="modal-footer">
+        <button id="ria-lev-save-draft-btn" class="btn btn-secondary" onclick="saveRIALevantamiento(false)" disabled>
+          <i class="bi bi-save"></i> Guardar borrador
+        </button>
+        <button id="ria-lev-save-close-btn" class="btn btn-primary" onclick="saveRIALevantamiento(true)" disabled>
+          <i class="bi bi-check2-circle"></i> Guardar y cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- FIN MODAL: RIA Levantamiento -->
 </body>
 </html>
 

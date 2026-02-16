@@ -33,6 +33,9 @@ const AppState = {
   biaMatrixPageSize: 10,
   biaStickyColumnsEnabled: true,
   riaDomainFilter: 'TRIGGERED',
+  selectedRIAProcessId: null,
+  riaSearchTerm: '',
+  riaModalDraft: null,
   biaImpactOverrides: {},
   biaLevantamientoByProcess: {},
   biaLevantamientoImportFileName: '',
@@ -8324,10 +8327,49 @@ function renderRIAView() {
   }
   renderRIAKPIs();
   renderRIATable();
+  if (AppState.selectedRIAProcessId) {
+    showDetalleRIA(AppState.selectedRIAProcessId);
+  }
 }
 
 function getRIAProcessRisks(processId) {
   return (BCMSDataStore.entities.risks || []).filter(r => !r.isDeleted && r.riskDomain !== 'CYBER' && !String(r.code || '').startsWith('RCIBER') && Number(r.targetProcessId) === Number(processId));
+}
+
+function getLatestRIAAssessment(processId) {
+  return (BCMSDataStore.entities.riaAssessments || [])
+    .filter(a => !a.isDeleted && (Number(a.targetProcessId) === Number(processId) || Number(a.processId) === Number(processId)))
+    .sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return dateB - dateA;
+    })[0] || null;
+}
+
+function getRIAItemsByAssessment(assessmentId) {
+  return (BCMSDataStore.entities.riaItems || [])
+    .filter(item => !item.isDeleted && Number(item.riaAssessmentId) === Number(assessmentId))
+    .sort((a, b) => Number(a.itemNo || 0) - Number(b.itemNo || 0));
+}
+
+function normalizeRIAAssessmentStatus(status) {
+  const normalized = String(status || '').toUpperCase();
+  if (['COMPLETADO', 'COMPLETED', 'CERRADO', 'CLOSED'].includes(normalized)) return 'COMPLETADO';
+  if (['BORRADOR', 'DRAFT', 'EN_CURSO', 'IN_PROGRESS'].includes(normalized)) return 'EN_CURSO';
+  if (['NO_REQUERIDO', 'NOT_REQUIRED'].includes(normalized)) return 'NO_REQUERIDO';
+  return 'SIN_INICIAR';
+}
+
+function getRIAAssessmentStatusInfo(assessment, hasLegacyMatrix, biaTriggered) {
+  if (assessment) {
+    const code = normalizeRIAAssessmentStatus(assessment.status);
+    if (code === 'COMPLETADO') return { code, label: 'Completado', badgeClass: 'badge-success' };
+    if (code === 'EN_CURSO') return { code, label: 'En curso', badgeClass: 'badge-warning' };
+    if (code === 'NO_REQUERIDO') return { code, label: 'No requerido', badgeClass: 'badge-info' };
+  }
+  if (hasLegacyMatrix) return { code: 'COMPLETADO_LEGACY', label: 'Completado (legacy)', badgeClass: 'badge-active' };
+  if (!biaTriggered) return { code: 'NO_REQUERIDO', label: 'No requerido', badgeClass: 'badge-info' };
+  return { code: 'SIN_INICIAR', label: 'Sin iniciar', badgeClass: 'badge-neutral' };
 }
 
 function evaluateBIAForRIA(process) {
@@ -8383,20 +8425,21 @@ function getRIAProcessCandidates(applyFilter = true) {
   const items = processes.map((process) => {
     const bia = evaluateBIAForRIA(process);
     const relatedRisks = getRIAProcessRisks(process.id);
-    const hasMatrix = relatedRisks.length > 0;
-    const inTreatment = relatedRisks.some(r => r.status === 'TREATING');
-    const statusLabel = hasMatrix
-      ? (inTreatment ? 'En tratamiento' : 'Matriz levantada')
-      : (bia.triggered ? 'Pendiente levantamiento' : 'No requerido');
+    const assessment = getLatestRIAAssessment(process.id);
+    const assessmentItems = assessment ? getRIAItemsByAssessment(assessment.id) : [];
+    const hasMatrix = assessmentItems.length > 0 || relatedRisks.length > 0;
+    const status = getRIAAssessmentStatusInfo(assessment, !assessment && relatedRisks.length > 0, bia.triggered);
 
     return {
       process,
       bia,
       relatedRisks,
+      assessment,
+      assessmentItems,
       hasMatrix,
-      statusLabel
+      status
     };
-  }).filter(item => item.bia.triggered || item.hasMatrix);
+  });
 
   if (!applyFilter || !AppState.riaDomainFilter) {
     return items;
@@ -8406,6 +8449,8 @@ function getRIAProcessCandidates(applyFilter = true) {
     if (AppState.riaDomainFilter === 'TRIGGERED') return item.bia.triggered;
     if (AppState.riaDomainFilter === 'WITH_MATRIX') return item.hasMatrix;
     if (AppState.riaDomainFilter === 'PENDING') return item.bia.triggered && !item.hasMatrix;
+    if (AppState.riaDomainFilter === 'COMPLETED') return ['COMPLETADO', 'COMPLETADO_LEGACY'].includes(item.status.code);
+    if (AppState.riaDomainFilter === 'NO_REQUIRED') return item.status.code === 'NO_REQUERIDO';
     return true;
   });
 }
@@ -8425,16 +8470,18 @@ function renderRIAKPIs() {
   const allCandidates = getRIAProcessCandidates(false);
   const triggered = allCandidates.filter(c => c.bia.triggered).length;
   const withMatrix = allCandidates.filter(c => c.hasMatrix).length;
-  const pending = allCandidates.filter(c => c.bia.triggered && !c.hasMatrix).length;
-  const treating = allCandidates.filter(c => c.relatedRisks.some(r => r.status === 'TREATING')).length;
+  const completed = allCandidates.filter(c => ['COMPLETADO', 'COMPLETADO_LEGACY'].includes(c.status.code)).length;
+  const pending = allCandidates.filter(c => c.status.code === 'SIN_INICIAR' && c.bia.triggered).length;
+  const inProgress = allCandidates.filter(c => c.status.code === 'EN_CURSO').length;
+  const notRequired = allCandidates.filter(c => c.status.code === 'NO_REQUERIDO').length;
   const currentlyVisible = getRIAProcessCandidates().length;
 
   renderKPIGrid(container, [
-    { label: 'Procesos candidatos RIA', value: allCandidates.length, icon: 'bi-diagram-3', color: 'primary', subtitle: `Visibles por filtro: ${currentlyVisible}` },
+    { label: 'Procesos en RIA', value: allCandidates.length, icon: 'bi-diagram-3', color: 'primary', subtitle: `Visibles por filtro: ${currentlyVisible}` },
     { label: 'Gatillo RIA activo', value: triggered, icon: 'bi-exclamation-triangle', color: 'danger', subtitle: 'Impacto >24h y nivel Medio Alto/Alto' },
-    { label: 'Matriz RIA levantada', value: withMatrix, icon: 'bi-table', color: 'secondary', subtitle: 'Con riesgos registrados' },
+    { label: 'Matriz RIA levantada', value: withMatrix, icon: 'bi-table', color: 'secondary', subtitle: 'Con escenarios registrados' },
     { label: 'Pendientes de levantar', value: pending, icon: 'bi-hourglass-split', color: 'warning', subtitle: 'Gatillados sin matriz' },
-    { label: 'Procesos en tratamiento', value: treating, icon: 'bi-wrench', color: 'info', subtitle: 'Con acciones activas' }
+    { label: 'Completados / En curso', value: `${completed} / ${inProgress}`, icon: 'bi-wrench', color: 'info', subtitle: `No requerido: ${notRequired}` }
   ]);
 }
 
@@ -8445,33 +8492,37 @@ function renderRIATable() {
   const candidates = getRIAProcessCandidates();
 
   if (candidates.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center fs-12 color-muted">No existen procesos para el filtro seleccionado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center fs-12 color-muted">No existen procesos para el filtro seleccionado.</td></tr>';
     return;
   }
 
   tbody.innerHTML = candidates.map(item => {
     const process = item.process;
     const triggerBadge = item.bia.triggered ? 'badge-danger' : 'badge-success';
-    const matrixBadge = item.hasMatrix ? 'badge-secondary' : 'badge-warning';
+    const matrixBadge = item.hasMatrix ? 'badge-secondary' : 'badge-neutral';
     const criticalityKey = String(process.businessCriticality || 'medium').toLowerCase().replace(/_/g, '-');
-    const statusBadge = item.statusLabel === 'En tratamiento'
-      ? 'badge-warning'
-      : item.statusLabel === 'Matriz levantada'
-        ? 'badge-secondary'
-        : item.statusLabel === 'No requerido'
-          ? 'badge-info'
-          : 'badge-danger';
+    const statusBadge = item.status.badgeClass;
+    const actionLabel = ['COMPLETADO', 'COMPLETADO_LEGACY', 'EN_CURSO'].includes(item.status.code) ? 'Editar RIA' : 'Evaluar';
+    const scenarioCount = item.assessmentItems.length > 0 ? item.assessmentItems.length : item.relatedRisks.length;
 
     return `<tr class="ria-clickable-row cursor-pointer" onclick="showDetalleRIA(${process.id})">
       <td class="fw-600">${process.code}</td>
-      <td class="fs-12">${process.name}</td>
-      <td class="fs-12"><span class="badge badge-${criticalityKey}">${process.businessCriticality || '-'}</span></td>
+      <td class="fs-12">${process.name || '-'}</td>
+      <td class="fs-12"><span class="badge badge-${criticalityKey}">${BCMSDataStore.api.getLookupLabel('businessCriticality', process.businessCriticality) || process.businessCriticality || '-'}</span></td>
       <td class="fs-12">${item.bia.maxLateImpactLabel} (${item.bia.maxLateImpactType})</td>
-      <td class="text-center"><span class="badge ${triggerBadge}">${item.bia.triggered ? 'Sí' : 'No'}</span></td>
-      <td class="text-center"><span class="badge ${matrixBadge}">${item.relatedRisks.length}</span></td>
-      <td class="fs-12">${item.bia.triggerReason}</td>
-      <td><span class="badge ${statusBadge}">${item.statusLabel}</span></td>
-      <td><button class="btn btn-outline btn-sm"><i class="bi bi-eye"></i> Ver</button></td>
+      <td class="text-center"><span class="badge ${triggerBadge}">${item.bia.triggered ? 'Si' : 'No'}</span></td>
+      <td class="text-center"><span class="badge ${matrixBadge}">${scenarioCount}</span></td>
+      <td><span class="badge ${statusBadge}">${item.status.label}</span></td>
+      <td class="bia-col-action">
+        <div class="d-flex gap-8">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); showDetalleRIA(${process.id});">
+            <i class="bi bi-eye"></i> Ver detalle
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openRIALevantamientoModal(${process.id});">
+            <i class="bi bi-pencil"></i> ${actionLabel}
+          </button>
+        </div>
+      </td>
     </tr>`;
   }).join('');
 }
@@ -8483,33 +8534,28 @@ function showDetalleRIA(processId) {
   const processes = BCMSDataStore.entities.processes || [];
   const proc = processes.find(p => p.id === processId);
   if (!proc) return;
+  AppState.selectedRIAProcessId = Number(processId);
 
   const relatedRisks = getRIAProcessRisks(processId);
+  const latestAssessment = getLatestRIAAssessment(processId);
+  const assessmentItems = latestAssessment ? getRIAItemsByAssessment(latestAssessment.id) : [];
   const bia = evaluateBIAForRIA(proc);
   const allControls = BCMSDataStore.entities.controls || [];
   const controlsFromRelated = relatedRisks.flatMap(r => r.controls || []);
   const uniqueControls = [...new Set(controlsFromRelated)];
+  const hasLegacy = !latestAssessment && relatedRisks.length > 0;
+  const statusInfo = getRIAAssessmentStatusInfo(latestAssessment, hasLegacy, bia.triggered);
+  const matrixRowsForSummary = assessmentItems.length > 0 ? assessmentItems : relatedRisks;
 
-  const statusLabel = relatedRisks.length > 0
-    ? (relatedRisks.some(r => r.status === 'TREATING') ? 'En tratamiento' : 'Matriz levantada')
-    : (bia.triggered ? 'Pendiente levantamiento' : 'No requerido');
-  const statusBadge = statusLabel === 'En tratamiento'
-    ? 'badge-warning'
-    : statusLabel === 'Matriz levantada'
-      ? 'badge-secondary'
-      : statusLabel === 'No requerido'
-        ? 'badge-info'
-        : 'badge-danger';
-
-  const avgInherent = relatedRisks.length > 0
-    ? Math.round(relatedRisks.reduce((sum, r) => sum + Number(r.inherentScore || 0), 0) / relatedRisks.length)
+  const avgInherent = matrixRowsForSummary.length > 0
+    ? Math.round(matrixRowsForSummary.reduce((sum, r) => sum + Number(r.inherentScore || r.ri || 0), 0) / matrixRowsForSummary.length)
     : 0;
-  const avgResidual = relatedRisks.length > 0
-    ? Math.round(relatedRisks.reduce((sum, r) => sum + Number(r.residualScore || 0), 0) / relatedRisks.length)
+  const avgResidual = matrixRowsForSummary.length > 0
+    ? Math.round(matrixRowsForSummary.reduce((sum, r) => sum + Number(r.residualScore || r.residualWithBeta || r.rr || 0), 0) / matrixRowsForSummary.length)
     : 0;
   const detailClass = bia.triggered ? 'ria-detail-critical' : 'ria-detail-warning';
 
-  const syntheticRisk = relatedRisks[0] || {
+  const syntheticRisk = assessmentItems[0] || relatedRisks[0] || {
     id: `RIA-PROC-${proc.id}`,
     code: `RIA-${proc.code}`,
     title: `Matriz continuidad ${proc.name}`,
@@ -8527,20 +8573,25 @@ function showDetalleRIA(processId) {
     treatmentType: 'MITIGATE',
     controls: []
   };
+  syntheticRisk.assessmentRows = assessmentItems;
+  syntheticRisk.assessmentId = latestAssessment?.id || null;
 
   panel.innerHTML = `
     <div class="card mb-24 ria-detail-card ${detailClass}">
       <div class="card-header">
         <div><h3><i class="bi bi-shield-exclamation"></i> ${proc.code} - ${proc.name}</h3></div>
-        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('detalle-ria').classList.add('d-none')"><i class="bi bi-x"></i> Cerrar</button>
+        <div class="d-flex gap-8">
+          <button class="btn btn-outline btn-sm" onclick="openRIALevantamientoModal(${proc.id})"><i class="bi bi-pencil"></i> Editar RIA</button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('detalle-ria').classList.add('d-none')"><i class="bi bi-x"></i> Cerrar</button>
+        </div>
       </div>
       <div class="p-20">
         <div class="d-grid grid-3-equal gap-16 mb-24">
           <div><span class="fs-11 fw-600 color-muted">Resultado BIA</span><div class="fs-13 mt-4"><span class="badge badge-${(proc.businessCriticality || 'medium').toLowerCase()}">${proc.businessCriticality || '-'}</span></div></div>
-          <div><span class="fs-11 fw-600 color-muted">Gatillo RIA</span><div class="mt-4"><span class="badge ${bia.triggered ? 'badge-danger' : 'badge-success'}">${bia.triggered ? 'Sí' : 'No'}</span></div></div>
-          <div><span class="fs-11 fw-600 color-muted">Estado</span><div class="mt-4"><span class="badge ${statusBadge}">${statusLabel}</span></div></div>
+          <div><span class="fs-11 fw-600 color-muted">Gatillo RIA</span><div class="mt-4"><span class="badge ${bia.triggered ? 'badge-danger' : 'badge-success'}">${bia.triggered ? 'Si' : 'No'}</span></div></div>
+          <div><span class="fs-11 fw-600 color-muted">Estado</span><div class="mt-4"><span class="badge ${statusInfo.badgeClass}">${statusInfo.label}</span></div></div>
           <div><span class="fs-11 fw-600 color-muted">Criterio BancoEstado</span><div class="fs-12 mt-4">${bia.triggerReason}</div></div>
-          <div><span class="fs-11 fw-600 color-muted">Riesgos asociados</span><div class="fs-12 mt-4">${relatedRisks.length}</div></div>
+          <div><span class="fs-11 fw-600 color-muted">Escenarios matriz</span><div class="fs-12 mt-4">${assessmentItems.length > 0 ? assessmentItems.length : relatedRisks.length}</div></div>
           <div><span class="fs-11 fw-600 color-muted">Controles asociados</span><div class="fs-12 mt-4">${uniqueControls.length}</div></div>
         </div>
         <div class="d-grid grid-2-equal gap-20 mb-24">
@@ -8552,18 +8603,18 @@ function showDetalleRIA(processId) {
           </div>
           <div class="card p-16 ria-risk-box ria-risk-box-residual">
             <h4 class="fs-12 fw-600 color-green mb-8">Promedio Riesgo Residual</h4>
-            <div class="d-flex jc-between fs-12 mb-4"><span>Matriz levantada</span><span class="fw-600">${relatedRisks.length > 0 ? 'Sí' : 'No'}</span></div>
+            <div class="d-flex jc-between fs-12 mb-4"><span>Matriz levantada</span><span class="fw-600">${matrixRowsForSummary.length > 0 ? 'Si' : 'No'}</span></div>
             <div class="d-flex jc-between fs-12 mb-4"><span>Riesgos en tratamiento</span><span class="fw-600">${relatedRisks.filter(r => r.status === 'TREATING').length}</span></div>
             <div class="d-flex jc-between fs-13 fw-600 pt-8 border-top-soft"><span>Score promedio</span><span>${avgResidual || '-'}</span></div>
           </div>
         </div>
         <div class="mb-16">
           <h4 class="fs-13 fw-600 mb-8">Riesgos derivados de la matriz</h4>
-          ${relatedRisks.length > 0 ? `<div class="table-wrapper"><table class="fs-12"><thead><tr><th>Código</th><th>Riesgo</th><th>Inherente</th><th>Residual</th><th>Estado</th><th>Tratamiento</th></tr></thead><tbody>` +
-            relatedRisks.map(r => {
+          ${(assessmentItems.length > 0 || relatedRisks.length > 0) ? `<div class="table-wrapper"><table class="fs-12"><thead><tr><th>Código</th><th>Riesgo</th><th>Inherente</th><th>Residual</th><th>Estado</th><th>Tratamiento</th></tr></thead><tbody>` +
+            (assessmentItems.length > 0 ? assessmentItems : relatedRisks).map(r => {
               const statusBadgeRow = r.status === 'TREATING' ? 'badge-warning' : r.status === 'MONITORED' ? 'badge-success' : 'badge-info';
-              const treatmentLabel = r.treatmentType === 'MITIGATE' ? 'Mitigar' : r.treatmentType === 'ACCEPT' ? 'Aceptar' : r.treatmentType === 'TRANSFER' ? 'Transferir' : (r.treatmentType || '-');
-              return `<tr><td class="fw-600">${r.code}</td><td>${r.title}</td><td>${r.inherentScore || '-'}</td><td>${r.residualScore || '-'}</td><td><span class="badge ${statusBadgeRow}">${r.status || '-'}</span></td><td>${treatmentLabel}</td></tr>`;
+              const treatmentLabel = r.treatmentType === 'MITIGATE' ? 'Mitigar' : r.treatmentType === 'ACCEPT' ? 'Aceptar' : r.treatmentType === 'TRANSFER' ? 'Transferir' : (r.treatmentType || (r.responseText ? 'Evaluado' : '-'));
+              return `<tr><td class="fw-600">${r.code || `RIA-${proc.code}-${r.itemNo || ''}`}</td><td>${r.title || r.lossRiskText || '-'}</td><td>${r.inherentScore || r.ri || '-'}</td><td>${r.residualScore || r.residualWithBeta || r.rr || '-'}</td><td><span class="badge ${statusBadgeRow}">${r.status || (r.responseText ? 'Evaluado' : '-')}</span></td><td>${treatmentLabel}</td></tr>`;
             }).join('') + `</tbody></table></div>` : '<p class="fs-12 color-muted">No hay riesgos asociados todavía. El proceso está gatillado por BIA y requiere levantar matriz RIA.</p>'}
         </div>
         <div class="mb-16">
@@ -8585,32 +8636,40 @@ function renderRIABancoEstadoSchema(risk, process, allControls) {
   const relatedRisks = getRIARelatedRisksForSchema(risk);
 
   const matrixRows = relatedRisks.map((item, index) => {
-    const controlEval = getRIAControlEvaluation(item, allControls);
-    const impact = Number(item.inherentImpact || item.residualImpact || 3);
-    const inherentProbability = Number(item.inherentProbability || 1);
-    const residualProbability = Number(item.residualProbability || inherentProbability || 1);
-    const inherentScore = Number(item.inherentScore || (impact * inherentProbability));
-    const residualScore = Number(item.residualScore || inherentScore);
-    const residualControlScore = Math.max(1, Math.min(5, controlEval.score + (residualScore < inherentScore ? 1 : 0)));
-    const inherentBand = getRIAScoreBand(inherentScore);
-    const residualBand = getRIAScoreBand(residualScore);
-    const beta = getRIABetaValue(residualScore, controlEval.score);
-    const residualWithBeta = beta < 1 ? Math.round(residualScore / beta) : residualScore;
-    const residualFinalBand = getRIAResidualFinalBand(residualBand, beta, residualScore);
-    const response = getRIAResponseByFinalBand(residualFinalBand);
-    const controlNames = getRIAControlNames(item, allControls);
+    const mappedControlEval = Number(item.controlEvaluation || item.controlNum || 0);
+    const fallbackControl = getRIAControlEvaluation(item, allControls);
+    const controlEval = {
+      score: mappedControlEval > 0 ? Math.max(1, Math.min(5, mappedControlEval)) : fallbackControl.score,
+      label: mappedControlEval > 0 ? getRIAControlLabel(mappedControlEval) : fallbackControl.label
+    };
+    const impact = Number(item.maxImpact24h || item.impactNum || item.inherentImpact || item.residualImpact || 3);
+    const inherentProbability = Number(item.probability || item.probabilityNum || item.inherentProbability || 1);
+    const residualProbability = Number(item.probabilityNum || item.residualProbability || inherentProbability || 1);
+    const inherentScore = Number(item.ri || item.inherentScore || (impact * inherentProbability));
+    const residualScore = Number(item.rr || item.residualScore || inherentScore);
+    const residualControlScore = Number(item.controlNum || controlEval.score || 1);
+    const inherentBand = item.inherentBand || getRIAScoreBand(inherentScore);
+    const residualBand = item.residualBand || getRIAScoreBand(residualScore);
+    const beta = Number(item.beta || getRIABetaValue(residualScore, controlEval.score));
+    const residualWithBeta = Number(item.residualWithBeta || Math.min(inherentScore, residualScore / Math.max(beta, 0.01)));
+    const residualFinalBand = item.residualFinalBand || getRIAResidualFinalBand(residualBand, beta, residualScore);
+    const response = item.responseText || getRIAResponseByFinalBand(residualFinalBand);
+    const controlNames = item.controlsText || getRIAControlNames(item, allControls);
+    const riskCode = item.code || `RIA-${process?.code || 'PROC'}-${item.itemNo || index + 1}`;
+    const scenarioText = item.riskFactorSpecificText || item.scenario || item.cause || item.effect || '-';
+    const riskText = item.lossRiskText || item.effect || 'Costos adicionales del proceso';
 
     return `
       <tr>
-        <td class="fw-600 ria-sticky-id">${item.code || `RIA-${index + 1}`}</td>
+        <td class="fw-600 ria-sticky-id">${riskCode}</td>
         <td class="ria-matrix-text ria-sticky-name">${process?.name || process?.description || '-'}</td>
-        <td class="ria-matrix-text ria-sticky-scenario">${item.scenario || item.cause || item.effect || '-'}</td>
-        <td class="ria-matrix-text">${item.effect || 'Costos adicionales del proceso'}</td>
-        <td>${getRIAFactorLabel(item.riskDomain)}</td>
-        <td class="ria-matrix-text">${item.cause || item.scenario || '-'}</td>
+        <td class="ria-matrix-text ria-sticky-scenario">${scenarioText}</td>
+        <td class="ria-matrix-text">${riskText}</td>
+        <td>${item.riskFactorText || getRIAFactorLabel(item.riskDomain)}</td>
+        <td class="ria-matrix-text">${scenarioText}</td>
         <td class="ria-matrix-text">${controlNames}</td>
-        <td>${getRIAImpactType(item)}</td>
-        <td><span class="badge badge-danger">${impact} ${getRIAImpactLevelLabel(impact)}</span></td>
+        <td>${item.impactType || getRIAImpactType(item)}</td>
+        <td><span class="ria-level-pill ${riaV2BandClass(impact)}">${impact} ${getRIAImpactLevelLabel(impact)}</span></td>
         <td>${inherentProbability} ${getRIAProbabilityLabel(inherentProbability)}</td>
         <td>${controlEval.score} ${controlEval.label}</td>
         <td class="fw-600 text-center">${impact}</td>
@@ -8618,14 +8677,14 @@ function renderRIABancoEstadoSchema(risk, process, allControls) {
         <td class="fw-600 text-center">${residualControlScore}</td>
         <td class="fw-700 text-center">${inherentScore}</td>
         <td class="fw-700 text-center">${residualScore}</td>
-        <td><span class="badge badge-warning">${inherentBand}</span></td>
-        <td><span class="badge badge-info">${residualBand}</span></td>
+        <td><span class="ria-level-pill ${riaV2BandClass(inherentBand)}">${inherentBand}</span></td>
+        <td><span class="ria-level-pill ${riaV2BandClass(residualBand)}">${residualBand}</span></td>
         <td class="text-center">${beta < 1 ? beta.toFixed(2) : beta}</td>
         <td class="text-center fw-700">${residualWithBeta}</td>
-        <td><span class="badge ${residualFinalBand === 'Alto' ? 'badge-danger' : residualFinalBand === 'Medio Alto' ? 'badge-warning' : 'badge-success'}">${residualFinalBand}</span></td>
+        <td><span class="ria-level-pill ${riaV2BandClass(residualFinalBand)}">${residualFinalBand}</span></td>
         <td class="ria-matrix-text">${response}</td>
-        <td class="ria-matrix-text">${item.description || 'Sin observaciones'}</td>
-        <td class="ria-matrix-text">${getRIAContingencyDescription(item)}</td>
+        <td class="ria-matrix-text">${item.observations || item.description || 'Sin observaciones'}</td>
+        <td class="ria-matrix-text">${item.contingencyDesc || getRIAContingencyDescription(item)}</td>
       </tr>
     `;
   }).join('');
@@ -8677,6 +8736,9 @@ function renderRIABancoEstadoSchema(risk, process, allControls) {
 }
 
 function getRIARelatedRisksForSchema(risk) {
+  if (Array.isArray(risk?.assessmentRows) && risk.assessmentRows.length > 0) {
+    return risk.assessmentRows;
+  }
   const risks = (BCMSDataStore.entities.risks || []).filter(r => !r.isDeleted);
   const nonCyber = risks.filter(r => r.riskDomain !== 'CYBER' && !String(r.code || '').startsWith('RCIBER'));
   if (risk.targetProcessId) {
@@ -8703,13 +8765,33 @@ function getRIAImpactLevelLabel(score) {
   return levels[normalized - 1];
 }
 
+function getRIAControlLabel(score) {
+  const map = {
+    1: 'Deficiente',
+    2: 'Regular',
+    3: 'Suficiente',
+    4: 'Bueno',
+    5: 'Óptimo'
+  };
+  return map[Math.max(1, Math.min(5, Number(score) || 1))] || '-';
+}
+
+function riaV2BandClass(value) {
+  const normalizedText = String(value || '').toUpperCase();
+  if (normalizedText === 'BAJO' || normalizedText === 'LOW' || normalizedText === '1') return 'level-1';
+  if (normalizedText === 'MEDIO BAJO' || normalizedText === 'MEDIUM_LOW' || normalizedText === '2') return 'level-2';
+  if (normalizedText === 'MEDIO' || normalizedText === 'MEDIUM' || normalizedText === '3') return 'level-3';
+  if (normalizedText === 'MEDIO ALTO' || normalizedText === 'MEDIUM_HIGH' || normalizedText === '4') return 'level-4';
+  return 'level-5';
+}
+
 function getRIAScoreBand(score) {
   const value = Number(score) || 0;
-  if (value >= 15) return 'Alto';
-  if (value >= 10) return 'Medio Alto';
-  if (value >= 5) return 'Medio';
-  if (value >= 3) return 'Medio Bajo';
-  return 'Bajo';
+  if (value <= 2.99) return 'Bajo';
+  if (value <= 4.99) return 'Medio Bajo';
+  if (value <= 9.99) return 'Medio';
+  if (value <= 14.99) return 'Medio Alto';
+  return 'Alto';
 }
 
 function getRIABetaValue(residualScore, controlScore) {
@@ -8786,6 +8868,20 @@ function getRIAContingencyDescription(risk) {
 }
 
 function buildRIAFichaDiscriminacion(process, risk) {
+  if (risk?.assessmentId) {
+    const header = (BCMSDataStore.entities.riaDiscriminations || []).find(item => !item.isDeleted && Number(item.riaAssessmentId) === Number(risk.assessmentId));
+    if (header) {
+      const rows = (BCMSDataStore.entities.riaDiscriminationItems || [])
+        .filter(item => !item.isDeleted && Number(item.discriminationId) === Number(header.id))
+        .map(item => ({
+          condition: item.criterion || '-',
+          result: String(item.result || '').toUpperCase() === 'SI' ? 'Sí' : 'No',
+          evidence: item.evidence || '-'
+        }));
+      if (rows.length > 0) return rows;
+    }
+  }
+
   const incidents = BCMSDataStore.entities.incidents || [];
   const processIncidents = incidents.filter(i => Number(i.affectedProcessId) === Number(process?.id));
   const hasMassiveImpact = Number(risk.inherentImpact || 0) >= 4 || Number(risk.residualImpact || 0) >= 4;
@@ -8802,6 +8898,17 @@ function buildRIAFichaDiscriminacion(process, risk) {
 }
 
 function getRIAApprovalData(process, risk) {
+  if (risk?.assessmentId) {
+    const approvals = (BCMSDataStore.entities.riaAssessmentApprovals || [])
+      .filter(item => !item.isDeleted && Number(item.assessmentId) === Number(risk.assessmentId))
+      .map(item => ({
+        role: item.role,
+        name: item.name || '-',
+        date: item.date || ''
+      }));
+    if (approvals.length > 0) return approvals;
+  }
+
   const users = BCMSDataStore.entities.users || [];
   const continuityLead = users.find(u => String(u.role || '').toLowerCase().includes('continuidad'));
   const riskLead = users.find(u => String(u.role || '').toLowerCase().includes('riesgo'));
@@ -8888,6 +8995,559 @@ function getRIAResponseScale() {
       action: 'No se requiere construir nuevo plan, mantener y probar el plan vigente.'
     }
   ];
+}
+
+function getRIALevImpactTypeOptions() {
+  const lookups = BCMSDataStore.lookups?.riaImpactTypes || [];
+  if (lookups.length > 0) return lookups.map(item => item.label);
+  return ['Monetario', 'Procesos', 'Reputacional', 'Normativo', 'Clientes'];
+}
+
+function getRIALevDiscriminationDefaults(process, bia, rows = []) {
+  const incidents = BCMSDataStore.entities.incidents || [];
+  const linkedIncidents = incidents.filter(item => Number(item.affectedProcessId) === Number(process.id));
+  return [
+    { criterion: 'Nivel de Exposición Monetaria', result: (bia.maxLateImpactType === 'Monetario' || bia.maxLateImpactScore >= 4) ? 'SI' : 'NO', evidence: `Impacto >24h: ${bia.maxLateImpactLabel} (${bia.maxLateImpactType})` },
+    { criterion: 'Perdidas Operacionales', result: rows.length > 0 ? 'SI' : 'NO', evidence: `${rows.length} escenario(s) levantados` },
+    { criterion: 'Lineamientos Estrategicos', result: ['CRITICAL', 'HIGH'].includes(String(process.businessCriticality || '').toUpperCase()) ? 'SI' : 'NO', evidence: `Criticidad: ${process.businessCriticality || '-'}` },
+    { criterion: 'Nivel de Exposición Reputacional', result: rows.some(row => String(row.impactType || '').toLowerCase().includes('reput')) ? 'SI' : 'NO', evidence: 'Evaluado en matriz RIA' },
+    { criterion: 'Riesgo de Incumplimiento Normativo', result: rows.some(row => String(row.impactType || '').toLowerCase().includes('norm')) ? 'SI' : 'NO', evidence: 'Validación normativa en escenarios' },
+    { criterion: 'Incidentes Operacionales', result: linkedIncidents.length > 0 ? 'SI' : 'NO', evidence: `${linkedIncidents.length} incidente(s) vinculados` }
+  ];
+}
+
+function buildRIALevRow(source, itemNo, processName) {
+  const impactNum = Math.max(1, Math.min(5, Number(source.maxImpact24h || source.impactNum || 3)));
+  const probabilityNum = Math.max(1, Math.min(5, Number(source.probability || source.probabilityNum || 3)));
+  const controlNum = Math.max(1, Math.min(5, Number(source.controlEvaluation || source.controlNum || 3)));
+  const ri = Number(source.ri || ((impactNum === 5 && probabilityNum === 1) ? 10 : impactNum * probabilityNum));
+  const rr = Number(source.rr || (ri / controlNum));
+  const betaRaw = Number(source.beta || 1);
+  const beta = Math.max(0.01, Math.min(1, Number.isNaN(betaRaw) ? 1 : betaRaw));
+  const residualWithBeta = Number(source.residualWithBeta || Math.min(ri, rr / beta));
+  const residualFinalBand = source.residualFinalBand || getRIAScoreBand(residualWithBeta);
+
+  return {
+    itemNo,
+    activityText: source.activityText || processName || '',
+    lossRiskText: source.lossRiskText || source.effect || '',
+    riskFactorText: source.riskFactorText || getRIAFactorLabel(source.riskDomain),
+    riskFactorSpecificText: source.riskFactorSpecificText || source.scenario || source.cause || '',
+    controlsText: source.controlsText || '',
+    impactType: source.impactType || getRIAImpactType(source),
+    maxImpact24h: impactNum,
+    probability: probabilityNum,
+    controlEvaluation: controlNum,
+    impactNum,
+    probabilityNum,
+    controlNum,
+    ri: Number(ri.toFixed(2)),
+    rr: Number(rr.toFixed(2)),
+    inherentBand: source.inherentBand || getRIAScoreBand(ri),
+    residualBand: source.residualBand || getRIAScoreBand(rr),
+    beta: Number(beta.toFixed(2)),
+    residualWithBeta: Number(residualWithBeta.toFixed(2)),
+    residualFinalBand,
+    responseText: source.responseText || getRIAResponseByFinalBand(residualFinalBand),
+    observations: source.observations || source.description || '',
+    contingencyDesc: source.contingencyDesc || getRIAContingencyDescription(source),
+    linkedRiskId: source.linkedRiskId || source.id || null
+  };
+}
+
+function setRIALevSaveButtonsState(enabled) {
+  const draftBtn = document.getElementById('ria-lev-save-draft-btn');
+  const closeBtn = document.getElementById('ria-lev-save-close-btn');
+  if (draftBtn) draftBtn.disabled = !enabled;
+  if (closeBtn) closeBtn.disabled = !enabled;
+}
+
+function renderRIALevTargetSelect(selectedProcessId = null) {
+  const select = document.getElementById('ria-lev-target-id');
+  if (!select) return;
+  const selected = Number(selectedProcessId || 0);
+  const processes = (BCMSDataStore.entities.processes || []).filter(p => !p.isDeleted);
+  select.innerHTML = '<option value="">-- Seleccionar proceso --</option>' + processes.map(process => (
+    `<option value="${process.id}" ${Number(process.id) === selected ? 'selected' : ''}>${process.code} - ${process.name}</option>`
+  )).join('');
+}
+
+function renderRIALevDiscriminationTable() {
+  const tbody = document.getElementById('ria-lev-discrimination-body');
+  if (!tbody) return;
+  const rows = AppState.riaModalDraft?.discriminationItems || [];
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" class="text-center fs-12 color-muted">Seleccione un proceso para cargar la ficha de discriminación.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map((row, index) => `
+    <tr>
+      <td>${row.criterion || '-'}</td>
+      <td>
+        <select class="ria-lev-result-select" onchange="updateRIALevDiscriminationField(${index}, 'result', this.value)">
+          <option value="SI" ${row.result === 'SI' ? 'selected' : ''}>Si</option>
+          <option value="NO" ${row.result === 'NO' ? 'selected' : ''}>No</option>
+        </select>
+      </td>
+      <td><input type="text" value="${row.evidence || ''}" onchange="updateRIALevDiscriminationField(${index}, 'evidence', this.value)"></td>
+    </tr>
+  `).join('');
+}
+
+function renderRIALevMatrixTable() {
+  const tbody = document.getElementById('ria-lev-matrix-body');
+  if (!tbody) return;
+  const rows = AppState.riaModalDraft?.rows || [];
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="25" class="text-center fs-12 color-muted">Seleccione un proceso para editar la matriz.</td></tr>';
+    return;
+  }
+
+  const impactTypes = getRIALevImpactTypeOptions();
+  const scoreOptions = [1, 2, 3, 4, 5];
+
+  tbody.innerHTML = rows.map((row, index) => `
+    <tr>
+      <td class="ria-sticky-id">RIA-${AppState.riaModalDraft.processId}-${index + 1}</td>
+      <td class="ria-sticky-name"><input type="text" value="${row.activityText || ''}" onchange="updateRIALevRowField(${index}, 'activityText', this.value)"></td>
+      <td class="ria-sticky-scenario"><input type="text" value="${row.riskFactorSpecificText || ''}" onchange="updateRIALevRowField(${index}, 'riskFactorSpecificText', this.value)"></td>
+      <td><input type="text" value="${row.lossRiskText || ''}" onchange="updateRIALevRowField(${index}, 'lossRiskText', this.value)"></td>
+      <td><input type="text" value="${row.riskFactorText || ''}" onchange="updateRIALevRowField(${index}, 'riskFactorText', this.value)"></td>
+      <td><input type="text" value="${row.riskFactorSpecificText || ''}" onchange="updateRIALevRowField(${index}, 'riskFactorSpecificText', this.value)"></td>
+      <td><input type="text" value="${row.controlsText || ''}" onchange="updateRIALevRowField(${index}, 'controlsText', this.value)"></td>
+      <td>
+        <select onchange="updateRIALevRowField(${index}, 'impactType', this.value)">
+          ${impactTypes.map(label => `<option value="${label}" ${label === row.impactType ? 'selected' : ''}>${label}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <select class="ria-lev-score-select level-${row.maxImpact24h}" onchange="updateRIALevRowField(${index}, 'maxImpact24h', this.value)">
+          ${scoreOptions.map(score => `<option value="${score}" ${score === Number(row.maxImpact24h) ? 'selected' : ''}>${score} - ${getRIAImpactLevelLabel(score)}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <select class="ria-lev-score-select level-${row.probability}" onchange="updateRIALevRowField(${index}, 'probability', this.value)">
+          ${scoreOptions.map(score => `<option value="${score}" ${score === Number(row.probability) ? 'selected' : ''}>${score} - ${getRIAProbabilityLabel(score)}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <select class="ria-lev-score-select level-${row.controlEvaluation}" onchange="updateRIALevRowField(${index}, 'controlEvaluation', this.value)">
+          ${scoreOptions.map(score => `<option value="${score}" ${score === Number(row.controlEvaluation) ? 'selected' : ''}>${score} - ${getRIAControlLabel(score)}</option>`).join('')}
+        </select>
+      </td>
+      <td class="text-center fw-600">${row.impactNum}</td>
+      <td class="text-center fw-600">${row.probabilityNum}</td>
+      <td class="text-center fw-600">${row.controlNum}</td>
+      <td class="text-center fw-700">${row.ri}</td>
+      <td class="text-center fw-700">${row.rr}</td>
+      <td><span class="ria-level-pill ${riaV2BandClass(row.inherentBand)}">${row.inherentBand}</span></td>
+      <td><span class="ria-level-pill ${riaV2BandClass(row.residualBand)}">${row.residualBand}</span></td>
+      <td><input type="number" min="0.01" max="1" step="0.01" value="${row.beta}" onchange="updateRIALevRowField(${index}, 'beta', this.value)"></td>
+      <td class="text-center fw-700">${row.residualWithBeta}</td>
+      <td><span class="ria-level-pill ${riaV2BandClass(row.residualFinalBand)}">${row.residualFinalBand}</span></td>
+      <td class="ria-matrix-text">${row.responseText || '-'}</td>
+      <td><input type="text" value="${row.observations || ''}" onchange="updateRIALevRowField(${index}, 'observations', this.value)"></td>
+      <td><input type="text" value="${row.contingencyDesc || ''}" onchange="updateRIALevRowField(${index}, 'contingencyDesc', this.value)"></td>
+      <td><button type="button" class="btn btn-outline btn-sm" onclick="removeRIALevMatrixRow(${index})"><i class="bi bi-trash"></i></button></td>
+    </tr>
+  `).join('');
+}
+
+function renderRIALevTests(processId) {
+  const container = document.getElementById('ria-lev-tests');
+  if (!container) return;
+  if (!processId) {
+    container.innerHTML = '<p class="color-muted fs-12 m-0">Seleccione un proceso para revisar pruebas asociadas.</p>';
+    return;
+  }
+  const tests = getRIAProcessTests(processId);
+  container.innerHTML = `
+    <div class="table-wrapper">
+      <table class="ria-pruebas-table">
+        <thead><tr><th>Plan</th><th>Escenario</th><th>Fecha</th><th>Tipo</th><th>Resultado</th></tr></thead>
+        <tbody>
+          ${tests.map(test => `
+            <tr>
+              <td>${test.planCode} - ${test.planName}</td>
+              <td>${test.scenario}</td>
+              <td>${test.date}</td>
+              <td>${test.type}</td>
+              <td><span class="badge ${test.resultClass}">${test.result}</span></td>
+            </tr>
+          `).join('') || '<tr><td colspan="5" class="text-center color-muted">Sin pruebas asociadas.</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function clearRIALevState() {
+  const title = document.getElementById('ria-lev-title');
+  const ficha = document.getElementById('ria-lev-ficha');
+  if (title) title.innerHTML = '<i class="bi bi-shield-exclamation"></i> Levantamiento RIA';
+  if (ficha) ficha.innerHTML = '<p class="color-muted fs-12 m-0">Seleccione un proceso para cargar la ficha.</p>';
+  setInputValue('ria-lev-target-id-hidden', '');
+  setInputValue('ria-lev-assessment-id', '');
+  setInputValue('ria-lev-notes', '');
+  setInputValue('ria-lev-residual-note', '');
+  setInputValue('ria-approval-owner-name', '');
+  setInputValue('ria-approval-owner-date', '');
+  setInputValue('ria-approval-cont-name', '');
+  setInputValue('ria-approval-cont-date', '');
+  setInputValue('ria-approval-risk-name', '');
+  setInputValue('ria-approval-risk-date', '');
+  AppState.riaModalDraft = null;
+  renderRIALevDiscriminationTable();
+  renderRIALevMatrixTable();
+  renderRIALevTests(null);
+  setRIALevSaveButtonsState(false);
+}
+
+function prefillRIALevFromProcess(processId) {
+  const process = (BCMSDataStore.entities.processes || []).find(p => !p.isDeleted && Number(p.id) === Number(processId));
+  if (!process) return;
+
+  const latestAssessment = getLatestRIAAssessment(process.id);
+  const assessmentItems = latestAssessment ? getRIAItemsByAssessment(latestAssessment.id) : [];
+  const legacyRows = !latestAssessment ? getRIAProcessRisks(process.id) : [];
+  const bia = evaluateBIAForRIA(process);
+  const rowsSource = assessmentItems.length > 0 ? assessmentItems : legacyRows;
+  const rows = rowsSource.length > 0
+    ? rowsSource.map((row, index) => buildRIALevRow(row, index + 1, process.name))
+    : [buildRIALevRow({ impactType: 'Procesos', maxImpact24h: 3, probability: 3, controlEvaluation: 3, beta: 1 }, 1, process.name)];
+
+  const discriminationStored = latestAssessment ? ((() => {
+    const header = (BCMSDataStore.entities.riaDiscriminations || []).find(item => !item.isDeleted && Number(item.riaAssessmentId) === Number(latestAssessment.id));
+    if (!header) return [];
+    return (BCMSDataStore.entities.riaDiscriminationItems || [])
+      .filter(item => !item.isDeleted && Number(item.discriminationId) === Number(header.id))
+      .map(item => ({ criterion: item.criterion || '-', result: String(item.result || '').toUpperCase() === 'SI' ? 'SI' : 'NO', evidence: item.evidence || '' }));
+  })()) : [];
+
+  AppState.riaModalDraft = {
+    processId: process.id,
+    assessmentId: latestAssessment?.id || 0,
+    rows,
+    discriminationItems: discriminationStored.length > 0 ? discriminationStored : getRIALevDiscriminationDefaults(process, bia, rows)
+  };
+
+  const title = document.getElementById('ria-lev-title');
+  const ficha = document.getElementById('ria-lev-ficha');
+  if (title) title.innerHTML = `<i class="bi bi-shield-exclamation"></i> Levantamiento RIA - ${process.name}`;
+  if (ficha) {
+    const deps = getBIADependenciesForTarget({ targetType: 'PROCESS', targetId: process.id });
+    ficha.innerHTML = `
+      <div><span>Código</span><strong>${process.code || '-'}</strong></div>
+      <div><span>Proceso</span><strong>${process.name || '-'}</strong></div>
+      <div><span>Responsable</span><strong>${process.ownerName || process.owner || '-'}</strong></div>
+      <div><span>Criticidad</span><strong>${BCMSDataStore.api.getLookupLabel('businessCriticality', process.businessCriticality) || process.businessCriticality || '-'}</strong></div>
+      <div><span>Categoría</span><strong>${process.processCategory || '-'}</strong></div>
+      <div><span>Dependencias</span><strong>${deps.length}</strong></div>
+      <div><span>RTO</span><strong>${typeof process.targetRtoMinutes === 'number' ? formatMinutesToTime(process.targetRtoMinutes) : '-'}</strong></div>
+      <div><span>RPO</span><strong>${typeof process.targetRpoMinutes === 'number' ? formatMinutesToTime(process.targetRpoMinutes) : '-'}</strong></div>
+      <div><span>MTPD</span><strong>${typeof process.mtpdMinutes === 'number' ? formatMinutesToTime(process.mtpdMinutes) : '-'}</strong></div>
+      <div><span>Estado RIA</span><strong>${getRIAAssessmentStatusInfo(latestAssessment, !latestAssessment && legacyRows.length > 0, bia.triggered).label}</strong></div>
+    `;
+  }
+
+  setInputValue('ria-lev-target-id-hidden', String(process.id));
+  setInputValue('ria-lev-assessment-id', latestAssessment ? String(latestAssessment.id) : '');
+  setInputValue('ria-lev-notes', latestAssessment?.notes || '');
+  setInputValue('ria-lev-residual-note', latestAssessment?.globalResidualNote || '');
+
+  const approvalRows = latestAssessment
+    ? (BCMSDataStore.entities.riaAssessmentApprovals || []).filter(item => !item.isDeleted && Number(item.assessmentId) === Number(latestAssessment.id))
+    : getRIAApprovalData(process, { ownerName: process.ownerName || process.owner, updatedAt: process.updatedAt || process.createdAt || new Date().toISOString(), createdAt: process.createdAt || new Date().toISOString() }).map(item => ({ role: item.role, name: item.name, date: item.date }));
+  const approvalMap = {};
+  approvalRows.forEach(item => { approvalMap[item.role] = item; });
+  const defaultDate = normalizeDateInput(latestAssessment?.assessmentDate || new Date().toISOString().slice(0, 10));
+  setInputValue('ria-approval-owner-name', approvalMap['Responsable de Proceso']?.name || '');
+  setInputValue('ria-approval-owner-date', normalizeDateInput(approvalMap['Responsable de Proceso']?.date) || defaultDate);
+  setInputValue('ria-approval-cont-name', approvalMap['Jefe de Continuidad de Negocio']?.name || '');
+  setInputValue('ria-approval-cont-date', normalizeDateInput(approvalMap['Jefe de Continuidad de Negocio']?.date) || defaultDate);
+  setInputValue('ria-approval-risk-name', approvalMap['Jefe de Departamento de Riesgo Operacional']?.name || '');
+  setInputValue('ria-approval-risk-date', normalizeDateInput(approvalMap['Jefe de Departamento de Riesgo Operacional']?.date) || defaultDate);
+
+  renderRIALevDiscriminationTable();
+  renderRIALevMatrixTable();
+  renderRIALevTests(process.id);
+  setRIALevSaveButtonsState(true);
+}
+
+function openRIALevantamientoModal(processId = null) {
+  const modal = document.getElementById('modal-ria-levantamiento');
+  if (!modal) return;
+  const selected = Number(processId || AppState.selectedRIAProcessId || 0);
+  renderRIALevTargetSelect(selected || null);
+  if (selected) {
+    const targetInput = document.getElementById('ria-lev-target-id');
+    if (targetInput) targetInput.value = String(selected);
+    prefillRIALevFromProcess(selected);
+  } else {
+    clearRIALevState();
+  }
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeRIALevantamientoModal() {
+  const modal = document.getElementById('modal-ria-levantamiento');
+  if (!modal) return;
+  modal.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function onRIALevTargetEntityChange() {
+  const processId = Number(document.getElementById('ria-lev-target-id')?.value || 0);
+  if (!processId) {
+    clearRIALevState();
+    return;
+  }
+  prefillRIALevFromProcess(processId);
+}
+
+function updateRIALevDiscriminationField(index, field, value) {
+  if (!AppState.riaModalDraft || !Array.isArray(AppState.riaModalDraft.discriminationItems) || !AppState.riaModalDraft.discriminationItems[index]) return;
+  AppState.riaModalDraft.discriminationItems[index][field] = field === 'result'
+    ? (String(value || '').toUpperCase() === 'SI' ? 'SI' : 'NO')
+    : String(value || '').trim();
+}
+
+function updateRIALevRowField(index, field, value) {
+  if (!AppState.riaModalDraft || !Array.isArray(AppState.riaModalDraft.rows) || !AppState.riaModalDraft.rows[index]) return;
+  const processName = AppState.riaModalDraft.rows[index]?.activityText || '';
+  const row = { ...AppState.riaModalDraft.rows[index] };
+  row[field] = ['maxImpact24h', 'probability', 'controlEvaluation', 'beta'].includes(field)
+    ? Number(value)
+    : String(value || '').trim();
+  AppState.riaModalDraft.rows[index] = buildRIALevRow(row, index + 1, processName);
+  renderRIALevMatrixTable();
+}
+
+function addRIALevMatrixRow() {
+  if (!AppState.riaModalDraft || !AppState.riaModalDraft.processId) {
+    showToast('Seleccione un proceso antes de agregar escenario', 'warning');
+    return;
+  }
+  const process = (BCMSDataStore.entities.processes || []).find(p => Number(p.id) === Number(AppState.riaModalDraft.processId));
+  const nextItem = (AppState.riaModalDraft.rows || []).length + 1;
+  AppState.riaModalDraft.rows.push(buildRIALevRow({ impactType: 'Procesos', maxImpact24h: 3, probability: 3, controlEvaluation: 3, beta: 1 }, nextItem, process?.name || ''));
+  renderRIALevMatrixTable();
+}
+
+function removeRIALevMatrixRow(index) {
+  if (!AppState.riaModalDraft || !Array.isArray(AppState.riaModalDraft.rows) || !AppState.riaModalDraft.rows[index]) return;
+  if (AppState.riaModalDraft.rows.length === 1) {
+    showToast('Debe existir al menos un escenario en la matriz RIA', 'warning');
+    return;
+  }
+  AppState.riaModalDraft.rows.splice(index, 1);
+  AppState.riaModalDraft.rows = AppState.riaModalDraft.rows.map((row, idx) => buildRIALevRow({ ...row, itemNo: idx + 1 }, idx + 1, row.activityText || ''));
+  renderRIALevMatrixTable();
+}
+
+function saveRIALevantamiento(markCompleted = false) {
+  const processId = Number(document.getElementById('ria-lev-target-id')?.value || document.getElementById('ria-lev-target-id-hidden')?.value || 0);
+  const process = (BCMSDataStore.entities.processes || []).find(p => !p.isDeleted && Number(p.id) === Number(processId));
+  if (!process) {
+    showToast('Debe seleccionar un proceso RIA antes de guardar', 'warning');
+    return;
+  }
+  if (!AppState.riaModalDraft || !Array.isArray(AppState.riaModalDraft.rows) || AppState.riaModalDraft.rows.length === 0) {
+    showToast('Debe registrar al menos un escenario en la matriz RIA', 'warning');
+    return;
+  }
+
+  if (!BCMSDataStore.entities.riaAssessments) BCMSDataStore.entities.riaAssessments = [];
+  if (!BCMSDataStore.entities.riaItems) BCMSDataStore.entities.riaItems = [];
+  if (!BCMSDataStore.entities.riaDiscriminations) BCMSDataStore.entities.riaDiscriminations = [];
+  if (!BCMSDataStore.entities.riaDiscriminationItems) BCMSDataStore.entities.riaDiscriminationItems = [];
+  if (!BCMSDataStore.entities.riaAssessmentApprovals) BCMSDataStore.entities.riaAssessmentApprovals = [];
+
+  const currentUser = getActiveSessionUserName();
+  const nowIso = new Date().toISOString();
+  const status = markCompleted ? 'COMPLETADO' : 'BORRADOR';
+  const latestBIA = getLatestBIAAssessment('PROCESS', process.id);
+  const assessmentIdField = document.getElementById('ria-lev-assessment-id');
+  const existingId = Number(assessmentIdField?.value || 0);
+
+  const assessmentPayload = {
+    targetProcessType: 'PROCESS',
+    targetProcessId: process.id,
+    processId: process.id,
+    idBia: latestBIA?.id || null,
+    assessmentDate: new Date().toISOString().slice(0, 10),
+    status,
+    notes: getInputValue('ria-lev-notes'),
+    globalResidualNote: getInputValue('ria-lev-residual-note'),
+    updatedBy: currentUser,
+    deletedAt: null,
+    deletedBy: null,
+    isDeleted: false
+  };
+
+  const savedAssessment = existingId > 0
+    ? BCMSDataStore.api.update('riaAssessments', existingId, assessmentPayload)
+    : BCMSDataStore.api.create('riaAssessments', {
+      ...assessmentPayload,
+      riaCode: `RIA-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(process.id).padStart(3, '0')}`,
+      createdBy: currentUser
+    });
+
+  if (!savedAssessment) {
+    showToast('No fue posible guardar el levantamiento RIA', 'danger');
+    return;
+  }
+
+  setInputValue('ria-lev-assessment-id', String(savedAssessment.id));
+  AppState.riaModalDraft.assessmentId = Number(savedAssessment.id);
+
+  (BCMSDataStore.entities.riaItems || []).forEach(item => {
+    if (!item.isDeleted && Number(item.riaAssessmentId) === Number(savedAssessment.id)) {
+      item.isDeleted = true;
+      item.deletedAt = nowIso;
+      item.deletedBy = currentUser;
+      item.updatedAt = nowIso;
+      item.updatedBy = currentUser;
+    }
+  });
+
+  AppState.riaModalDraft.rows.forEach((row, index) => {
+    const normalized = buildRIALevRow({ ...row, itemNo: index + 1 }, index + 1, process.name);
+    BCMSDataStore.entities.riaItems.push({
+      id: Math.max(0, ...(BCMSDataStore.entities.riaItems || []).map(item => Number(item.id) || 0)) + 1,
+      riaAssessmentId: Number(savedAssessment.id),
+      itemNo: index + 1,
+      activityText: normalized.activityText,
+      lossRiskText: normalized.lossRiskText,
+      riskFactorText: normalized.riskFactorText,
+      riskFactorSpecificText: normalized.riskFactorSpecificText,
+      controlsText: normalized.controlsText,
+      impactType: normalized.impactType,
+      maxImpact24h: normalized.maxImpact24h,
+      probability: normalized.probability,
+      controlEvaluation: normalized.controlEvaluation,
+      impactNum: normalized.impactNum,
+      probabilityNum: normalized.probabilityNum,
+      controlNum: normalized.controlNum,
+      ri: normalized.ri,
+      rr: normalized.rr,
+      inherentBand: normalized.inherentBand,
+      residualBand: normalized.residualBand,
+      beta: normalized.beta,
+      residualWithBeta: normalized.residualWithBeta,
+      residualFinalBand: normalized.residualFinalBand,
+      responseText: normalized.responseText,
+      observations: normalized.observations,
+      contingencyDesc: normalized.contingencyDesc,
+      linkedRiskId: normalized.linkedRiskId,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      deletedAt: null,
+      createdBy: currentUser,
+      updatedBy: currentUser,
+      deletedBy: null,
+      isDeleted: false
+    });
+  });
+
+  let discriminationHeader = (BCMSDataStore.entities.riaDiscriminations || []).find(item => !item.isDeleted && Number(item.riaAssessmentId) === Number(savedAssessment.id));
+  if (!discriminationHeader) {
+    discriminationHeader = {
+      id: Math.max(0, ...(BCMSDataStore.entities.riaDiscriminations || []).map(item => Number(item.id) || 0)) + 1,
+      riaAssessmentId: Number(savedAssessment.id),
+      title: 'Ficha de discriminacion RIA',
+      notes: '',
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      deletedAt: null,
+      createdBy: currentUser,
+      updatedBy: currentUser,
+      deletedBy: null,
+      isDeleted: false
+    };
+    BCMSDataStore.entities.riaDiscriminations.push(discriminationHeader);
+  }
+
+  (BCMSDataStore.entities.riaDiscriminationItems || []).forEach(item => {
+    if (!item.isDeleted && Number(item.discriminationId) === Number(discriminationHeader.id)) {
+      item.isDeleted = true;
+      item.deletedAt = nowIso;
+      item.deletedBy = currentUser;
+      item.updatedAt = nowIso;
+      item.updatedBy = currentUser;
+    }
+  });
+
+  AppState.riaModalDraft.discriminationItems.forEach(item => {
+    BCMSDataStore.entities.riaDiscriminationItems.push({
+      id: Math.max(0, ...(BCMSDataStore.entities.riaDiscriminationItems || []).map(row => Number(row.id) || 0)) + 1,
+      discriminationId: Number(discriminationHeader.id),
+      criterion: item.criterion || '',
+      result: String(item.result || '').toUpperCase() === 'SI' ? 'SI' : 'NO',
+      evidence: item.evidence || '',
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      deletedAt: null,
+      createdBy: currentUser,
+      updatedBy: currentUser,
+      deletedBy: null,
+      isDeleted: false
+    });
+  });
+
+  (BCMSDataStore.entities.riaAssessmentApprovals || []).forEach(item => {
+    if (!item.isDeleted && Number(item.assessmentId) === Number(savedAssessment.id)) {
+      item.isDeleted = true;
+      item.deletedAt = nowIso;
+      item.deletedBy = currentUser;
+      item.updatedAt = nowIso;
+      item.updatedBy = currentUser;
+    }
+  });
+
+  [
+    { role: 'Responsable de Proceso', name: getInputValue('ria-approval-owner-name'), date: getInputValue('ria-approval-owner-date') },
+    { role: 'Jefe de Continuidad de Negocio', name: getInputValue('ria-approval-cont-name'), date: getInputValue('ria-approval-cont-date') },
+    { role: 'Jefe de Departamento de Riesgo Operacional', name: getInputValue('ria-approval-risk-name'), date: getInputValue('ria-approval-risk-date') }
+  ].forEach(row => {
+    BCMSDataStore.entities.riaAssessmentApprovals.push({
+      id: Math.max(0, ...(BCMSDataStore.entities.riaAssessmentApprovals || []).map(item => Number(item.id) || 0)) + 1,
+      assessmentId: Number(savedAssessment.id),
+      role: row.role,
+      name: row.name || '-',
+      date: row.date || nowIso.slice(0, 10),
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      deletedAt: null,
+      createdBy: currentUser,
+      updatedBy: currentUser,
+      deletedBy: null,
+      isDeleted: false
+    });
+  });
+
+  AppState.selectedRIAProcessId = process.id;
+  BCMSDataStore.meta.lastUpdated = nowIso;
+  renderRIAKPIs();
+  renderRIATable();
+  showDetalleRIA(process.id);
+  showToast(markCompleted ? 'Levantamiento RIA guardado y cerrado' : 'Borrador RIA guardado', 'success');
+  if (markCompleted) closeRIALevantamientoModal();
+}
+
+function goToDMEntityFromRIA() {
+  const processId = Number(document.getElementById('ria-lev-target-id')?.value || document.getElementById('ria-lev-target-id-hidden')?.value || 0);
+  if (!processId) {
+    showToast('Seleccione un proceso antes de ir a Datos Maestros', 'warning');
+    return;
+  }
+  closeRIALevantamientoModal();
+  showView('datos-maestros');
+  if (typeof showDMGroup === 'function') showDMGroup('orgproc');
+  if (typeof showDMSubtab === 'function') showDMSubtab('orgproc', 'processes');
+  if (typeof toggleEditForm === 'function') toggleEditForm('processes', `proc-${processId}`);
 }
 
 /**

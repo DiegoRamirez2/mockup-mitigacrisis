@@ -3168,6 +3168,189 @@ tr.editing select {
   line-height: 1.4;
 }
 
+/* Modal RIA levantamiento */
+#modal-ria-levantamiento .ria-lev-modal-content {
+  width: min(95vw, 1560px);
+  max-width: 1560px;
+  max-height: 92vh;
+}
+
+#modal-ria-levantamiento .ria-lev-modal-body {
+  max-height: calc(92vh - 140px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ria-lev-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ria-lev-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.ria-lev-objective-grid {
+  grid-template-columns: 2fr 1fr;
+}
+
+.ria-lev-ficha-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ria-lev-ficha-grid > div {
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #f8fafc;
+}
+
+.ria-lev-ficha-grid span {
+  display: block;
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.ria-lev-ficha-grid strong {
+  font-size: 12px;
+  color: var(--text-main);
+}
+
+.ria-lev-discrimination-table input,
+.ria-lev-discrimination-table select,
+.ria-lev-approval-form-table input,
+.ria-lev-matrix-table input,
+.ria-lev-matrix-table select {
+  width: 100%;
+  min-width: 110px;
+}
+
+.ria-lev-matrix-wrapper {
+  overflow-x: auto;
+}
+
+.ria-lev-matrix-table {
+  width: 100%;
+  min-width: 3600px;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.ria-lev-matrix-table th,
+.ria-lev-matrix-table td {
+  border: 1px solid var(--border-soft);
+  padding: 6px;
+  vertical-align: top;
+}
+
+.ria-lev-matrix-table thead th {
+  background: #eef2ff;
+  color: #1f2937;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.ria-lev-matrix-table .ria-sticky-id,
+.ria-lev-matrix-table .ria-sticky-name,
+.ria-lev-matrix-table .ria-sticky-scenario {
+  position: sticky;
+  background: #fff;
+  z-index: 2;
+}
+
+.ria-lev-matrix-table .ria-sticky-id {
+  left: 0;
+  min-width: 130px;
+}
+
+.ria-lev-matrix-table .ria-sticky-name {
+  left: 130px;
+  min-width: 220px;
+}
+
+.ria-lev-matrix-table .ria-sticky-scenario {
+  left: 350px;
+  min-width: 220px;
+  box-shadow: 3px 0 0 #dbeafe;
+}
+
+.ria-level-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.ria-level-pill.level-1 {
+  background: #00b050;
+  border-color: #00b050;
+  color: #ffffff;
+}
+
+.ria-level-pill.level-2 {
+  background: #92d050;
+  border-color: #92d050;
+  color: #0f172a;
+}
+
+.ria-level-pill.level-3 {
+  background: #ffff00;
+  border-color: #eab308;
+  color: #0f172a;
+}
+
+.ria-level-pill.level-4 {
+  background: #ffc000;
+  border-color: #f59e0b;
+  color: #0f172a;
+}
+
+.ria-level-pill.level-5 {
+  background: #ff0000;
+  border-color: #dc2626;
+  color: #ffffff;
+}
+
+.ria-lev-score-select.level-1 {
+  background: #00b050;
+  color: #fff;
+}
+
+.ria-lev-score-select.level-2 {
+  background: #92d050;
+  color: #0f172a;
+}
+
+.ria-lev-score-select.level-3 {
+  background: #ffff00;
+  color: #0f172a;
+}
+
+.ria-lev-score-select.level-4 {
+  background: #ffc000;
+  color: #0f172a;
+}
+
+.ria-lev-score-select.level-5 {
+  background: #ff0000;
+  color: #fff;
+}
+
 /* Incidentes */
 .incidentes-tab-bar {
   display: flex;
@@ -3275,6 +3458,11 @@ tr.editing select {
     grid-template-columns: 1fr;
   }
 
+  .ria-lev-objective-grid,
+  .ria-lev-ficha-grid {
+    grid-template-columns: 1fr;
+  }
+
   .incidentes-master-detail {
     grid-template-columns: 1fr;
   }
@@ -3302,6 +3490,11 @@ tr.editing select {
   }
 
   #modal-bia-levantamiento .bia-lev-modal-content {
+    width: 98vw;
+    max-width: 98vw;
+  }
+
+  #modal-ria-levantamiento .ria-lev-modal-content {
     width: 98vw;
     max-width: 98vw;
   }

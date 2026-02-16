@@ -212,6 +212,64 @@ const BCMSDataStore = {
       { id: 5, code: 'BIA-PER-005', name: 'Luis Soto', role: 'Jefe Operaciones Hospitalarias', source: 'Mockup' }
     ],
 
+    // Catalogos RIA para levantamiento de matriz de continuidad
+    riaImpactTypes: [
+      { id: 1, code: 'MONETARIO', label: 'Monetario', order: 1 },
+      { id: 2, code: 'PROCESOS', label: 'Procesos', order: 2 },
+      { id: 3, code: 'REPUTACIONAL', label: 'Reputacional', order: 3 },
+      { id: 4, code: 'NORMATIVO', label: 'Normativo', order: 4 },
+      { id: 5, code: 'CLIENTES', label: 'Clientes', order: 5 }
+    ],
+    riaMaxImpact24hScale: [
+      { id: 1, code: 'LOW', label: 'Bajo', numericValue: 1, color: '#00B050' },
+      { id: 2, code: 'MEDIUM_LOW', label: 'Medio Bajo', numericValue: 2, color: '#92D050' },
+      { id: 3, code: 'MEDIUM', label: 'Medio', numericValue: 3, color: '#FFFF00' },
+      { id: 4, code: 'MEDIUM_HIGH', label: 'Medio Alto', numericValue: 4, color: '#FFC000' },
+      { id: 5, code: 'HIGH', label: 'Alto', numericValue: 5, color: '#FF0000' }
+    ],
+    riaProbabilityScale: [
+      { id: 1, code: 'VERY_LOW', label: 'Muy poco probable', numericValue: 1 },
+      { id: 2, code: 'LOW', label: 'Poco probable', numericValue: 2 },
+      { id: 3, code: 'MEDIUM', label: 'Ocasional', numericValue: 3 },
+      { id: 4, code: 'HIGH', label: 'Frecuente', numericValue: 4 },
+      { id: 5, code: 'VERY_HIGH', label: 'Muy frecuente', numericValue: 5 }
+    ],
+    riaControlEvaluationScale: [
+      { id: 1, code: 'DEFICIENT', label: 'Deficiente', numericValue: 1 },
+      { id: 2, code: 'REGULAR', label: 'Regular', numericValue: 2 },
+      { id: 3, code: 'SUFFICIENT', label: 'Suficiente', numericValue: 3 },
+      { id: 4, code: 'GOOD', label: 'Bueno', numericValue: 4 },
+      { id: 5, code: 'OPTIMAL', label: 'Optimo', numericValue: 5 }
+    ],
+    riaRiskBands: [
+      { id: 1, code: 'LOW', label: 'Bajo', min: 0, max: 2.99, color: '#00B050' },
+      { id: 2, code: 'MEDIUM_LOW', label: 'Medio Bajo', min: 3, max: 4.99, color: '#92D050' },
+      { id: 3, code: 'MEDIUM', label: 'Medio', min: 5, max: 9.99, color: '#FFFF00' },
+      { id: 4, code: 'MEDIUM_HIGH', label: 'Medio Alto', min: 10, max: 14.99, color: '#FFC000' },
+      { id: 5, code: 'HIGH', label: 'Alto', min: 15, max: 999, color: '#FF0000' }
+    ],
+    riaRiskResponses: [
+      {
+        id: 1,
+        code: 'HIGH_ACTION',
+        finalBandCodes: ['MEDIUM_HIGH', 'HIGH'],
+        label: 'Crear o modificar plan / ejecutar prueba'
+      },
+      {
+        id: 2,
+        code: 'MONITOR_ACTION',
+        finalBandCodes: ['LOW', 'MEDIUM_LOW', 'MEDIUM'],
+        label: 'Mantener plan y calendario de pruebas'
+      }
+    ],
+    riaAssessmentStatus: [
+      { id: 1, code: 'SIN_INICIAR', label: 'Sin iniciar', color: '#6c757d' },
+      { id: 2, code: 'EN_CURSO', label: 'En curso', color: '#ffc107' },
+      { id: 3, code: 'COMPLETADO', label: 'Completado', color: '#28a745' },
+      { id: 4, code: 'NO_REQUERIDO', label: 'No requerido', color: '#17a2b8' },
+      { id: 5, code: 'COMPLETADO_LEGACY', label: 'Completado (legacy)', color: '#6f42c1' }
+    ],
+
     // Estados de contexto BCMS
     contextIssueStatus: [
       { id: 1, code: 'OPEN', label: 'Abierto', color: '#ffc107' },
@@ -5142,6 +5200,385 @@ const BCMSDataStore = {
         date: '2025-01-15',
         createdAt: '2025-01-15T09:00:00Z',
         updatedAt: '2025-01-15T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      }
+    ],
+
+    // -------------------------------------------------------------------------
+    // LEVANTAMIENTOS RIA (ria_assessments - runtime mockup)
+    // -------------------------------------------------------------------------
+    riaAssessments: [
+      {
+        id: 1,
+        riaCode: 'RIA-2025-001',
+        targetProcessType: 'PROCESS',
+        targetProcessId: 1,
+        idBia: 1,
+        assessmentDate: '2025-01-18',
+        status: 'COMPLETADO',
+        notes: 'Levantamiento validado con responsables del proceso.',
+        globalResidualNote: 'Riesgo residual controlado con pruebas semestrales.',
+        createdAt: '2025-01-18T09:00:00Z',
+        updatedAt: '2025-01-18T13:30:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      },
+      {
+        id: 2,
+        riaCode: 'RIA-2025-002',
+        targetProcessType: 'PROCESS',
+        targetProcessId: 7,
+        idBia: 2,
+        assessmentDate: '2025-01-21',
+        status: 'BORRADOR',
+        notes: 'Levantamiento en curso, pendiente validacion de controles.',
+        globalResidualNote: 'Faltan pruebas de capacidad sobre contingencia de personal.',
+        createdAt: '2025-01-21T09:00:00Z',
+        updatedAt: '2025-01-21T12:10:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      }
+    ],
+
+    // -------------------------------------------------------------------------
+    // FICHA DE DISCRIMINACION RIA (ria_discriminations - runtime mockup)
+    // -------------------------------------------------------------------------
+    riaDiscriminations: [
+      {
+        id: 1,
+        riaAssessmentId: 1,
+        title: 'Ficha de discriminacion RIA',
+        notes: 'Discriminacion basada en continuidad operativa y normativa.',
+        createdAt: '2025-01-18T09:00:00Z',
+        updatedAt: '2025-01-18T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      },
+      {
+        id: 2,
+        riaAssessmentId: 2,
+        title: 'Ficha de discriminacion RIA',
+        notes: 'Pendiente de cierre de antecedentes de contingencia.',
+        createdAt: '2025-01-21T09:00:00Z',
+        updatedAt: '2025-01-21T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      }
+    ],
+
+    // -------------------------------------------------------------------------
+    // ITEMS DE DISCRIMINACION RIA (ria_discrimination_items - runtime mockup)
+    // -------------------------------------------------------------------------
+    riaDiscriminationItems: [
+      {
+        id: 1,
+        discriminationId: 1,
+        criterion: 'Nivel de Exposición Monetaria',
+        result: 'SI',
+        evidence: 'Perdida de ingresos diarios por indisponibilidad del proceso.',
+        createdAt: '2025-01-18T09:00:00Z',
+        updatedAt: '2025-01-18T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      },
+      {
+        id: 2,
+        discriminationId: 1,
+        criterion: 'Perdidas Operacionales',
+        result: 'SI',
+        evidence: 'Afecta cumplimiento de SLA y backlog operativo.',
+        createdAt: '2025-01-18T09:00:00Z',
+        updatedAt: '2025-01-18T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      },
+      {
+        id: 3,
+        discriminationId: 1,
+        criterion: 'Lineamientos Estrategicos',
+        result: 'SI',
+        evidence: 'Proceso critico para operacion comercial.',
+        createdAt: '2025-01-18T09:00:00Z',
+        updatedAt: '2025-01-18T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      },
+      {
+        id: 4,
+        discriminationId: 1,
+        criterion: 'Nivel de Exposición Reputacional',
+        result: 'SI',
+        evidence: 'Impacto visible en clientes por demoras de respuesta.',
+        createdAt: '2025-01-18T09:00:00Z',
+        updatedAt: '2025-01-18T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      },
+      {
+        id: 5,
+        discriminationId: 1,
+        criterion: 'Riesgo de Incumplimiento Normativo',
+        result: 'NO',
+        evidence: 'No se observan sanciones directas en este escenario.',
+        createdAt: '2025-01-18T09:00:00Z',
+        updatedAt: '2025-01-18T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      },
+      {
+        id: 6,
+        discriminationId: 1,
+        criterion: 'Incidentes Operacionales',
+        result: 'SI',
+        evidence: 'Se registran incidentes operacionales del proceso en el ultimo semestre.',
+        createdAt: '2025-01-18T09:00:00Z',
+        updatedAt: '2025-01-18T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      },
+      {
+        id: 7,
+        discriminationId: 2,
+        criterion: 'Nivel de Exposición Monetaria',
+        result: 'SI',
+        evidence: 'Potencial de costos extraordinarios por indisponibilidad clínica.',
+        createdAt: '2025-01-21T09:00:00Z',
+        updatedAt: '2025-01-21T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      },
+      {
+        id: 8,
+        discriminationId: 2,
+        criterion: 'Perdidas Operacionales',
+        result: 'SI',
+        evidence: 'Afectacion directa sobre continuidad de atencion.',
+        createdAt: '2025-01-21T09:00:00Z',
+        updatedAt: '2025-01-21T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      },
+      {
+        id: 9,
+        discriminationId: 2,
+        criterion: 'Lineamientos Estrategicos',
+        result: 'SI',
+        evidence: 'Proceso clasificado como critico en BIA.',
+        createdAt: '2025-01-21T09:00:00Z',
+        updatedAt: '2025-01-21T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      }
+    ],
+
+    // -------------------------------------------------------------------------
+    // ITEMS MATRIZ RIA (ria_items - runtime mockup)
+    // -------------------------------------------------------------------------
+    riaItems: [
+      {
+        id: 1,
+        riaAssessmentId: 1,
+        itemNo: 1,
+        activityText: 'Operar Convenios de Pago',
+        lossRiskText: 'Interrupcion de operacion comercial',
+        riskFactorText: 'Falla de plataforma',
+        riskFactorSpecificText: 'Caida de CRM',
+        controlsText: 'Monitoreo 24x7; respaldo aplicativo',
+        impactType: 'Procesos',
+        maxImpact24h: 4,
+        probability: 3,
+        controlEvaluation: 3,
+        impactNum: 4,
+        probabilityNum: 3,
+        controlNum: 3,
+        ri: 12,
+        rr: 4,
+        inherentBand: 'Medio Alto',
+        residualBand: 'Medio Bajo',
+        beta: 0.8,
+        residualWithBeta: 5,
+        residualFinalBand: 'Medio',
+        responseText: 'No se requiere actualizar o construir un plan de continuidad, se debe mantener el plan de pruebas.',
+        observations: 'Escenario validado con responsable de proceso.',
+        contingencyDesc: 'Activacion de sitio alterno y atencion priorizada.',
+        linkedRiskId: 1,
+        createdAt: '2025-01-18T09:00:00Z',
+        updatedAt: '2025-01-18T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      },
+      {
+        id: 2,
+        riaAssessmentId: 1,
+        itemNo: 2,
+        activityText: 'Operar Convenios de Pago',
+        lossRiskText: 'Exposicion reputacional por tiempos de respuesta',
+        riskFactorText: 'Demora operativa',
+        riskFactorSpecificText: 'Sobrecarga de atencion',
+        controlsText: 'Priorizacion automatica; canal alterno',
+        impactType: 'Reputacional',
+        maxImpact24h: 4,
+        probability: 2,
+        controlEvaluation: 4,
+        impactNum: 4,
+        probabilityNum: 2,
+        controlNum: 4,
+        ri: 8,
+        rr: 2,
+        inherentBand: 'Medio',
+        residualBand: 'Bajo',
+        beta: 1,
+        residualWithBeta: 2,
+        residualFinalBand: 'Bajo',
+        responseText: 'No se requiere actualizar o construir un plan de continuidad, se debe mantener el plan de pruebas.',
+        observations: 'Mantener monitoreo mensual.',
+        contingencyDesc: 'Derivacion de casos a mesa de apoyo.',
+        linkedRiskId: 3,
+        createdAt: '2025-01-18T09:00:00Z',
+        updatedAt: '2025-01-18T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      },
+      {
+        id: 3,
+        riaAssessmentId: 2,
+        itemNo: 1,
+        activityText: 'Gestión de Urgencias',
+        lossRiskText: 'Interrupcion de atencion clinica',
+        riskFactorText: 'Ausencia de personal',
+        riskFactorSpecificText: 'Contingencia sanitaria',
+        controlsText: 'Bolsa de reemplazos; turnos de respaldo',
+        impactType: 'Clientes',
+        maxImpact24h: 5,
+        probability: 3,
+        controlEvaluation: 2,
+        impactNum: 5,
+        probabilityNum: 3,
+        controlNum: 2,
+        ri: 15,
+        rr: 7.5,
+        inherentBand: 'Alto',
+        residualBand: 'Medio',
+        beta: 0.7,
+        residualWithBeta: 10.71,
+        residualFinalBand: 'Medio Alto',
+        responseText: 'Se debe crear o modificar un Plan de Continuidad, o bien, si el plan existe y no se ha probado, se debe concretar una prueba.',
+        observations: 'Pendiente definir umbral de activacion operacional.',
+        contingencyDesc: 'Escalamiento a red asistencial y redistribucion de carga.',
+        linkedRiskId: 6,
+        createdAt: '2025-01-21T09:00:00Z',
+        updatedAt: '2025-01-21T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      }
+    ],
+
+    // -------------------------------------------------------------------------
+    // VALIDACIONES LEVANTAMIENTO RIA (ria_assessment_approvals - runtime mockup)
+    // -------------------------------------------------------------------------
+    riaAssessmentApprovals: [
+      {
+        id: 1,
+        assessmentId: 1,
+        role: 'Responsable de Proceso',
+        name: 'Maria Gonzalez',
+        date: '2025-01-18',
+        createdAt: '2025-01-18T09:00:00Z',
+        updatedAt: '2025-01-18T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      },
+      {
+        id: 2,
+        assessmentId: 1,
+        role: 'Jefe de Continuidad de Negocio',
+        name: 'Patricia Morales',
+        date: '2025-01-18',
+        createdAt: '2025-01-18T09:00:00Z',
+        updatedAt: '2025-01-18T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      },
+      {
+        id: 3,
+        assessmentId: 1,
+        role: 'Jefe de Departamento de Riesgo Operacional',
+        name: 'Luis Soto',
+        date: '2025-01-18',
+        createdAt: '2025-01-18T09:00:00Z',
+        updatedAt: '2025-01-18T09:00:00Z',
+        deletedAt: null,
+        createdBy: 'Patricia Morales',
+        updatedBy: 'Patricia Morales',
+        deletedBy: null,
+        isDeleted: false
+      },
+      {
+        id: 4,
+        assessmentId: 2,
+        role: 'Responsable de Proceso',
+        name: 'Luis Soto',
+        date: '2025-01-21',
+        createdAt: '2025-01-21T09:00:00Z',
+        updatedAt: '2025-01-21T09:00:00Z',
         deletedAt: null,
         createdBy: 'Patricia Morales',
         updatedBy: 'Patricia Morales',
