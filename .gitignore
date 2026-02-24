@@ -1,5 +1,6 @@
 
 .conda/envs/bcms-tools/
+
 .codex/
 .conda/
 .cursor/
@@ -7,3 +8,8 @@
 !.github/workflows/
 !.github/workflows/**
 .vscode/
+mitiga_ciberseguridad_context_pack/
+requerimientos/
+docs/
+mockup_v2/docs/
+mockup_v2/mitiga_data/
