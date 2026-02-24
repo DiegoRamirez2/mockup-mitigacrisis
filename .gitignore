@@ -3,5 +3,7 @@
 .codex/
 .conda/
 .cursor/
-.github/
+.github/*
+!.github/workflows/
+!.github/workflows/**
 .vscode/

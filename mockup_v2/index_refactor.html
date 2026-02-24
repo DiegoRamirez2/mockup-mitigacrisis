@@ -19,7 +19,7 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="logo">MitigaCibersecurity</div>
-        <div class="logo-subtitle">Gestiona continuidad del servicio: preparar, responder y recuperar funciones críticas.</div>
+        <div class="logo-subtitle">Gestiona continuidad y ciberseguridad: prevenir, responder y recuperar funciones críticas.</div>
       </div>
 
       <nav>
@@ -4944,9 +4944,6 @@
             <div class="card mb-20">
               <div class="card-header">
                 <h3><i class="bi bi-plug"></i> Integraciones con Sistemas Terceros</h3>
-                <button class="btn btn-primary">
-                  <i class="bi bi-plus"></i> Nueva Integración
-                </button>
               </div>
               <div class="table-wrapper">
                 <table class="mt-12">
@@ -4958,7 +4955,6 @@
                       <th>Endpoint</th>
                       <th>Última Sincronización</th>
                       <th>Estado Conexión</th>
-                      <th>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -4969,7 +4965,6 @@
                     <td>https://mitiga.service-now.com/api</td>
                     <td>11-Dic-2025 09:12</td>
                     <td><span class="badge badge-success"><i class="bi bi-link-45deg"></i> Conectado</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-gear"></i> Configurar</button></td>
                   </tr>
                   <tr>
                     <td><strong>Splunk SIEM</strong></td>
@@ -4978,7 +4973,6 @@
                     <td>https://splunk.mitiga.cl:8088</td>
                     <td>11-Dic-2025 09:10</td>
                     <td><span class="badge badge-success"><i class="bi bi-link-45deg"></i> Conectado</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-gear"></i> Configurar</button></td>
                   </tr>
                   <tr>
                     <td><strong>Archer GRC</strong></td>
@@ -4987,7 +4981,6 @@
                     <td>https://archer.mitiga.cl/ws</td>
                     <td>11-Dic-2025 06:30</td>
                     <td><span class="badge badge-warning"><i class="bi bi-exclamation-triangle-fill"></i> Sincronización lenta</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-gear"></i> Configurar</button></td>
                   </tr>
                   <tr>
                     <td><strong>Active Directory</strong></td>
@@ -4996,8 +4989,57 @@
                     <td>ldaps://ad.mitiga.cl:636</td>
                     <td>11-Dic-2025 09:15</td>
                     <td><span class="badge badge-success"><i class="bi bi-link-45deg"></i> Conectado</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-gear"></i> Configurar</button></td>
                   </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Umbrales y Alertas -->
+            <div class="card mb-20">
+              <div class="card-header">
+                <h3><i class="bi bi-exclamation-triangle"></i> Umbrales y Alertas</h3>
+                <button class="btn btn-primary">
+                  <i class="bi bi-gear"></i> Configurar
+                </button>
+              </div>
+              <div class="table-wrapper">
+                <table class="mt-12">
+                  <thead>
+                    <tr>
+                      <th>Parámetro</th>
+                      <th>Valor</th>
+                      <th>Unidad</th>
+                      <th>Regla de activación</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>Criticidad Alta - Riesgos</strong></td>
+                      <td><input type="number" class="form-input" style="width: 110px;" value="15"></td>
+                      <td>Puntos</td>
+                      <td>Puntaje >= 15 genera alerta automática al equipo de gestión</td>
+                      <td><span class="badge badge-danger">Crítico</span></td>
+                      <td><button class="btn btn-outline btn-sm"><i class="bi bi-gear"></i> Configurar</button></td>
+                    </tr>
+                    <tr>
+                      <td><strong>MTTR Objetivo</strong></td>
+                      <td><input type="number" class="form-input" style="width: 110px;" value="4"></td>
+                      <td>Horas</td>
+                      <td>Alerta si MTTR supera el objetivo definido</td>
+                      <td><span class="badge badge-warning">Monitoreo</span></td>
+                      <td><button class="btn btn-outline btn-sm"><i class="bi bi-gear"></i> Configurar</button></td>
+                    </tr>
+                    <tr>
+                      <td><strong>Cumplimiento Mínimo</strong></td>
+                      <td><input type="number" class="form-input" style="width: 110px;" value="85"></td>
+                      <td>%</td>
+                      <td>Alerta si nivel de cumplimiento es menor al 85%</td>
+                      <td><span class="badge badge-info">Seguimiento</span></td>
+                      <td><button class="btn btn-outline btn-sm"><i class="bi bi-gear"></i> Configurar</button></td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -5058,172 +5100,6 @@
             </div>
           </div>
           <!-- Fin - Configuración: Integraciones -->
-
-          <!-- Inicio - Configuración: Parámetros del Sistema -->
-          <div class="mb-32">
-            <div class="config-params-grid">
-              <!-- Umbrales y Alertas -->
-              <div class="card config-threshold-card">
-                <div class="card-header config-threshold-header">
-                  <h3 class="m-0 d-flex ai-center gap-12">
-                    <i class="bi bi-exclamation-triangle-fill fs-24"></i>
-                    <span>Umbrales y Alertas</span>
-                  </h3>
-                </div>
-                <div class="p-20">
-                  <div style="margin-bottom: 16px; background: white; padding: 16px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid #dc2626;">
-                    <div class="d-flex ai-center gap-12 mb-10">
-                      <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #dc2626, #ef4444); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: white;">
-                        <i class="bi bi-exclamation-circle-fill"></i>
-                      </div>
-                      <div class="flex-1">
-                        <label class="d-block fw-700 fs-14 text-main">Criticidad Alta - Riesgos</label>
-                      </div>
-                    </div>
-                    <div class="d-flex ai-center gap-12 mb-8">
-                      <input type="number" value="15" style="flex: 1; padding: 10px 14px; border: 2px solid #dc2626; border-radius: 8px; font-size: 15px; font-weight: 600;">
-                      <span style="padding: 8px 16px; background: #dc2626; color: white; border-radius: 8px; font-weight: 600; font-size: 13px; white-space: nowrap;">puntos</span>
-                    </div>
-                    <small style="color: #b91c1c; font-size: 11px; font-weight: 600; display: block; background: #fee2e2; padding: 6px 10px; border-radius: 6px;">
-                      <i class="bi bi-exclamation-triangle-fill"></i> Puntaje >= 15 genera alerta automática al equipo de gestión
-                    </small>
-                  </div>
-                  
-                  <div style="margin-bottom: 16px; background: white; padding: 16px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid #f59e0b;">
-                    <div class="d-flex ai-center gap-12 mb-10">
-                      <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #f59e0b, #fbbf24); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: white;">
-                        <i class="bi bi-lightning-charge"></i>
-                      </div>
-                      <div class="flex-1">
-                        <label class="d-block fw-700 fs-14 text-main">MTTR Objetivo</label>
-                      </div>
-                    </div>
-                    <div class="d-flex ai-center gap-12 mb-8">
-                      <input type="number" value="4" style="flex: 1; padding: 10px 14px; border: 2px solid #f59e0b; border-radius: 8px; font-size: 15px; font-weight: 600;">
-                      <span style="padding: 8px 16px; background: #f59e0b; color: white; border-radius: 8px; font-weight: 600; font-size: 13px; white-space: nowrap;">horas</span>
-                    </div>
-                    <small style="color: #d97706; font-size: 11px; font-weight: 600; display: block; background: #fef3c7; padding: 6px 10px; border-radius: 6px;">
-                      <i class="bi bi-clock"></i> Alerta si MTTR supera el objetivo definido
-                    </small>
-                  </div>
-
-                  <div style="background: white; padding: 16px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid var(--accent-primary);">
-                    <div class="d-flex ai-center gap-12 mb-10">
-                      <div style="width: 40px; height: 40px; background: var(--gradient-brand); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: white;">
-                        <i class="bi bi-graph-up"></i>
-                      </div>
-                      <div class="flex-1">
-                        <label class="d-block fw-700 fs-14 text-main">Cumplimiento Mínimo</label>
-                      </div>
-                    </div>
-                    <div class="d-flex ai-center gap-12 mb-8">
-                      <input type="number" value="85" style="flex: 1; padding: 10px 14px; border: 2px solid var(--accent-primary); border-radius: 8px; font-size: 15px; font-weight: 600;">
-                      <span style="padding: 8px 16px; background: var(--accent-primary); color: white; border-radius: 8px; font-weight: 600; font-size: 13px; white-space: nowrap;">%</span>
-                    </div>
-                    <small style="color: #6d28d9; font-size: 11px; font-weight: 600; display: block; background: #ede9fe; padding: 6px 10px; border-radius: 6px;">
-                      <i class="bi bi-bar-chart"></i> Alerta si nivel de cumplimiento < 85%
-                    </small>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Información del Sistema -->
-              <div class="card config-system-card">
-                <div class="card-header config-system-header">
-                  <h3 class="m-0 d-flex ai-center gap-12">
-                    <i class="bi bi-info-circle-fill fs-24"></i>
-                    <span>Información del Sistema</span>
-                  </h3>
-                </div>
-                <div class="p-20">
-                  <div class="config-system-info-grid">
-                    <div class="d-flex jc-between p-12 bg-white rounded-8 border-soft">
-                      <span class="color-muted fw-500">Versión DataStore:</span>
-                      <span class="fw-600" id="info-version">2.1.0</span>
-                    </div>
-                    <div class="d-flex jc-between p-12 bg-white rounded-8 border-soft">
-                      <span class="color-muted fw-500">Schema Version:</span>
-                      <span class="fw-600" id="info-schema">v10</span>
-                    </div>
-                    <div class="d-flex jc-between p-12 bg-white rounded-8 border-soft">
-                      <span class="color-muted fw-500">Cumplimiento ISO:</span>
-                      <span class="config-iso-value" id="info-compliance">ISO 22301:2019</span>
-                    </div>
-                    <div class="d-flex jc-between p-12 bg-white rounded-8 border-soft">
-                      <span class="color-muted fw-500">Última Actualización:</span>
-                      <span class="fw-600" id="info-updated">-</span>
-                    </div>
-                  </div>
-                  
-                  <div class="config-actions-stack">
-                    <button class="btn btn-secondary w-full">
-                      <i class="bi bi-download"></i> Exportar Configuración
-                    </button>
-                    <button class="btn btn-outline w-full">
-                      <i class="bi bi-upload"></i> Importar Configuración
-                    </button>
-                    <button class="btn btn-outline w-full">
-                      <i class="bi bi-arrow-repeat"></i> Resetear a Valores por Defecto
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- Fin - Configuración: Parámetros del Sistema -->
-
-          <!-- Inicio - Configuración: Backups y Logs -->
-          <div class="mb-32">
-            <div class="card">
-              <div class="card-header">
-                <h3><i class="bi bi-database"></i> Backups y Restauración</h3>
-                <button class="btn btn-primary">
-                  <i class="bi bi-plus"></i> Ejecutar Backup Manual
-                </button>
-              </div>
-              <div class="table-wrapper">
-                <table class="mt-12">
-                  <thead>
-                    <tr>
-                      <th>Fecha Backup</th>
-                      <th>Tipo</th>
-                      <th>Tamaño</th>
-                      <th>Duración</th>
-                      <th>Estado</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                  <tr>
-                    <td>11-Dic-2025 03:00</td>
-                    <td><span class="badge badge-info">Automático Diario</span></td>
-                    <td>245 MB</td>
-                    <td>8 min</td>
-                    <td><span class="badge badge-success"><i class="bi bi-check2"></i> Exitoso</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-download"></i> Descargar</button></td>
-                  </tr>
-                  <tr>
-                    <td>10-Dic-2025 03:00</td>
-                    <td><span class="badge badge-info">Automático Diario</span></td>
-                    <td>243 MB</td>
-                    <td>7 min</td>
-                    <td><span class="badge badge-success"><i class="bi bi-check2"></i> Exitoso</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-download"></i> Descargar</button></td>
-                  </tr>
-                  <tr>
-                    <td>08-Dic-2025 15:30</td>
-                    <td><span class="badge badge-neutral">Manual</span></td>
-                    <td>244 MB</td>
-                    <td>9 min</td>
-                    <td><span class="badge badge-success"><i class="bi bi-check2"></i> Exitoso</span></td>
-                    <td><button class="btn btn-outline btn-sm"><i class="bi bi-download"></i> Descargar</button></td>
-                  </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          <!-- Fin - Configuración: Backups y Logs -->
         </div>
         <!-- FIN VISTA: Configuración -->
 
